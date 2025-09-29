@@ -121,3 +121,9 @@ Thumbs.db
 build/
 dist/
 *.log
+
+# 项目特定
+# 保留dist目录结构，但忽略构建过程中的临时文件
+dist/*.exe
+dist/*/
+!dist/README.md
