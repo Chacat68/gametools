@@ -15,7 +15,7 @@ from pathlib import Path
 # 添加父目录到路径，以便导入json_format_detector模块
 sys.path.append(str(Path(__file__).parent.parent))
 
-from json_format_detector.json_format_detector import JSONFormatDetector
+from tools.json_format_detector.json_format_detector import JSONFormatDetector
 
 
 class JSONFormatDetectorGUI:

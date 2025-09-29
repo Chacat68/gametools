@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 # 导入并运行GUI
-from json_format_detector_gui import main
+from gui.json_format_detector_gui import main
 
 if __name__ == "__main__":
     main()
