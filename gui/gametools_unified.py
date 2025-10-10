@@ -18,6 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.localization_checker import LocalizationChecker
 from tools.json_format_detector.json_format_detector import JSONFormatDetector
+from tools.excel_consolidator import ExcelConsolidator
 
 
 class GameToolsUnified:
@@ -44,6 +45,7 @@ class GameToolsUnified:
         # 初始化检测器
         self.localization_checker = LocalizationChecker()
         self.json_detector = JSONFormatDetector()
+        self.excel_consolidator = ExcelConsolidator()
         
         # 扫描状态
         self.is_scanning = False
@@ -85,6 +87,7 @@ class GameToolsUnified:
         # 创建各个功能页签
         self.create_localization_tab()
         self.create_json_detector_tab()
+        self.create_excel_consolidator_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -224,6 +227,106 @@ class GameToolsUnified:
                                                          height=15)
         self.json_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
+    def create_excel_consolidator_tab(self):
+        """创建Excel数据整合工具页签"""
+        # Excel整合工具框架
+        excel_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(excel_frame, text="Excel数据整合工具")
+        
+        # 配置网格
+        excel_frame.columnconfigure(1, weight=1)
+        excel_frame.rowconfigure(4, weight=1)
+        
+        # 标题
+        title_label = ttk.Label(excel_frame, text="Excel数据整合工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        
+        # 文件选择框架
+        file_frame = ttk.LabelFrame(excel_frame, text="文件选择", padding="10")
+        file_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.columnconfigure(1, weight=1)
+        
+        # 输入文件
+        ttk.Label(file_frame, text="输入文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        self.excel_input_var = tk.StringVar()
+        self.excel_input_entry = ttk.Entry(file_frame, textvariable=self.excel_input_var, width=50)
+        self.excel_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        self.excel_input_browse_button = ttk.Button(file_frame, text="浏览", 
+                                                    command=self.browse_excel_input_file)
+        self.excel_input_browse_button.grid(row=0, column=2)
+        
+        # 输出文件夹
+        ttk.Label(file_frame, text="输出文件夹:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        self.excel_output_folder_var = tk.StringVar()
+        self.excel_output_folder_entry = ttk.Entry(file_frame, textvariable=self.excel_output_folder_var, width=50)
+        self.excel_output_folder_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(10, 0))
+        
+        self.excel_output_browse_button = ttk.Button(file_frame, text="浏览", 
+                                                     command=self.browse_excel_output_folder)
+        self.excel_output_browse_button.grid(row=1, column=2, pady=(10, 0))
+        
+        # 输出文件名
+        ttk.Label(file_frame, text="输出文件名:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        self.excel_output_filename_var = tk.StringVar(value="整合结果.xlsx")
+        self.excel_output_filename_entry = ttk.Entry(file_frame, textvariable=self.excel_output_filename_var, width=30)
+        self.excel_output_filename_entry.grid(row=2, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        
+        # 选项设置框架
+        options_frame = ttk.LabelFrame(excel_frame, text="选项设置", padding="10")
+        options_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        options_frame.columnconfigure(1, weight=1)
+        
+        # 分组列设置
+        ttk.Label(options_frame, text="分组列:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        self.excel_group_column_var = tk.StringVar()
+        self.excel_group_column_entry = ttk.Entry(options_frame, textvariable=self.excel_group_column_var, width=20)
+        self.excel_group_column_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
+        ttk.Label(options_frame, text="(留空使用第一列)", style='Info.TLabel').grid(row=0, column=2, sticky=tk.W)
+        
+        # 工作表前缀
+        ttk.Label(options_frame, text="工作表前缀:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        self.excel_sheet_prefix_var = tk.StringVar()
+        self.excel_sheet_prefix_entry = ttk.Entry(options_frame, textvariable=self.excel_sheet_prefix_var, width=20)
+        self.excel_sheet_prefix_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        
+        # 包含汇总信息选项
+        self.excel_include_summary_var = tk.BooleanVar(value=True)
+        self.excel_include_summary_check = ttk.Checkbutton(options_frame, text="包含汇总信息工作表", 
+                                                          variable=self.excel_include_summary_var)
+        self.excel_include_summary_check.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        
+        # 控制按钮框架
+        button_frame = ttk.Frame(excel_frame)
+        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        
+        self.excel_process_button = ttk.Button(button_frame, text="开始整合", 
+                                               command=self.start_excel_consolidation, 
+                                               style='Accent.TButton')
+        self.excel_process_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.excel_clear_button = ttk.Button(button_frame, text="清空结果", 
+                                             command=self.clear_excel_results)
+        self.excel_clear_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.excel_preview_button = ttk.Button(button_frame, text="预览数据", 
+                                               command=self.preview_excel_data,
+                                               state="disabled")
+        self.excel_preview_button.pack(side=tk.LEFT)
+        
+        # 结果显示区域
+        result_frame = ttk.LabelFrame(excel_frame, text="处理结果", padding="10")
+        result_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.columnconfigure(0, weight=1)
+        result_frame.rowconfigure(0, weight=1)
+        
+        self.excel_result_text = scrolledtext.ScrolledText(result_frame, 
+                                                          wrap=tk.WORD, 
+                                                          font=("Consolas", 10),
+                                                          height=15)
+        self.excel_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
     def create_about_tab(self):
         """创建关于页签"""
         about_frame = ttk.Frame(self.notebook, padding="20")
@@ -233,12 +336,13 @@ class GameToolsUnified:
         about_text = """
 gametools - 游戏工具集
 
-版本: v1.0.0
+版本: v1.3.0
 开发日期: 2024年
 
 功能模块:
 • 策划本地化工具 - 检测表格文件中的越南文内容
 • JSON格式检测工具 - 检测JSON文件中text字段的格式一致性
+• Excel数据整合工具 - 根据A列内容对Excel数据进行分组和整合
 
 主要特性:
 • 支持多种文件格式 (Excel, CSV, JSON)
@@ -458,6 +562,177 @@ gametools - 游戏工具集
                 self.status_var.set(f"报告已保存: {os.path.basename(file_path)}")
             except Exception as e:
                 messagebox.showerror("错误", f"保存失败: {str(e)}")
+    
+    # Excel数据整合工具相关方法
+    def browse_excel_input_file(self):
+        """浏览Excel输入文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择输入Excel文件",
+            filetypes=[("Excel文件", "*.xlsx *.xls"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.excel_input_var.set(file_path)
+            # 自动设置输出文件名
+            if not self.excel_output_var.get():
+                input_path = Path(file_path)
+                output_path = input_path.parent / f"{input_path.stem}_整合{input_path.suffix}"
+                self.excel_output_var.set(str(output_path))
+    
+    def browse_excel_output_folder(self):
+        """浏览Excel输出文件夹"""
+        folder_path = filedialog.askdirectory(title="选择输出文件夹")
+        if folder_path:
+            self.excel_output_folder_var.set(folder_path)
+            # 自动设置输出文件名
+            if not self.excel_output_filename_var.get():
+                self.excel_output_filename_var.set("整合结果.xlsx")
+    
+    def start_excel_consolidation(self):
+        """开始Excel数据整合"""
+        input_file = self.excel_input_var.get().strip()
+        output_folder = self.excel_output_folder_var.get().strip()
+        output_filename = self.excel_output_filename_var.get().strip()
+        
+        if not input_file:
+            messagebox.showerror("错误", "请选择输入文件")
+            return
+        
+        if not output_folder:
+            messagebox.showerror("错误", "请选择输出文件夹")
+            return
+        
+        if not output_filename:
+            messagebox.showerror("错误", "请输入输出文件名")
+            return
+        
+        if not os.path.exists(input_file):
+            messagebox.showerror("错误", "输入文件不存在")
+            return
+        
+        if not os.path.exists(output_folder):
+            messagebox.showerror("错误", "输出文件夹不存在")
+            return
+        
+        # 构建完整的输出文件路径
+        output_file = os.path.join(output_folder, output_filename)
+        
+        # 在新线程中执行整合
+        self.excel_process_button.config(state="disabled")
+        self.excel_preview_button.config(state="disabled")
+        self.status_var.set("正在处理Excel数据...")
+        
+        thread = threading.Thread(target=self._excel_consolidation_process, 
+                                 args=(input_file, output_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _excel_consolidation_process(self, input_file, output_file):
+        """Excel数据整合处理（后台线程）"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_excel_results)
+            
+            # 显示开始信息
+            self.root.after(0, lambda: self.excel_result_text.insert(tk.END, 
+                f"开始处理文件: {input_file}\n"))
+            self.root.after(0, lambda: self.excel_result_text.insert(tk.END, 
+                f"输出文件: {output_file}\n"))
+            self.root.after(0, lambda: self.excel_result_text.insert(tk.END, 
+                "-" * 50 + "\n"))
+            
+            # 获取选项
+            group_column = self.excel_group_column_var.get().strip() or None
+            include_summary = self.excel_include_summary_var.get()
+            sheet_prefix = self.excel_sheet_prefix_var.get().strip()
+            
+            # 执行整合
+            success = self.excel_consolidator.process_file(
+                input_path=input_file,
+                output_folder=os.path.dirname(output_file),
+                output_filename=os.path.basename(output_file),
+                group_column=group_column,
+                include_summary=include_summary,
+                sheet_prefix=sheet_prefix
+            )
+            
+            # 显示结果
+            if success:
+                self.root.after(0, self._show_excel_success_result)
+            else:
+                self.root.after(0, self._show_excel_error_result, "处理失败")
+            
+        except Exception as e:
+            error_msg = f"处理过程中发生错误: {str(e)}"
+            self.root.after(0, self._show_excel_error_result, error_msg)
+    
+    def _show_excel_success_result(self):
+        """显示Excel整合成功结果"""
+        report = self.excel_consolidator.get_consolidation_report()
+        self.excel_result_text.insert(tk.END, report)
+        self.excel_result_text.insert(tk.END, "\n\n✅ Excel数据整合完成！")
+        
+        self.excel_process_button.config(state="normal")
+        self.excel_preview_button.config(state="normal")
+        self.status_var.set("Excel整合完成")
+        
+        messagebox.showinfo("成功", "Excel数据整合完成！")
+    
+    def _show_excel_error_result(self, error_msg):
+        """显示Excel整合错误结果"""
+        self.excel_result_text.insert(tk.END, f"❌ {error_msg}\n")
+        
+        self.excel_process_button.config(state="normal")
+        self.excel_preview_button.config(state="normal")
+        self.status_var.set("Excel整合失败")
+        
+        messagebox.showerror("错误", error_msg)
+    
+    def preview_excel_data(self):
+        """预览Excel数据"""
+        input_file = self.excel_input_var.get().strip()
+        
+        if not input_file:
+            messagebox.showerror("错误", "请先选择输入文件")
+            return
+        
+        if not os.path.exists(input_file):
+            messagebox.showerror("错误", "输入文件不存在")
+            return
+        
+        try:
+            # 读取文件
+            df = self.excel_consolidator.read_excel_file(input_file)
+            
+            # 显示预览信息
+            preview_text = f"文件预览: {os.path.basename(input_file)}\n"
+            preview_text += f"总行数: {len(df)}\n"
+            preview_text += f"总列数: {len(df.columns)}\n"
+            preview_text += f"列名: {list(df.columns)}\n\n"
+            
+            # 显示前几行数据
+            preview_text += "前5行数据:\n"
+            preview_text += df.head().to_string()
+            
+            # 显示A列的唯一值
+            if len(df) > 0:
+                first_col = df.columns[0]
+                unique_values = df[first_col].unique()
+                preview_text += f"\n\n第一列 '{first_col}' 的唯一值:\n"
+                for i, value in enumerate(unique_values[:10]):  # 只显示前10个
+                    preview_text += f"{i+1}. {value}\n"
+                if len(unique_values) > 10:
+                    preview_text += f"... 还有 {len(unique_values) - 10} 个值\n"
+            
+            # 清空并显示预览
+            self.excel_result_text.delete(1.0, tk.END)
+            self.excel_result_text.insert(1.0, preview_text)
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"预览数据失败: {str(e)}")
+    
+    def clear_excel_results(self):
+        """清空Excel整合结果"""
+        self.excel_result_text.delete(1.0, tk.END)
 
 
 def main():

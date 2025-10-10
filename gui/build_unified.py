@@ -87,13 +87,13 @@ block_cipher = None
 
 a = Analysis(
     ['gametools_unified.py'],
-    pathex=['.'],
+    pathex=['.', '..'],
     binaries=[],
     datas=[
-        ('core', 'core'),
-        ('tools/json_format_detector', 'tools/json_format_detector'),
-        ('tools', 'tools'),
-        ('docs', 'docs'),
+        ('../core', 'core'),
+        ('../tools/json_format_detector', 'tools/json_format_detector'),
+        ('../tools', 'tools'),
+        ('../docs', 'docs'),
     ],
     hiddenimports=[
         'pandas',
