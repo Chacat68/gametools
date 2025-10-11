@@ -428,7 +428,7 @@ class GameToolsUnified:
                                style='Heading.TLabel')
         title_label.grid(row=0, column=0, pady=(0, 5))
         
-        desc_label = ttk.Label(header_frame, text="批量提取Excel文件中的文本内容，支持中文、越南文、英文，从第7行开始检测，同时提取A列内容", 
+        desc_label = ttk.Label(header_frame, text="批量提取Excel文件中的文本内容，支持中文、越南文（跳过纯英文），从第7行开始检测，同时提取A列内容", 
                               style='Info.TLabel')
         desc_label.grid(row=1, column=0)
         

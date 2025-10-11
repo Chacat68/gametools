@@ -5,8 +5,8 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.5.0"
-__version_info__ = (1, 5, 0)
+__version__ = "1.6.0"
+__version_info__ = (1, 6, 0)
 __build_date__ = "2025-01-11"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、JSON检测、Excel处理、翻译提取等功能"

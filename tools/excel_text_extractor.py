@@ -121,11 +121,11 @@ class ExcelTextExtractor:
                     self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 读取完成，共 {len(df)} 行")
                     
                     # 提取文本内容
-                    texts = self._extract_texts_from_dataframe(df)
-                    if texts:
-                        extracted_data[sheet_name] = texts
-                        total_texts += len(texts)
-                        self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 提取到 {len(texts)} 个文本")
+                    sheet_data = self._extract_texts_from_dataframe(df)
+                    if sheet_data and sheet_data['items']:
+                        extracted_data[sheet_name] = sheet_data
+                        total_texts += len(sheet_data['items'])
+                        self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 提取到 {len(sheet_data['items'])} 个文本")
                     else:
                         self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 未提取到文本")
                     
@@ -142,7 +142,7 @@ class ExcelTextExtractor:
             logger.error(f"提取Excel文件文本失败: {str(e)}")
             return {}
     
-    def _extract_texts_from_dataframe(self, df: pd.DataFrame) -> List[Dict]:
+    def _extract_texts_from_dataframe(self, df: pd.DataFrame) -> Dict:
         """
         从DataFrame中提取文本内容，从第7行开始检测
         
@@ -150,7 +150,7 @@ class ExcelTextExtractor:
             df: pandas DataFrame
             
         Returns:
-            包含文本和A列内容的字典列表
+            包含提取数据和元信息的字典
         """
         extracted_items = []
         
@@ -158,13 +158,21 @@ class ExcelTextExtractor:
             # 检查第7行（索引为6）是否为策划，如果是则跳过提取
             if self._is_planner_row(df):
                 logger.info("检测到第7行为策划，跳过文本提取")
-                return []
+                return {'items': [], 'headers': [], 'a_column': None}
             
             # 获取A列（第一列）的列名
             a_column = df.columns[0] if len(df.columns) > 0 else None
             if a_column is None:
                 logger.warning("未找到A列，无法提取A列内容")
-                return []
+                return {'items': [], 'headers': [], 'a_column': None}
+            
+            # 获取第5行作为字段名（索引为4）
+            headers = []
+            if len(df) >= 5:
+                header_row = df.iloc[4]  # 第5行，索引为4
+                headers = [str(header_row[col]).strip() if pd.notna(header_row[col]) else col for col in df.columns]
+            else:
+                headers = list(df.columns)
             
             # 从第7行开始遍历（索引从6开始）
             for row_idx in range(6, len(df)):  # 从第7行开始（索引6）
@@ -172,7 +180,7 @@ class ExcelTextExtractor:
                 a_column_value = str(row_data[a_column]).strip() if pd.notna(row_data[a_column]) else ""
                 
                 # 遍历该行的所有列
-                for col in df.columns:
+                for col_idx, col in enumerate(df.columns):
                     value = row_data[col]
                     if pd.notna(value):  # 跳过空值
                         text = str(value).strip()
@@ -181,7 +189,9 @@ class ExcelTextExtractor:
                                 'text': text,
                                 'a_column': a_column_value,
                                 'row': row_idx + 1,  # 实际行号（从1开始）
-                                'column': col
+                                'column': col,
+                                'column_index': col_idx,
+                                'excel_row_ref': f"{col}{row_idx + 1}"  # 如B4
                             })
             
             # 去重并保持顺序（基于文本内容去重）
@@ -192,11 +202,15 @@ class ExcelTextExtractor:
                     seen_texts.add(item['text'])
                     unique_items.append(item)
             
-            return unique_items
+            return {
+                'items': unique_items,
+                'headers': headers,
+                'a_column': a_column
+            }
             
         except Exception as e:
             logger.error(f"从DataFrame提取文本失败: {str(e)}")
-            return []
+            return {'items': [], 'headers': [], 'a_column': None}
     
     def _is_planner_row(self, df: pd.DataFrame) -> bool:
         """
@@ -232,7 +246,7 @@ class ExcelTextExtractor:
     
     def _is_text_content(self, text: str) -> bool:
         """
-        判断是否为文本内容，支持中文和越南文
+        判断是否为文本内容，支持中文和越南文，跳过纯英文
         
         Args:
             text: 待判断的文本
@@ -262,25 +276,30 @@ class ExcelTextExtractor:
         except ValueError:
             pass
         
-        # 包含中文字符
-        if re.search(r'[\u4e00-\u9fff]', text):  # 中文字符
+        # 检查是否包含中文字符
+        has_chinese = re.search(r'[\u4e00-\u9fff]', text)
+        
+        # 检查是否包含越南文字符
+        has_vietnamese = re.search(r'[\u1e00-\u1eff\u1f00-\u1fff\u0100-\u017f\u0180-\u024f]', text)
+        
+        # 检查是否包含英文字符
+        has_english = re.search(r'[a-zA-Z]', text)
+        
+        # 只提取包含中文或越南文的文本，跳过纯英文
+        if has_chinese or has_vietnamese:
             return True
         
-        # 包含越南文字符
-        if re.search(r'[\u1e00-\u1eff\u1f00-\u1fff\u0100-\u017f\u0180-\u024f]', text):  # 越南文字符范围
-            return True
+        # 如果是纯英文，跳过提取
+        if has_english and not has_chinese and not has_vietnamese:
+            return False
         
-        # 包含英文字符
-        if re.search(r'[a-zA-Z]', text):  # 英文字符
-            return True
-        
-        # 包含特殊字符或标点符号
-        if re.search(r'[^\w\s\d]', text):
+        # 包含特殊字符或标点符号（但不包含英文字母）
+        if re.search(r'[^\w\s\d]', text) and not has_english:
             return True
         
         return False
     
-    def create_text_excel(self, output_path: str, extracted_data: Dict[str, List[Dict]], 
+    def create_text_excel(self, output_path: str, extracted_data: Dict[str, Dict], 
                          source_file: str) -> bool:
         """
         创建包含提取文本的新Excel文件
@@ -303,24 +322,44 @@ class ExcelTextExtractor:
                 summary_df.to_excel(writer, sheet_name="提取汇总", index=False)
                 
                 # 为每个工作表创建文本列表
-                for sheet_name, texts in extracted_data.items():
-                    if texts:
+                for sheet_name, sheet_data in extracted_data.items():
+                    if sheet_data and sheet_data['items']:
                         # 清理工作表名称
                         clean_sheet_name = self._clean_sheet_name(sheet_name)
                         
-                        # 创建文本数据
-                        text_data = []
-                        for i, item in enumerate(texts, 1):
-                            text_data.append({
-                                '序号': i,
-                                '文本内容': item['text'],
-                                'A列内容': item['a_column'],
-                                '行号': item['row'],
-                                '列名': item['column'],
-                                '文本长度': len(item['text']),
-                                '字符类型': self._analyze_text_type(item['text'])
-                            })
+                        # 获取字段名（第5行内容）
+                        headers = sheet_data['headers']
+                        a_column = sheet_data['a_column']
                         
+                        # 创建新的数据结构
+                        # A列：原文件的A列内容
+                        # B列：提取文本在Excel的行号（如B4）
+                        # C列之后：提取的文本内容
+                        text_data = []
+                        
+                        # 第一行：字段名（原第5行内容）
+                        header_row = {}
+                        header_row['A列内容'] = headers[0] if headers else a_column  # A列字段名
+                        header_row['行号'] = '字段名'  # B列标题
+                        
+                        # 添加其他字段名
+                        for i, header in enumerate(headers[1:], 1):
+                            header_row[f'文本{i}'] = header
+                        
+                        text_data.append(header_row)
+                        
+                        # 数据行
+                        for item in sheet_data['items']:
+                            data_row = {}
+                            data_row['A列内容'] = item['a_column']  # A列：原文件的A列内容
+                            data_row['行号'] = item['excel_row_ref']  # B列：Excel行号引用（如B4）
+                            
+                            # C列之后：提取的文本内容
+                            data_row['文本1'] = item['text']
+                            
+                            text_data.append(data_row)
+                        
+                        # 创建DataFrame
                         text_df = pd.DataFrame(text_data)
                         text_df.to_excel(writer, sheet_name=clean_sheet_name, index=False)
             
@@ -331,7 +370,7 @@ class ExcelTextExtractor:
             logger.error(f"创建文本Excel文件失败: {str(e)}")
             return False
     
-    def _create_summary_data(self, extracted_data: Dict[str, List[Dict]], 
+    def _create_summary_data(self, extracted_data: Dict[str, Dict], 
                            source_file: str) -> List[Dict]:
         """
         创建汇总数据
@@ -362,17 +401,17 @@ class ExcelTextExtractor:
         })
         
         # 统计信息
-        total_texts = sum(len(texts) for texts in extracted_data.values())
+        total_texts = sum(len(sheet_data['items']) for sheet_data in extracted_data.values())
         summary_data.append({
             '项目': '提取文本总数',
             '值': total_texts
         })
         
         # 各工作表统计
-        for sheet_name, texts in extracted_data.items():
+        for sheet_name, sheet_data in extracted_data.items():
             summary_data.append({
                 '项目': f"工作表 '{sheet_name}' 文本数",
-                '值': len(texts)
+                '值': len(sheet_data['items']) if sheet_data else 0
             })
         
         return summary_data
@@ -409,7 +448,7 @@ class ExcelTextExtractor:
     
     def _analyze_text_type(self, text: str) -> str:
         """
-        分析文本类型，支持中文和越南文
+        分析文本类型，支持中文和越南文，跳过纯英文
         
         Args:
             text: 文本内容
@@ -431,9 +470,8 @@ class ExcelTextExtractor:
             return "中文"
         elif has_vietnamese:
             return "越南文"
-        elif has_english:
-            return "英文"
         else:
+            # 由于跳过了纯英文，这里不会返回"英文"类型
             return "其他"
     
     def process_directory(self, input_directory: str, output_directory: str = None) -> bool:
@@ -472,10 +510,13 @@ class ExcelTextExtractor:
                     # 提取文本
                     extracted_data = self.extract_text_from_excel(file_path, i, len(excel_files))
                     
-                    if extracted_data:
+                    # 检查是否提取到内容
+                    total_texts = sum(len(sheet_data['items']) for sheet_data in extracted_data.values()) if extracted_data else 0
+                    
+                    if extracted_data and total_texts > 0:
                         # 生成输出文件名
                         base_name = Path(file_path).stem
-                        output_filename = f"{base_name}_文本提取.xlsx"
+                        output_filename = f"{base_name}.xlsx"
                         output_path = os.path.join(output_directory, output_filename)
                         
                         filename = os.path.basename(file_path)
@@ -495,10 +536,13 @@ class ExcelTextExtractor:
                             self._report_progress(i, len(excel_files), filename, "创建输出文件失败")
                     else:
                         filename = os.path.basename(file_path)
-                        self._report_progress(i, len(excel_files), filename, "未提取到文本内容")
-                        logger.warning(f"未提取到文本内容: {file_path}")
-                        failed_files.append(file_path)
-                        self.processing_stats['failed_files'] += 1
+                        if total_texts == 0:
+                            self._report_progress(i, len(excel_files), filename, "未提取到文本内容，跳过文件创建")
+                            logger.info(f"未提取到文本内容，跳过文件创建: {file_path}")
+                        else:
+                            self._report_progress(i, len(excel_files), filename, "未提取到文本内容")
+                            logger.warning(f"未提取到文本内容: {file_path}")
+                        # 不将空文件添加到失败列表，因为这是正常情况
                 
                 except Exception as e:
                     filename = os.path.basename(file_path)

@@ -117,7 +117,7 @@ class ExcelTextExtractorGUI:
         
         # 语言支持说明
         language_info = ttk.Label(options_frame, 
-                                 text="🌐 支持语言：中文、越南文、英文，从第7行开始检测，同时提取A列内容", 
+                                 text="🌐 支持语言：中文、越南文（跳过纯英文），从第7行开始检测，同时提取A列内容", 
                                  style='Info.TLabel', foreground='green')
         language_info.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
         
