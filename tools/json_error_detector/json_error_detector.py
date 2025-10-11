@@ -393,12 +393,10 @@ class JSONErrorDetector:
         total_errors = 0
         total_warnings = 0
         processed_files = 0
+        problem_files = 0
         
         for i, json_file in enumerate(json_files, 1):
             try:
-                report.append(f"[{i}/{len(json_files)}] 检测文件: {os.path.basename(json_file)}")
-                report.append("-" * 60)
-                
                 # 检测单个文件
                 file_report = self.detect_errors(json_file)
                 
@@ -417,9 +415,13 @@ class JSONErrorDetector:
                 total_warnings += file_warnings
                 processed_files += 1
                 
-                if file_errors == 0 and file_warnings == 0:
-                    report.append("文件无错误")
-                else:
+                # 只显示有问题的文件
+                if file_errors > 0 or file_warnings > 0:
+                    problem_files += 1
+                    report.append(f"[{problem_files}] 问题文件: {os.path.basename(json_file)}")
+                    report.append(f"文件路径: {json_file}")
+                    report.append("-" * 60)
+                    
                     # 提取错误详情部分
                     error_section = False
                     warning_section = False
@@ -437,11 +439,15 @@ class JSONErrorDetector:
                         if error_section or warning_section:
                             if line.strip() and not line.startswith("-"):
                                 report.append(f"  {line}")
-                
-                report.append("")
+                    
+                    report.append("")
                 
             except Exception as e:
-                report.append(f"检测文件时发生错误: {str(e)}")
+                # 即使检测过程中出错，也要记录这个文件
+                problem_files += 1
+                report.append(f"[{problem_files}] 检测失败文件: {os.path.basename(json_file)}")
+                report.append(f"文件路径: {json_file}")
+                report.append(f"错误信息: {str(e)}")
                 report.append("")
         
         # 添加总结
@@ -449,13 +455,14 @@ class JSONErrorDetector:
         report.append("检测总结")
         report.append("=" * 80)
         report.append(f"处理文件数量: {processed_files}/{len(json_files)}")
+        report.append(f"问题文件数量: {problem_files}")
         report.append(f"总错误数量: {total_errors}")
         report.append(f"总警告数量: {total_warnings}")
         
         if total_errors == 0 and total_warnings == 0:
             report.append("所有JSON文件都没有发现错误！")
         else:
-            report.append(f"发现 {total_errors} 个错误和 {total_warnings} 个警告")
+            report.append(f"发现 {problem_files} 个问题文件，包含 {total_errors} 个错误和 {total_warnings} 个警告")
         
         return "\n".join(report)
 

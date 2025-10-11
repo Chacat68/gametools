@@ -95,7 +95,7 @@ a = Analysis(
     binaries=[],
     datas=[
         ('../core', 'core'),
-        ('../tools/json_format_detector', 'tools/json_format_detector'),
+        ('../tools/json_error_detector', 'tools/json_error_detector'),
         ('../tools/excel_text_extractor', 'tools/excel_text_extractor'),
         ('../tools', 'tools'),
         ('../docs', 'docs'),

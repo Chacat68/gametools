@@ -177,12 +177,13 @@ class LocalizationChecker:
     def __init__(self):
         self.table_checker = TableChecker()
     
-    def scan_directory(self, directory_path: str) -> List[str]:
+    def scan_directory(self, directory_path: str, recursive: bool = False) -> List[str]:
         """
         扫描目录下的所有表格文件，检测包含越南文的文件
         
         Args:
             directory_path: 要扫描的目录路径
+            recursive: 是否递归扫描子目录，默认为False
             
         Returns:
             List[str]: 包含越南文的表格文件名列表
@@ -200,19 +201,33 @@ class LocalizationChecker:
         valid_tables = []
         
         print(f"Scanning directory: {directory_path}")
+        print(f"Recursive scan: {'Yes' if recursive else 'No'}")
         print("Supported formats: .xlsx, .xls, .csv, .tsv")
         print("-" * 50)
         
-        # 递归扫描所有文件
-        for file_path in directory.rglob('*'):
-            if file_path.is_file() and self.table_checker.is_table_file(file_path):
-                print(f"Checking file: {file_path.name}...", end=" ")
-                
-                if self.table_checker.check_table_has_vietnamese(file_path):
-                    valid_tables.append(file_path.name)
-                    print("YES - Contains Vietnamese")
-                else:
-                    print("NO - No Vietnamese")
+        # 根据recursive参数决定扫描方式
+        if recursive:
+            # 递归扫描所有文件
+            for file_path in directory.rglob('*'):
+                if file_path.is_file() and self.table_checker.is_table_file(file_path):
+                    print(f"Checking file: {file_path.name}...", end=" ")
+                    
+                    if self.table_checker.check_table_has_vietnamese(file_path):
+                        valid_tables.append(file_path.name)
+                        print("YES - Contains Vietnamese")
+                    else:
+                        print("NO - No Vietnamese")
+        else:
+            # 只扫描当前目录
+            for file_path in directory.iterdir():
+                if file_path.is_file() and self.table_checker.is_table_file(file_path):
+                    print(f"Checking file: {file_path.name}...", end=" ")
+                    
+                    if self.table_checker.check_table_has_vietnamese(file_path):
+                        valid_tables.append(file_path.name)
+                        print("YES - Contains Vietnamese")
+                    else:
+                        print("NO - No Vietnamese")
         
         return valid_tables
     
