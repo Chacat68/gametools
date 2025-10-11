@@ -192,12 +192,36 @@ class ExcelTextExtractorGUI:
             self.progress_var.set(0)
             progress_text = f"{filename}: {message}"
         
+        # 更新进度文本显示
         self.progress_text_var.set(progress_text)
         
-        # 同时更新结果文本区域
-        self.result_text.insert(tk.END, f"{progress_text}\n")
+        # 在日志窗口显示详细信息
+        timestamp = self._get_timestamp()
+        log_message = f"[{timestamp}] {progress_text}"
+        
+        # 添加带颜色的日志（根据消息类型）
+        if "成功" in message or "完成" in message:
+            log_message = f"✅ {log_message}"
+        elif "失败" in message or "错误" in message:
+            log_message = f"❌ {log_message}"
+        elif "跳过" in message:
+            log_message = f"⏭️ {log_message}"
+        elif "开始" in message:
+            log_message = f"🚀 {log_message}"
+        else:
+            log_message = f"ℹ️ {log_message}"
+        
+        # 更新结果文本区域
+        self.result_text.insert(tk.END, f"{log_message}\n")
         self.result_text.see(tk.END)
+        
+        # 强制更新界面
         self.root.update_idletasks()
+    
+    def _get_timestamp(self):
+        """获取当前时间戳"""
+        import datetime
+        return datetime.datetime.now().strftime("%H:%M:%S")
     
     def browse_input_directory(self):
         """浏览输入目录"""
@@ -250,15 +274,22 @@ class ExcelTextExtractorGUI:
             # 清空结果
             self.root.after(0, self.clear_results)
             
-            # 开始提取
+            # 显示开始信息
+            timestamp = self._get_timestamp()
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
-                f"开始扫描目录: {input_dir}\n"))
+                f"🚀 [{timestamp}] 开始翻译提取任务\n"))
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
-                f"输出目录: {output_dir}\n"))
+                f"📁 输入目录: {input_dir}\n"))
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
-                "支持的格式: .xlsx, .xls\n"))
+                f"📁 输出目录: {output_dir}\n"))
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
-                "-" * 50 + "\n"))
+                f"📋 支持格式: .xlsx, .xls\n"))
+            self.root.after(0, lambda: self.result_text.insert(tk.END, 
+                f"🌐 支持语言: 中文、越南文（跳过纯英文）\n"))
+            self.root.after(0, lambda: self.result_text.insert(tk.END, 
+                f"📍 检测起始行: 第7行\n"))
+            self.root.after(0, lambda: self.result_text.insert(tk.END, 
+                "=" * 60 + "\n"))
             
             # 执行提取
             success = self.text_extractor.process_directory(input_dir, output_dir)
@@ -275,9 +306,15 @@ class ExcelTextExtractorGUI:
     
     def _show_success_result(self):
         """显示提取成功结果"""
+        timestamp = self._get_timestamp()
+        self.result_text.insert(tk.END, "=" * 60 + "\n")
+        self.result_text.insert(tk.END, f"✅ [{timestamp}] Excel文本提取完成！\n")
+        
         report = self.text_extractor.get_processing_report()
         self.result_text.insert(tk.END, report)
-        self.result_text.insert(tk.END, "\n\n✅ Excel文本提取完成！")
+        self.result_text.insert(tk.END, "\n")
+        
+        self.result_text.see(tk.END)
         
         self.process_button.config(state="normal")
         self.preview_button.config(state="normal")
@@ -287,7 +324,10 @@ class ExcelTextExtractorGUI:
     
     def _show_error_result(self, error_msg):
         """显示提取错误结果"""
-        self.result_text.insert(tk.END, f"❌ {error_msg}\n")
+        timestamp = self._get_timestamp()
+        self.result_text.insert(tk.END, "=" * 60 + "\n")
+        self.result_text.insert(tk.END, f"❌ [{timestamp}] {error_msg}\n")
+        self.result_text.see(tk.END)
         
         self.process_button.config(state="normal")
         self.preview_button.config(state="normal")

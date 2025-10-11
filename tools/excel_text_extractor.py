@@ -185,13 +185,15 @@ class ExcelTextExtractor:
                     if pd.notna(value):  # 跳过空值
                         text = str(value).strip()
                         if text and self._is_text_content(text):
+                            # 生成Excel物理位置（如F5）
+                            excel_position = self._get_excel_position(col_idx, row_idx + 1)
                             extracted_items.append({
                                 'text': text,
                                 'a_column': a_column_value,
                                 'row': row_idx + 1,  # 实际行号（从1开始）
                                 'column': col,
                                 'column_index': col_idx,
-                                'excel_row_ref': f"{col}{row_idx + 1}"  # 如B4
+                                'excel_row_ref': excel_position  # Excel物理位置（如F5）
                             })
             
             # 去重并保持顺序（基于文本内容去重）
@@ -214,28 +216,28 @@ class ExcelTextExtractor:
     
     def _is_planner_row(self, df: pd.DataFrame) -> bool:
         """
-        检查第7行（索引为6）是否为策划
+        检查第6行（索引为5）是否为策划
         
         Args:
             df: pandas DataFrame
             
         Returns:
-            如果第7行包含"策划"则返回True，否则返回False
+            如果第6行包含"策划"则返回True，否则返回False
         """
         try:
-            # 检查DataFrame是否有足够的行数（至少7行）
-            if len(df) < 7:
+            # 检查DataFrame是否有足够的行数（至少6行）
+            if len(df) < 6:
                 return False
             
-            # 获取第7行（索引为6）的所有值
-            row_7 = df.iloc[6]  # 第7行，索引为6
+            # 获取第6行（索引为5）的所有值
+            row_6 = df.iloc[5]  # 第6行，索引为5
             
-            # 检查第7行的任何单元格是否包含"策划"
-            for value in row_7:
+            # 检查第6行的任何单元格是否包含"策划"
+            for value in row_6:
                 if pd.notna(value):
                     text = str(value).strip()
                     if "策划" in text:
-                        logger.info(f"第7行检测到策划标识: {text}")
+                        logger.info(f"第6行检测到策划标识: {text}")
                         return True
             
             return False
@@ -276,6 +278,26 @@ class ExcelTextExtractor:
         except ValueError:
             pass
         
+        # 跳过数值表达式（如：1+2, 3*4, 5-6等）
+        if re.match(r'^[\d\+\-\*\/\(\)\.\s]+$', text):
+            return False
+        
+        # 跳过数组格式（如：[1,2,3], {1,2,3}, (1,2,3)等）
+        if re.match(r'^[\[\{\(][\d\s,\.]+\]?\}?\)?$', text):
+            return False
+        
+        # 跳过JSON数组格式（如：["a","b"], [1,2,3]等）
+        if re.match(r'^\[[\s\S]*\]$', text) and not re.search(r'[\u4e00-\u9fff\u1e00-\u1eff\u1f00-\u1fff\u0100-\u017f\u0180-\u024f]', text):
+            return False
+        
+        # 跳过对象格式（如：{"a":1}, {1,2,3}等）
+        if re.match(r'^\{[\s\S]*\}$', text) and not re.search(r'[\u4e00-\u9fff\u1e00-\u1eff\u1f00-\u1fff\u0100-\u017f\u0180-\u024f]', text):
+            return False
+        
+        # 跳过纯数值列表（如：1,2,3 或 1;2;3 等）
+        if re.match(r'^[\d\s,;\.]+$', text):
+            return False
+        
         # 检查是否包含中文字符
         has_chinese = re.search(r'[\u4e00-\u9fff]', text)
         
@@ -298,6 +320,54 @@ class ExcelTextExtractor:
             return True
         
         return False
+    
+    def _get_excel_position(self, col_index: int, row_number: int) -> str:
+        """
+        根据列索引和行号生成Excel物理位置（如F5）
+        
+        Args:
+            col_index: 列索引（从0开始）
+            row_number: 行号（从1开始）
+            
+        Returns:
+            Excel物理位置字符串（如F5）
+        """
+        # 将列索引转换为Excel列字母
+        col_letter = self._index_to_excel_column(col_index)
+        return f"{col_letter}{row_number}"
+    
+    def _index_to_excel_column(self, index: int) -> str:
+        """
+        将数字索引转换为Excel列字母
+        
+        Args:
+            index: 列索引（从0开始）
+            
+        Returns:
+            Excel列字母（如A, B, C, ..., Z, AA, AB等）
+        """
+        result = ""
+        while index >= 0:
+            result = chr(index % 26 + ord('A')) + result
+            index = index // 26 - 1
+        return result
+    
+    def _get_original_field_name(self, column_index: int, headers: List[str]) -> str:
+        """
+        根据列索引获取原Excel第五行的字段名
+        
+        Args:
+            column_index: 列索引（从0开始）
+            headers: 原Excel第五行的字段名列表
+            
+        Returns:
+            对应的字段名
+        """
+        if headers and 0 <= column_index < len(headers):
+            return headers[column_index]
+        else:
+            # 如果索引超出范围，返回默认的列名
+            return f"Column_{column_index + 1}"
     
     def create_text_excel(self, output_path: str, extracted_data: Dict[str, Dict], 
                          source_file: str) -> bool:
@@ -331,32 +401,36 @@ class ExcelTextExtractor:
                         headers = sheet_data['headers']
                         a_column = sheet_data['a_column']
                         
-                        # 创建新的数据结构
-                        # A列：原文件的A列内容
-                        # B列：提取文本在Excel的行号（如B4）
-                        # C列之后：提取的文本内容
+                        # 创建新的数据结构，参考用户提供的格式
+                        # A列：id（原文件的A列内容）
+                        # B列：位置（提取文本在Excel的行号，如B4）
+                        # C列：字段名（原Excel第五行的字段名）
+                        # D列：doc（文本类型或描述）
+                        # E列：name（提取的文本内容）
                         text_data = []
                         
-                        # 第一行：字段名（原第5行内容）
-                        header_row = {}
-                        header_row['A列内容'] = headers[0] if headers else a_column  # A列字段名
-                        header_row['行号'] = '字段名'  # B列标题
-                        
-                        # 添加其他字段名
-                        for i, header in enumerate(headers[1:], 1):
-                            header_row[f'文本{i}'] = header
-                        
+                        # 第一行：字段名（参考用户格式）
+                        header_row = {
+                            'id': headers[0] if headers else a_column,  # A列：原字段名
+                            '位置': '位置',  # B列：位置标题
+                            '字段名': '字段名',  # C列：字段名标题
+                            'doc': 'doc',  # D列：doc标题
+                            'name': 'name'  # E列：name标题
+                        }
                         text_data.append(header_row)
                         
                         # 数据行
                         for item in sheet_data['items']:
-                            data_row = {}
-                            data_row['A列内容'] = item['a_column']  # A列：原文件的A列内容
-                            data_row['行号'] = item['excel_row_ref']  # B列：Excel行号引用（如B4）
+                            # 获取该文本对应的原Excel第五行字段名
+                            original_field_name = self._get_original_field_name(item['column_index'], headers)
                             
-                            # C列之后：提取的文本内容
-                            data_row['文本1'] = item['text']
-                            
+                            data_row = {
+                                'id': item['a_column'],  # A列：原文件的A列内容
+                                '位置': item['excel_row_ref'],  # B列：Excel行号引用（如B4）
+                                '字段名': original_field_name,  # C列：原Excel第五行字段名
+                                'doc': self._analyze_text_type(item['text']),  # D列：文本类型分析
+                                'name': item['text']  # E列：提取的文本内容
+                            }
                             text_data.append(data_row)
                         
                         # 创建DataFrame
