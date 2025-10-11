@@ -29,21 +29,6 @@
   },
   {
     "id": 5,
-    "name": "重复键错误",
-    "value": 500,
-    "value": 600,
-    "active": true,
-    "description": "这个对象有重复的键"
-  },
-  {
-    "id": 6,
-    "name": "数组类型不一致",
-    "items": [1, 2, "3", 4],
-    "active": true,
-    "description": "这个数组包含不同类型的元素"
-  },
-  {
-    "id": 7,
     "name": "嵌套过深",
     "level1": {
       "level2": {
@@ -72,7 +57,7 @@
     "description": "这个对象嵌套过深"
   },
   {
-    "id": 8,
+    "id": 6,
     "name": "大对象",
     "field1": "value1",
     "field2": "value2",

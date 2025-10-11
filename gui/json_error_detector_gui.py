@@ -77,18 +77,10 @@ class JSONErrorDetectorGUI:
         self.browse_button = ttk.Button(path_frame, text="浏览文件夹", command=self.browse_folder)
         self.browse_button.grid(row=0, column=2)
         
-        # 检测模式选择
-        mode_frame = ttk.Frame(path_frame)
-        mode_frame.grid(row=1, column=0, columnspan=3, pady=(10, 0))
-        
-        self.mode_var = tk.StringVar(value="auto")
-        ttk.Radiobutton(mode_frame, text="自动检测", variable=self.mode_var, value="auto").pack(side=tk.LEFT, padx=(0, 20))
-        ttk.Radiobutton(mode_frame, text="仅检测文件", variable=self.mode_var, value="file").pack(side=tk.LEFT, padx=(0, 20))
-        ttk.Radiobutton(mode_frame, text="仅检测文件夹", variable=self.mode_var, value="folder").pack(side=tk.LEFT)
         
         # 控制按钮区域
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, pady=(0, 10))
+        button_frame.grid(row=2, column=0, pady=(0, 10))
         
         self.detect_button = ttk.Button(button_frame, text="开始检测", 
                                        command=self.start_detection, style="Accent.TButton")
@@ -104,7 +96,7 @@ class JSONErrorDetectorGUI:
         
         # 结果显示区域
         result_frame = ttk.LabelFrame(main_frame, text="检测结果", padding="10")
-        result_frame.grid(row=4, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)
         
@@ -117,13 +109,13 @@ class JSONErrorDetectorGUI:
         
         # 进度条
         self.progress = ttk.Progressbar(main_frame, mode='indeterminate')
-        self.progress.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        self.progress.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
         
         # 状态栏
         self.status_var = tk.StringVar(value="就绪")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_bar.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
         
     def browse_folder(self):
         """浏览文件夹对话框"""
@@ -136,7 +128,6 @@ class JSONErrorDetectorGUI:
     def start_detection(self):
         """开始检测"""
         path = self.path_var.get().strip()
-        mode = self.mode_var.get()
         
         if not path:
             messagebox.showerror("错误", "请选择路径")
@@ -151,15 +142,15 @@ class JSONErrorDetectorGUI:
         self.progress.start()
         self.status_var.set("正在检测...")
         
-        thread = threading.Thread(target=self._detect_errors, args=(path, mode))
+        thread = threading.Thread(target=self._detect_errors, args=(path,))
         thread.daemon = True
         thread.start()
         
-    def _detect_errors(self, path, mode):
+    def _detect_errors(self, path):
         """检测错误（在后台线程中执行）"""
         try:
-            # 根据模式选择检测方法
-            if mode == "folder" or (mode == "auto" and os.path.isdir(path)):
+            # 自动检测：如果是文件夹则检测文件夹，如果是文件则检测单个文件
+            if os.path.isdir(path):
                 report = self.detector.detect_errors_in_folder(path)
             else:
                 report = self.detector.detect_errors(path)

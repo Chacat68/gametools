@@ -10,8 +10,6 @@
     "key2": 'value2',
     "key3": "value3" // 注释
   },
-  "duplicate": "first",
-  "duplicate": "second",
   "invalid_type": new Date(),
   "trailing_comma": "error",
 }

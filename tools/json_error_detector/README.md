@@ -1,11 +1,10 @@
 # JSON错误检测工具
 
-这个工具用于检测JSON文件中的各种错误，包括语法错误、结构错误和编码错误。
+这个工具用于检测JSON文件中的各种错误，包括语法错误和编码错误。
 
 ## 功能特点
 
 - **语法错误检测**：检测尾随逗号、单引号、注释等JSON标准不允许的语法
-- **结构错误检测**：检测重复键、数组类型不一致等问题
 - **编码错误检测**：检测文件编码问题
 - **详细错误报告**：生成包含错误位置和严重程度的详细报告
 
@@ -36,8 +35,6 @@ python json_error_detector.py example_data.json
 # 检测文件夹中的所有JSON文件
 python json_error_detector.py ./json_files/
 
-# 强制指定为文件夹模式
-python json_error_detector.py ./json_files/ --folder
 ```
 
 ### 方法3：输出到文件
@@ -57,9 +54,6 @@ python json_error_detector.py ./json_files/ --output folder_report.txt
 - **注释**：JSON标准不支持注释
 - **JSON解析错误**：无法解析的JSON语法
 
-### 结构错误
-- **重复键**：对象中存在重复的键名
-- **数组类型不一致**：数组中元素类型不统一
 
 ### 编码错误
 - **编码检测错误**：无法使用常见编码读取文件

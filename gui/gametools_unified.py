@@ -276,14 +276,6 @@ class GameToolsUnified:
                                             command=self.browse_json_folder)
         self.json_browse_button.grid(row=0, column=2, pady=(0, 5))
         
-        # 检测模式选择
-        mode_frame = ttk.Frame(path_frame)
-        mode_frame.grid(row=1, column=0, columnspan=3, pady=(10, 0))
-        
-        self.json_mode_var = tk.StringVar(value="auto")
-        ttk.Radiobutton(mode_frame, text="自动检测", variable=self.json_mode_var, value="auto").pack(side=tk.LEFT, padx=(0, 15))
-        ttk.Radiobutton(mode_frame, text="仅检测文件", variable=self.json_mode_var, value="file").pack(side=tk.LEFT, padx=(0, 15))
-        ttk.Radiobutton(mode_frame, text="仅检测文件夹", variable=self.json_mode_var, value="folder").pack(side=tk.LEFT)
         
         # 操作按钮区域
         button_frame = ttk.Frame(control_frame)
@@ -817,7 +809,6 @@ class GameToolsUnified:
     def start_json_detection(self):
         """开始JSON错误检测"""
         path = self.json_path_var.get().strip()
-        mode = self.json_mode_var.get()
         
         if not path:
             messagebox.showerror("错误", "请选择路径")
@@ -832,15 +823,15 @@ class GameToolsUnified:
         self.status_var.set("正在检测...")
         
         thread = threading.Thread(target=self._json_detection, 
-                                 args=(path, mode))
+                                 args=(path,))
         thread.daemon = True
         thread.start()
     
-    def _json_detection(self, path, mode):
+    def _json_detection(self, path):
         """JSON错误检测（后台线程）"""
         try:
-            # 根据模式选择检测方法
-            if mode == "folder" or (mode == "auto" and os.path.isdir(path)):
+            # 自动检测：如果是文件夹则检测文件夹，如果是文件则检测单个文件
+            if os.path.isdir(path):
                 report = self.json_detector.detect_errors_in_folder(path)
             else:
                 report = self.json_detector.detect_errors(path)

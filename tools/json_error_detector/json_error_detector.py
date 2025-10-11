@@ -128,49 +128,6 @@ class JSONErrorDetector:
         
         return errors
     
-    def detect_structure_errors(self, data: Any) -> List[Dict[str, Any]]:
-        """检测JSON结构错误"""
-        errors = []
-        
-        if isinstance(data, dict):
-            # 检测重复键
-            keys = list(data.keys())
-            if len(keys) != len(set(keys)):
-                duplicates = [k for k in set(keys) if keys.count(k) > 1]
-                errors.append({
-                    'type': '重复键',
-                    'message': f'发现重复的键: {duplicates}',
-                    'line': '未知',
-                    'column': '未知',
-                    'severity': 'error'
-                })
-            
-            # 递归检测嵌套结构
-            for key, value in data.items():
-                if isinstance(value, (dict, list)):
-                    errors.extend(self.detect_structure_errors(value))
-        
-        elif isinstance(data, list):
-            # 检测数组中的结构不一致
-            if data:
-                first_type = type(data[0])
-                for i, item in enumerate(data[1:], 1):
-                    if type(item) != first_type:
-                        errors.append({
-                            'type': '数组类型不一致',
-                            'message': f'数组第{i+1}个元素类型与第一个元素不一致',
-                            'line': '未知',
-                            'column': '未知',
-                            'severity': 'warning'
-                        })
-                        break
-            
-            # 递归检测嵌套结构
-            for item in data:
-                if isinstance(item, (dict, list)):
-                    errors.extend(self.detect_structure_errors(item))
-        
-        return errors
     
     
     def detect_encoding_errors(self, file_path: str) -> List[Dict[str, Any]]:
@@ -270,10 +227,8 @@ class JSONErrorDetector:
         all_errors.extend(load_errors)
         
         if data is not None:
-            # 检测结构错误
-            structure_errors = self.detect_structure_errors(data)
-            all_errors.extend([e for e in structure_errors if e['severity'] == 'error'])
-            all_warnings.extend([e for e in structure_errors if e['severity'] == 'warning'])
+            # 结构错误检测功能已删除
+            pass
         
         # 生成报告
         return self.generate_report(all_errors, all_warnings)
@@ -380,7 +335,6 @@ def main():
     parser = argparse.ArgumentParser(description="检测JSON文件或文件夹中的错误")
     parser.add_argument("path", help="JSON文件路径或文件夹路径")
     parser.add_argument("--output", help="输出报告到文件")
-    parser.add_argument("--folder", action="store_true", help="指定路径为文件夹")
     
     args = parser.parse_args()
     
@@ -390,8 +344,8 @@ def main():
     
     detector = JSONErrorDetector()
     
-    # 判断是文件还是文件夹
-    if os.path.isdir(args.path) or args.folder:
+    # 自动检测：如果是文件夹则检测文件夹，如果是文件则检测单个文件
+    if os.path.isdir(args.path):
         # 文件夹模式
         report = detector.detect_errors_in_folder(args.path)
     else:

@@ -41,6 +41,21 @@ class VietnameseDetector:
         
         # 编译正则表达式
         self.compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.vietnamese_patterns]
+        
+        # 中文字符范围
+        self.chinese_patterns = [
+            r'[\u4e00-\u9fff]',  # 基本中文字符
+            r'[\u3400-\u4dbf]',  # 扩展A区
+            r'[\u20000-\u2a6df]', # 扩展B区
+            r'[\u2a700-\u2b73f]', # 扩展C区
+            r'[\u2b740-\u2b81f]', # 扩展D区
+            r'[\u2b820-\u2ceaf]', # 扩展E区
+            r'[\uf900-\ufaff]',   # 兼容汉字
+            r'[\u2f800-\u2fa1f]'  # 兼容汉字补充
+        ]
+        
+        # 编译中文字符正则表达式
+        self.chinese_compiled_patterns = [re.compile(pattern) for pattern in self.chinese_patterns]
     
     def contains_vietnamese(self, text: str) -> bool:
         """
@@ -60,6 +75,50 @@ class VietnameseDetector:
             if pattern.search(text):
                 return True
         return False
+    
+    def contains_chinese(self, text: str) -> bool:
+        """
+        检测文本中是否包含中文字符
+        
+        Args:
+            text: 要检测的文本
+            
+        Returns:
+            bool: 如果包含中文返回True，否则返回False
+        """
+        if not isinstance(text, str):
+            return False
+            
+        # 检查所有中文模式
+        for pattern in self.chinese_compiled_patterns:
+            if pattern.search(text):
+                return True
+        return False
+    
+    def detect_language_type(self, text: str) -> str:
+        """
+        检测文本的语言类型
+        
+        Args:
+            text: 要检测的文本
+            
+        Returns:
+            str: 语言类型 - "越南文", "中文", "混合", "其他"
+        """
+        if not isinstance(text, str) or not text.strip():
+            return "其他"
+        
+        has_vietnamese = self.contains_vietnamese(text)
+        has_chinese = self.contains_chinese(text)
+        
+        if has_vietnamese and has_chinese:
+            return "混合"
+        elif has_vietnamese:
+            return "越南文"
+        elif has_chinese:
+            return "中文"
+        else:
+            return "其他"
 
 
 class TableChecker:
