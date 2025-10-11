@@ -61,13 +61,16 @@ class ExcelVietnameseScanner:
                     for row_idx, row in df.iterrows():
                         for col_idx, value in enumerate(row):
                             if pd.notna(value) and self.vietnamese_detector.contains_vietnamese(str(value)):
+                                content = str(value)
+                                language_type = self.vietnamese_detector.detect_language_type(content)
                                 results.append({
                                     'excel_file': file_path.name,
                                     'sheet_name': sheet_name,
                                     'row': row_idx + 2,  # +2 因为pandas从0开始，且Excel有标题行
                                     'col': col_idx + 1,  # +1 因为pandas从0开始
                                     'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
-                                    'content': str(value),
+                                    'content': content,
+                                    'language_type': language_type,
                                     'position': f"第{row_idx + 2}行第{col_idx + 1}列"
                                 })
                 
@@ -142,7 +145,7 @@ class ExcelVietnameseScanner:
             ws.title = "越南文检测结果"
             
             # 设置标题行
-            headers = ['序号', 'Excel文件名', '位置', '越南文内容']
+            headers = ['序号', 'Excel文件名', '位置', '越南文内容', '语言类型']
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
                 cell.font = Font(bold=True, color="FFFFFF")
@@ -155,9 +158,10 @@ class ExcelVietnameseScanner:
                 ws.cell(row=row_idx, column=2, value=result['excel_file'])
                 ws.cell(row=row_idx, column=3, value=result['position'])
                 ws.cell(row=row_idx, column=4, value=result['content'])
+                ws.cell(row=row_idx, column=5, value=result['language_type'])
             
             # 设置列宽
-            column_widths = [8, 25, 15, 50]
+            column_widths = [8, 25, 15, 50, 15]
             for col, width in enumerate(column_widths, 1):
                 ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
             

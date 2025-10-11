@@ -253,7 +253,7 @@ class VietnameseExcelProcessor:
             ws.title = "越南文检测结果"
             
             # 设置标题行
-            headers = ['序号', '文件名', '位置', '越南文内容']
+            headers = ['序号', '文件名', '位置', '越南文内容', '语言类型']
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
                 cell.font = Font(bold=True, color="FFFFFF")
@@ -266,9 +266,10 @@ class VietnameseExcelProcessor:
                 ws.cell(row=row_idx, column=2, value=result['excel_file'])  # 文件名
                 ws.cell(row=row_idx, column=3, value=result['position'])  # 位置
                 ws.cell(row=row_idx, column=4, value=result['content'])  # 越南文内容
+                ws.cell(row=row_idx, column=5, value=result['language_type'])  # 语言类型
             
             # 设置列宽
-            column_widths = [8, 30, 20, 60]
+            column_widths = [8, 30, 20, 60, 15]
             for col, width in enumerate(column_widths, 1):
                 ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
             
