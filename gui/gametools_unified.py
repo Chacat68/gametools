@@ -18,7 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.localization_checker import LocalizationChecker
 from core.excel_vietnamese_scanner import ExcelVietnameseScanner
-from tools.json_format_detector.json_format_detector import JSONFormatDetector
+from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from tools.excel_text_extractor import ExcelTextExtractor
 from version import get_version, format_version_string, get_description, get_latest_changes
@@ -48,7 +48,7 @@ class GameToolsUnified:
         # 初始化检测器
         self.localization_checker = LocalizationChecker()
         self.excel_scanner = ExcelVietnameseScanner()
-        self.json_detector = JSONFormatDetector()
+        self.json_detector = JSONErrorDetector()
         self.excel_processor = ExcelDataProcessor()
         self.text_extractor = ExcelTextExtractor()
         
@@ -290,10 +290,10 @@ class GameToolsUnified:
         self.scan_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_json_detector_tab(self):
-        """创建JSON格式检测工具页签"""
+        """创建JSON错误检测工具页签"""
         # JSON检测工具框架
         json_frame = ttk.Frame(self.notebook, padding="15")
-        self.notebook.add(json_frame, text="JSON格式检测工具")
+        self.notebook.add(json_frame, text="JSON错误检测工具")
         
         # 配置网格
         json_frame.columnconfigure(0, weight=1)
@@ -304,11 +304,11 @@ class GameToolsUnified:
         header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
         header_frame.columnconfigure(0, weight=1)
         
-        title_label = ttk.Label(header_frame, text="JSON格式一致性检测器", 
+        title_label = ttk.Label(header_frame, text="JSON错误检测器", 
                                style='Heading.TLabel')
         title_label.grid(row=0, column=0, pady=(0, 5))
         
-        desc_label = ttk.Label(header_frame, text="检测JSON文件中指定字段的格式一致性，支持多种格式类型", 
+        desc_label = ttk.Label(header_frame, text="检测JSON文件中的语法错误、结构错误、数据类型错误、编码错误和性能问题", 
                               style='Info.TLabel')
         desc_label.grid(row=1, column=0)
         
@@ -317,39 +317,34 @@ class GameToolsUnified:
         control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         control_frame.columnconfigure(0, weight=1)
         
-        # 文件选择区域
-        file_frame = ttk.LabelFrame(control_frame, text="文件选择", padding="12")
-        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        file_frame.columnconfigure(1, weight=1)
+        # 路径选择区域
+        path_frame = ttk.LabelFrame(control_frame, text="路径选择", padding="12")
+        path_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        path_frame.columnconfigure(1, weight=1)
         
-        # JSON文件路径
-        ttk.Label(file_frame, text="JSON文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.json_file_var = tk.StringVar()
-        self.json_file_entry = ttk.Entry(file_frame, textvariable=self.json_file_var, 
+        # 路径输入
+        ttk.Label(path_frame, text="路径:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.json_path_var = tk.StringVar()
+        self.json_path_entry = ttk.Entry(path_frame, textvariable=self.json_path_var, 
                                        font=("Microsoft YaHei", 9))
-        self.json_file_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        self.json_path_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
         
-        self.json_browse_button = ttk.Button(file_frame, text="浏览文件", 
-                                            command=self.browse_json_file)
+        self.json_browse_button = ttk.Button(path_frame, text="浏览文件夹", 
+                                            command=self.browse_json_folder)
         self.json_browse_button.grid(row=0, column=2, pady=(0, 5))
         
-        # 检测设置区域
-        settings_frame = ttk.LabelFrame(control_frame, text="检测设置", padding="12")
-        settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        settings_frame.columnconfigure(1, weight=1)
+        # 检测模式选择
+        mode_frame = ttk.Frame(path_frame)
+        mode_frame.grid(row=1, column=0, columnspan=3, pady=(10, 0))
         
-        # 字段名设置
-        ttk.Label(settings_frame, text="检测字段:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        self.json_field_var = tk.StringVar(value="text")
-        self.json_field_entry = ttk.Entry(settings_frame, textvariable=self.json_field_var, 
-                                        width=20, font=("Microsoft YaHei", 9))
-        self.json_field_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
-        
-        ttk.Label(settings_frame, text="(默认检测text字段)", style='Info.TLabel').grid(row=0, column=2, sticky=tk.W)
+        self.json_mode_var = tk.StringVar(value="auto")
+        ttk.Radiobutton(mode_frame, text="自动检测", variable=self.json_mode_var, value="auto").pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(mode_frame, text="仅检测文件", variable=self.json_mode_var, value="file").pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(mode_frame, text="仅检测文件夹", variable=self.json_mode_var, value="folder").pack(side=tk.LEFT)
         
         # 操作按钮区域
         button_frame = ttk.Frame(control_frame)
-        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        button_frame.grid(row=1, column=0, sticky=(tk.W, tk.E))
         
         # 主要操作按钮
         self.json_detect_button = ttk.Button(button_frame, text="🔍 开始检测", 
@@ -816,30 +811,25 @@ class GameToolsUnified:
             self.status_var.set("演示文件创建失败")
     
     # JSON格式检测工具相关方法
-    def browse_json_file(self):
-        """浏览JSON文件"""
-        file_path = filedialog.askopenfilename(
-            title="选择JSON文件",
-            filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
+    def browse_json_folder(self):
+        """浏览JSON文件夹"""
+        folder_path = filedialog.askdirectory(
+            title="选择包含JSON文件的文件夹"
         )
-        if file_path:
-            self.json_file_var.set(file_path)
+        if folder_path:
+            self.json_path_var.set(folder_path)
     
     def start_json_detection(self):
-        """开始JSON格式检测"""
-        file_path = self.json_file_var.get().strip()
-        field_name = self.json_field_var.get().strip()
+        """开始JSON错误检测"""
+        path = self.json_path_var.get().strip()
+        mode = self.json_mode_var.get()
         
-        if not file_path:
-            messagebox.showerror("错误", "请选择JSON文件")
+        if not path:
+            messagebox.showerror("错误", "请选择路径")
             return
         
-        if not field_name:
-            messagebox.showerror("错误", "请输入检测字段名")
-            return
-        
-        if not os.path.exists(file_path):
-            messagebox.showerror("错误", "文件不存在")
+        if not os.path.exists(path):
+            messagebox.showerror("错误", "路径不存在")
             return
         
         # 在新线程中执行检测
@@ -847,21 +837,26 @@ class GameToolsUnified:
         self.status_var.set("正在检测...")
         
         thread = threading.Thread(target=self._json_detection, 
-                                 args=(file_path, field_name))
+                                 args=(path, mode))
         thread.daemon = True
         thread.start()
     
-    def _json_detection(self, file_path, field_name):
-        """JSON格式检测（后台线程）"""
+    def _json_detection(self, path, mode):
+        """JSON错误检测（后台线程）"""
         try:
-            report = self.json_detector.detect_format(file_path, field_name)
+            # 根据模式选择检测方法
+            if mode == "folder" or (mode == "auto" and os.path.isdir(path)):
+                report = self.json_detector.detect_errors_in_folder(path)
+            else:
+                report = self.json_detector.detect_errors(path)
+            
             self.root.after(0, self._update_json_results, report)
         except Exception as e:
             error_msg = f"检测过程中发生错误: {str(e)}"
             self.root.after(0, self._show_json_error, error_msg)
     
     def _update_json_results(self, report):
-        """更新JSON检测结果"""
+        """更新JSON错误检测结果"""
         self.json_result_text.delete(1.0, tk.END)
         self.json_result_text.insert(1.0, report)
         self.json_result_text.see(1.0)
@@ -871,7 +866,7 @@ class GameToolsUnified:
         self.status_var.set("检测完成")
     
     def _show_json_error(self, error_msg):
-        """显示JSON检测错误"""
+        """显示JSON错误检测错误"""
         self.json_result_text.delete(1.0, tk.END)
         self.json_result_text.insert(1.0, error_msg)
         

@@ -1,0 +1,13 @@
+{
+  "id": 1,
+  "name": "正常数据",
+  "value": 100,
+  "active": true,
+  "description": "这是一个正常的JSON对象",
+  "items": [1, 2, 3, 4],
+  "nested": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3"
+  }
+}

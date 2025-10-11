@@ -1,0 +1,17 @@
+{
+  "id": 1,
+  "name": "语法错误示例",
+  "value": 100,
+  "active": true,
+  "description": "这个文件包含各种语法错误",
+  "items": [1, 2, 3,],
+  "nested": {
+    "key1": "value1",
+    "key2": 'value2',
+    "key3": "value3" // 注释
+  },
+  "duplicate": "first",
+  "duplicate": "second",
+  "invalid_type": new Date(),
+  "trailing_comma": "error",
+}
