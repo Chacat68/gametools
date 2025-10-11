@@ -133,7 +133,7 @@ class GameToolsUnified:
                                style='Heading.TLabel')
         title_label.grid(row=0, column=0, pady=(0, 5))
         
-        desc_label = ttk.Label(header_frame, text="检测Excel和CSV文件中的越南文内容，并导出详细结果到指定文件夹", 
+        desc_label = ttk.Label(header_frame, text="检测Excel和CSV文件中的越南文内容，并导出详细结果到Excel文件", 
                               style='Info.TLabel')
         desc_label.grid(row=1, column=0)
         
@@ -186,12 +186,7 @@ class GameToolsUnified:
         self.vp_create_excel_var = tk.BooleanVar(value=True)
         self.vp_create_excel_check = ttk.Checkbutton(output_options_frame, text="创建Excel结果文件", 
                                                     variable=self.vp_create_excel_var)
-        self.vp_create_excel_check.pack(side=tk.LEFT, padx=(0, 15))
-        
-        self.vp_create_report_var = tk.BooleanVar(value=True)
-        self.vp_create_report_check = ttk.Checkbutton(output_options_frame, text="创建汇总报告", 
-                                                     variable=self.vp_create_report_var)
-        self.vp_create_report_check.pack(side=tk.LEFT)
+        self.vp_create_excel_check.pack(side=tk.LEFT)
         
         # 操作按钮区域
         button_frame = ttk.Frame(control_frame)
@@ -732,7 +727,7 @@ class GameToolsUnified:
                 output_folder=output_folder,
                 recursive=self.vp_recursive_var.get(),
                 create_excel=self.vp_create_excel_var.get(),
-                create_report=self.vp_create_report_var.get()
+                create_report=False
             )
             
             # 显示结果

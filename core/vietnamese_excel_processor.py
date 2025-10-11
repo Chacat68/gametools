@@ -30,6 +30,26 @@ class VietnameseExcelProcessor:
         self.vietnamese_detector = VietnameseDetector()
         self.supported_extensions = {'.xlsx', '.xls', '.csv', '.tsv'}
     
+    def _get_excel_cell_reference(self, row: int, col: int) -> str:
+        """
+        将行列号转换为Excel单元格引用格式
+        
+        Args:
+            row: 行号（从1开始）
+            col: 列号（从1开始）
+            
+        Returns:
+            str: Excel单元格引用格式（如"C5"）
+        """
+        # 将列号转换为Excel列字母
+        col_letter = ""
+        while col > 0:
+            col -= 1
+            col_letter = chr(ord('A') + col % 26) + col_letter
+            col //= 26
+        
+        return f"{col_letter}{row}"
+    
     def is_supported_file(self, file_path: Path) -> bool:
         """
         检查文件是否为支持的格式
@@ -74,7 +94,7 @@ class VietnameseExcelProcessor:
                                     'col': col_idx + 1,  # +1 因为pandas从0开始
                                     'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
                                     'content': str(value),
-                                    'position': f"第{row_idx + 2}行第{col_idx + 1}列",
+                                    'position': self._get_excel_cell_reference(row_idx + 2, col_idx + 1),
                                     'file_path': str(file_path)
                                 })
                 
@@ -118,7 +138,7 @@ class VietnameseExcelProcessor:
                                     'col': col_idx + 1,  # +1 因为pandas从0开始
                                     'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
                                     'content': str(value),
-                                    'position': f"第{row_idx + 2}行第{col_idx + 1}列",
+                                    'position': self._get_excel_cell_reference(row_idx + 2, col_idx + 1),
                                     'file_path': str(file_path)
                                 })
                     break  # 成功读取后跳出循环
@@ -227,7 +247,7 @@ class VietnameseExcelProcessor:
             ws.title = "越南文检测结果"
             
             # 设置标题行
-            headers = ['序号', '文件名', '工作表', '位置', '列名', '越南文内容', '文件路径']
+            headers = ['序号', '文件名', '位置', '越南文内容']
             for col, header in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=header)
                 cell.font = Font(bold=True, color="FFFFFF")
@@ -237,15 +257,12 @@ class VietnameseExcelProcessor:
             # 添加数据
             for row_idx, result in enumerate(results, 2):
                 ws.cell(row=row_idx, column=1, value=row_idx - 1)  # 序号
-                ws.cell(row=row_idx, column=2, value=result['excel_file'])
-                ws.cell(row=row_idx, column=3, value=result['sheet_name'])
-                ws.cell(row=row_idx, column=4, value=result['position'])
-                ws.cell(row=row_idx, column=5, value=result['column_name'])
-                ws.cell(row=row_idx, column=6, value=result['content'])
-                ws.cell(row=row_idx, column=7, value=result['file_path'])
+                ws.cell(row=row_idx, column=2, value=result['excel_file'])  # 文件名
+                ws.cell(row=row_idx, column=3, value=result['position'])  # 位置
+                ws.cell(row=row_idx, column=4, value=result['content'])  # 越南文内容
             
             # 设置列宽
-            column_widths = [8, 25, 15, 15, 20, 50, 60]
+            column_widths = [8, 30, 20, 60]
             for col, width in enumerate(column_widths, 1):
                 ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
             
@@ -273,81 +290,9 @@ class VietnameseExcelProcessor:
             print(f"创建输出Excel文件时出错: {e}")
             return ""
     
-    def create_summary_report(self, results: List[Dict], output_folder: str, filename: str = "检测汇总报告.txt") -> str:
-        """
-        创建汇总报告文件
-        
-        Args:
-            results: 扫描结果列表
-            output_folder: 输出文件夹路径
-            filename: 报告文件名
-            
-        Returns:
-            str: 报告文件的完整路径
-        """
-        try:
-            # 确保输出文件夹存在
-            output_path = Path(output_folder)
-            output_path.mkdir(parents=True, exist_ok=True)
-            
-            # 构建完整的报告文件路径
-            full_report_path = output_path / filename
-            
-            # 统计信息
-            total_files = len(set(result['excel_file'] for result in results))
-            total_locations = len(results)
-            
-            # 按文件分组统计
-            file_stats = {}
-            for result in results:
-                file_name = result['excel_file']
-                if file_name not in file_stats:
-                    file_stats[file_name] = 0
-                file_stats[file_name] += 1
-            
-            # 生成报告内容
-            report_content = f"""越南文检测汇总报告
-{'=' * 50}
-
-检测时间: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-统计信息:
-- 包含越南文的文件总数: {total_files}
-- 越南文位置总数: {total_locations}
-
-文件详情:
-"""
-            
-            for file_name, count in sorted(file_stats.items()):
-                report_content += f"- {file_name}: {count} 个位置\n"
-            
-            if results:
-                report_content += f"\n详细位置信息:\n"
-                report_content += f"{'=' * 50}\n"
-                
-                for i, result in enumerate(results, 1):
-                    report_content += f"{i}. 文件: {result['excel_file']}\n"
-                    report_content += f"   工作表: {result['sheet_name']}\n"
-                    report_content += f"   位置: {result['position']}\n"
-                    report_content += f"   列名: {result['column_name']}\n"
-                    report_content += f"   内容: {result['content']}\n"
-                    report_content += f"   路径: {result['file_path']}\n"
-                    report_content += f"   {'-' * 40}\n"
-            else:
-                report_content += "\n未发现任何越南文内容。\n"
-            
-            # 写入报告文件
-            with open(full_report_path, 'w', encoding='utf-8') as f:
-                f.write(report_content)
-            
-            return str(full_report_path)
-            
-        except Exception as e:
-            print(f"创建汇总报告时出错: {e}")
-            return ""
     
     def process_directory(self, directory_path: str, output_folder: str, recursive: bool = True, 
-                         create_excel: bool = True, create_report: bool = True) -> Dict:
+                         create_excel: bool = True, create_report: bool = False) -> Dict:
         """
         处理目录并导出结果
         
@@ -356,7 +301,7 @@ class VietnameseExcelProcessor:
             output_folder: 输出文件夹路径
             recursive: 是否递归扫描子目录
             create_excel: 是否创建Excel结果文件
-            create_report: 是否创建汇总报告
+            create_report: 是否创建汇总报告（已废弃，始终为False）
             
         Returns:
             Dict: 包含处理统计信息的字典
@@ -399,19 +344,9 @@ class VietnameseExcelProcessor:
                     print("Excel结果文件创建失败！")
                     stats['excel_success'] = False
             
-            if create_report:
-                report_path = self.create_summary_report(results, output_folder)
-                if report_path:
-                    print(f"汇总报告创建成功: {report_path}")
-                    stats['output_files'].append(report_path)
-                    stats['report_success'] = True
-                else:
-                    print("汇总报告创建失败！")
-                    stats['report_success'] = False
         else:
             print("未找到任何越南文内容，不创建输出文件。")
             stats['excel_success'] = False
-            stats['report_success'] = False
         
         return stats
 

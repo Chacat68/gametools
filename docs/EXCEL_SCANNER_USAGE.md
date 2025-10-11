@@ -68,8 +68,8 @@ python core/excel_vietnamese_scanner.py "C:\MyExcelFiles" "C:\Results\scan_resul
 | 列名 | 说明 |
 |------|------|
 | 序号 | 自动编号 |
-| Excel文件名 | 包含越南文的Excel文件名 |
-| 位置 | 格式化的位置信息（如"第5行第3列"） |
+| 文件名 | 包含越南文的Excel文件名 |
+| 位置 | Excel单元格引用格式（如"C5"） |
 | 越南文内容 | 具体的越南文文本内容 |
 
 ## 越南文字符支持

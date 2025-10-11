@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 JSON错误检测工具
-用于检测JSON文件中的语法错误、结构错误、数据类型错误等
+用于检测JSON文件中的语法错误、结构错误、编码错误等
 """
 
 import json
@@ -172,48 +172,6 @@ class JSONErrorDetector:
         
         return errors
     
-    def detect_data_type_errors(self, data: Any) -> List[Dict[str, Any]]:
-        """检测数据类型错误"""
-        errors = []
-        
-        if isinstance(data, dict):
-            for key, value in data.items():
-                # 检测键的类型
-                if not isinstance(key, str):
-                    errors.append({
-                        'type': '键类型错误',
-                        'message': f'键"{key}"不是字符串类型',
-                        'line': '未知',
-                        'column': '未知',
-                        'severity': 'error'
-                    })
-                
-                # 检测值的类型
-                if isinstance(value, (dict, list)):
-                    errors.extend(self.detect_data_type_errors(value))
-                elif not isinstance(value, (str, int, float, bool, type(None))):
-                    errors.append({
-                        'type': '值类型错误',
-                        'message': f'值"{value}"不是有效的JSON数据类型',
-                        'line': '未知',
-                        'column': '未知',
-                        'severity': 'error'
-                    })
-        
-        elif isinstance(data, list):
-            for i, item in enumerate(data):
-                if isinstance(item, (dict, list)):
-                    errors.extend(self.detect_data_type_errors(item))
-                elif not isinstance(item, (str, int, float, bool, type(None))):
-                    errors.append({
-                        'type': '数组元素类型错误',
-                        'message': f'数组第{i+1}个元素不是有效的JSON数据类型',
-                        'line': '未知',
-                        'column': '未知',
-                        'severity': 'error'
-                    })
-        
-        return errors
     
     def detect_encoding_errors(self, file_path: str) -> List[Dict[str, Any]]:
         """检测编码错误"""
@@ -259,48 +217,6 @@ class JSONErrorDetector:
         
         return errors
     
-    def detect_performance_issues(self, data: Any) -> List[Dict[str, Any]]:
-        """检测性能问题"""
-        warnings = []
-        
-        def analyze_structure(obj, depth=0, path=""):
-            if depth > 10:  # 检测过深的嵌套
-                warnings.append({
-                    'type': '嵌套过深',
-                    'message': f'路径 {path} 嵌套深度超过10层，可能影响性能',
-                    'line': '未知',
-                    'column': '未知',
-                    'severity': 'warning'
-                })
-            
-            if isinstance(obj, dict):
-                if len(obj) > 1000:  # 检测过大的对象
-                    warnings.append({
-                        'type': '对象过大',
-                        'message': f'路径 {path} 包含{len(obj)}个键，可能影响性能',
-                        'line': '未知',
-                        'column': '未知',
-                        'severity': 'warning'
-                    })
-                
-                for key, value in obj.items():
-                    analyze_structure(value, depth + 1, f"{path}.{key}" if path else key)
-            
-            elif isinstance(obj, list):
-                if len(obj) > 10000:  # 检测过大的数组
-                    warnings.append({
-                        'type': '数组过大',
-                        'message': f'路径 {path} 包含{len(obj)}个元素，可能影响性能',
-                        'line': '未知',
-                        'column': '未知',
-                        'severity': 'warning'
-                    })
-                
-                for i, item in enumerate(obj):
-                    analyze_structure(item, depth + 1, f"{path}[{i}]")
-        
-        analyze_structure(data)
-        return warnings
     
     def generate_report(self, errors: List[Dict[str, Any]], warnings: List[Dict[str, Any]]) -> str:
         """生成检测报告"""
@@ -358,14 +274,6 @@ class JSONErrorDetector:
             structure_errors = self.detect_structure_errors(data)
             all_errors.extend([e for e in structure_errors if e['severity'] == 'error'])
             all_warnings.extend([e for e in structure_errors if e['severity'] == 'warning'])
-            
-            # 检测数据类型错误
-            type_errors = self.detect_data_type_errors(data)
-            all_errors.extend(type_errors)
-            
-            # 检测性能问题
-            performance_warnings = self.detect_performance_issues(data)
-            all_warnings.extend(performance_warnings)
         
         # 生成报告
         return self.generate_report(all_errors, all_warnings)
