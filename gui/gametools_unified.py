@@ -17,6 +17,7 @@ import subprocess
 sys.path.append(str(Path(__file__).parent.parent))
 
 from core.localization_checker import LocalizationChecker
+from core.excel_vietnamese_scanner import ExcelVietnameseScanner
 from tools.json_format_detector.json_format_detector import JSONFormatDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from tools.excel_text_extractor import ExcelTextExtractor
@@ -46,6 +47,7 @@ class GameToolsUnified:
         
         # 初始化检测器
         self.localization_checker = LocalizationChecker()
+        self.excel_scanner = ExcelVietnameseScanner()
         self.json_detector = JSONFormatDetector()
         self.excel_processor = ExcelDataProcessor()
         self.text_extractor = ExcelTextExtractor()
@@ -99,6 +101,7 @@ class GameToolsUnified:
         
         # 创建各个功能页签
         self.create_localization_tab()
+        self.create_excel_scanner_tab()
         self.create_json_detector_tab()
         self.create_excel_data_processor_tab()
         self.create_excel_text_extractor_tab()
@@ -193,6 +196,98 @@ class GameToolsUnified:
                                                         font=("Consolas", 9),
                                                         height=12)
         self.loc_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
+    def create_excel_scanner_tab(self):
+        """创建Excel越南文扫描页签"""
+        # Excel扫描工具框架
+        scanner_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(scanner_frame, text="Excel扫描导出")
+        
+        # 配置网格
+        scanner_frame.columnconfigure(0, weight=1)
+        scanner_frame.rowconfigure(2, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(scanner_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="Excel越南文扫描导出工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, text="扫描整个文件夹下的所有Excel文件，检测越南文文本并导出结果到Excel文件", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(scanner_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 目录选择区域
+        dir_frame = ttk.LabelFrame(control_frame, text="扫描设置", padding="12")
+        dir_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        dir_frame.columnconfigure(1, weight=1)
+        
+        # 扫描目录
+        ttk.Label(dir_frame, text="扫描目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.scan_dir_var = tk.StringVar()
+        self.scan_dir_entry = ttk.Entry(dir_frame, textvariable=self.scan_dir_var, 
+                                       font=("Microsoft YaHei", 9))
+        self.scan_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.scan_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                           command=self.browse_scan_directory)
+        self.scan_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 输出文件
+        ttk.Label(dir_frame, text="输出文件:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.output_file_var = tk.StringVar()
+        self.output_file_entry = ttk.Entry(dir_frame, textvariable=self.output_file_var, 
+                                          font=("Microsoft YaHei", 9))
+        self.output_file_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.output_browse_button = ttk.Button(dir_frame, text="选择输出位置", 
+                                             command=self.browse_output_file)
+        self.output_browse_button.grid(row=1, column=2, pady=(0, 5))
+        
+        # 操作按钮
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        button_frame.columnconfigure(0, weight=1)
+        
+        self.scan_button = ttk.Button(button_frame, text="开始扫描导出", 
+                                     command=self.start_excel_scan)
+        self.scan_button.grid(row=0, column=0, padx=(0, 10))
+        
+        self.clear_scan_button = ttk.Button(button_frame, text="清空结果", 
+                                           command=self.clear_scan_results)
+        self.clear_scan_button.grid(row=0, column=1)
+        
+        # 进度条
+        progress_frame = ttk.Frame(control_frame)
+        progress_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        progress_frame.columnconfigure(0, weight=1)
+        
+        self.scan_progress_var = tk.StringVar(value="就绪")
+        self.scan_progress_label = ttk.Label(progress_frame, textvariable=self.scan_progress_var)
+        self.scan_progress_label.grid(row=0, column=0, sticky=tk.W)
+        
+        self.scan_progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate')
+        self.scan_progress_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
+        
+        # 结果显示区域
+        result_frame = ttk.LabelFrame(scanner_frame, text="扫描结果", padding="10")
+        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.columnconfigure(0, weight=1)
+        result_frame.rowconfigure(0, weight=1)
+        
+        self.scan_result_text = scrolledtext.ScrolledText(result_frame, 
+                                                         wrap=tk.WORD, 
+                                                         font=("Consolas", 9),
+                                                         height=12)
+        self.scan_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_json_detector_tab(self):
         """创建JSON格式检测工具页签"""
@@ -1114,6 +1209,116 @@ class GameToolsUnified:
     def clear_extractor_results(self):
         """清空文本提取结果"""
         self.extractor_result_text.delete(1.0, tk.END)
+    
+    # Excel扫描相关方法
+    def browse_scan_directory(self):
+        """浏览扫描目录"""
+        directory = filedialog.askdirectory(title="选择要扫描的目录")
+        if directory:
+            self.scan_dir_var.set(directory)
+    
+    def browse_output_file(self):
+        """浏览输出文件位置"""
+        file_path = filedialog.asksaveasfilename(
+            title="选择输出Excel文件位置",
+            defaultextension=".xlsx",
+            filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.output_file_var.set(file_path)
+    
+    def start_excel_scan(self):
+        """开始Excel扫描"""
+        scan_dir = self.scan_dir_var.get().strip()
+        output_file = self.output_file_var.get().strip()
+        
+        if not scan_dir:
+            messagebox.showwarning("警告", "请选择要扫描的目录")
+            return
+        
+        if not output_file:
+            messagebox.showwarning("警告", "请选择输出文件位置")
+            return
+        
+        if not os.path.exists(scan_dir):
+            messagebox.showerror("错误", "扫描目录不存在")
+            return
+        
+        # 在新线程中执行扫描
+        self.scan_button.config(state="disabled")
+        self.scan_progress_bar.start()
+        self.scan_progress_var.set("正在扫描...")
+        
+        thread = threading.Thread(target=self._excel_scan_thread, 
+                                 args=(scan_dir, output_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _excel_scan_thread(self, scan_dir, output_file):
+        """Excel扫描线程"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_scan_results)
+            
+            # 开始扫描
+            self.root.after(0, lambda: self.scan_result_text.insert(tk.END, 
+                f"开始扫描目录: {scan_dir}\n"))
+            self.root.after(0, lambda: self.scan_result_text.insert(tk.END, 
+                f"输出文件: {output_file}\n"))
+            self.root.after(0, lambda: self.scan_result_text.insert(tk.END, 
+                "支持的格式: .xlsx, .xls\n"))
+            self.root.after(0, lambda: self.scan_result_text.insert(tk.END, 
+                "-" * 50 + "\n"))
+            
+            # 执行扫描
+            stats = self.excel_scanner.scan_and_export(scan_dir, output_file)
+            
+            # 显示结果
+            self.root.after(0, self._show_scan_result, stats)
+            
+        except Exception as e:
+            error_msg = f"扫描过程中发生错误: {str(e)}"
+            self.root.after(0, self._show_scan_error, error_msg)
+        finally:
+            # 恢复界面状态
+            self.root.after(0, self._scan_finished)
+    
+    def _show_scan_result(self, stats):
+        """显示扫描结果"""
+        self.scan_result_text.insert(tk.END, "\n" + "=" * 50 + "\n")
+        self.scan_result_text.insert(tk.END, "扫描完成！\n")
+        self.scan_result_text.insert(tk.END, "=" * 50 + "\n")
+        self.scan_result_text.insert(tk.END, f"扫描的Excel文件总数: {stats['total_files_scanned']}\n")
+        self.scan_result_text.insert(tk.END, f"包含越南文的文件数: {stats['files_with_vietnamese']}\n")
+        self.scan_result_text.insert(tk.END, f"越南文位置总数: {stats['total_vietnamese_locations']}\n")
+        
+        if stats['output_success']:
+            self.scan_result_text.insert(tk.END, "\n✓ 输出文件创建成功！\n")
+            self.scan_result_text.insert(tk.END, f"结果已保存到: {self.output_file_var.get()}\n")
+        else:
+            self.scan_result_text.insert(tk.END, "\n✗ 输出文件创建失败\n")
+        
+        # 滚动到底部
+        self.scan_result_text.see(tk.END)
+    
+    def _show_scan_error(self, error_msg):
+        """显示扫描错误"""
+        self.scan_result_text.insert(tk.END, "\n" + "=" * 50 + "\n")
+        self.scan_result_text.insert(tk.END, f"错误: {error_msg}\n")
+        self.scan_result_text.insert(tk.END, "=" * 50 + "\n")
+        self.scan_result_text.see(tk.END)
+    
+    def _scan_finished(self):
+        """扫描完成后的界面恢复"""
+        self.scan_button.config(state="normal")
+        self.scan_progress_bar.stop()
+        self.scan_progress_var.set("扫描完成")
+        self.status_var.set("就绪")
+    
+    def clear_scan_results(self):
+        """清空扫描结果"""
+        self.scan_result_text.delete(1.0, tk.END)
+        self.scan_progress_var.set("就绪")
 
 
 def main():
