@@ -34,7 +34,7 @@ class ExcelTextExtractorGUI:
         self.create_widgets()
         
         # 初始化提取器
-        self.text_extractor = ExcelTextExtractor()
+        self.text_extractor = ExcelTextExtractor(progress_callback=self.update_progress)
     
     def setup_styles(self):
         """设置界面样式"""
@@ -121,9 +121,26 @@ class ExcelTextExtractorGUI:
                                  style='Info.TLabel', foreground='green')
         language_info.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
         
+        # 进度显示框架
+        progress_frame = ttk.LabelFrame(main_frame, text="处理进度", padding="10")
+        progress_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        progress_frame.columnconfigure(0, weight=1)
+        
+        # 进度条
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, 
+                                          maximum=100, length=400)
+        self.progress_bar.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        
+        # 进度文本
+        self.progress_text_var = tk.StringVar(value="就绪")
+        self.progress_text = ttk.Label(progress_frame, textvariable=self.progress_text_var, 
+                                     style='Info.TLabel')
+        self.progress_text.grid(row=1, column=0, sticky=tk.W)
+        
         # 控制按钮框架
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, pady=(0, 10))
+        button_frame.grid(row=4, column=0, pady=(0, 10))
         
         self.process_button = ttk.Button(button_frame, text="开始提取", 
                                         command=self.start_extraction, 
@@ -141,7 +158,7 @@ class ExcelTextExtractorGUI:
         
         # 结果显示区域
         result_frame = ttk.LabelFrame(main_frame, text="提取结果", padding="10")
-        result_frame.grid(row=4, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.grid(row=5, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)
         
@@ -155,7 +172,32 @@ class ExcelTextExtractorGUI:
         self.status_var = tk.StringVar(value="就绪")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=5, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        status_bar.grid(row=6, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+    
+    def update_progress(self, current: int, total: int, filename: str, message: str):
+        """
+        更新进度显示
+        
+        Args:
+            current: 当前处理的文件索引
+            total: 总文件数
+            filename: 当前处理的文件名
+            message: 处理消息
+        """
+        if total > 0:
+            percentage = (current / total) * 100
+            self.progress_var.set(percentage)
+            progress_text = f"[{current}/{total}] ({percentage:.1f}%) {filename}: {message}"
+        else:
+            self.progress_var.set(0)
+            progress_text = f"{filename}: {message}"
+        
+        self.progress_text_var.set(progress_text)
+        
+        # 同时更新结果文本区域
+        self.result_text.insert(tk.END, f"{progress_text}\n")
+        self.result_text.see(tk.END)
+        self.root.update_idletasks()
     
     def browse_input_directory(self):
         """浏览输入目录"""
@@ -192,6 +234,10 @@ class ExcelTextExtractorGUI:
         # 在新线程中执行提取
         self.process_button.config(state="disabled")
         self.status_var.set("正在提取文本...")
+        
+        # 重置进度条
+        self.progress_var.set(0)
+        self.progress_text_var.set("准备开始...")
         
         thread = threading.Thread(target=self._extraction, 
                                  args=(input_dir, output_dir))

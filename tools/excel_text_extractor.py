@@ -21,8 +21,13 @@ logger = logging.getLogger(__name__)
 class ExcelTextExtractor:
     """Excel文本提取器"""
     
-    def __init__(self):
-        """初始化文本提取器"""
+    def __init__(self, progress_callback=None):
+        """
+        初始化文本提取器
+        
+        Args:
+            progress_callback: 进度回调函数，接收 (current, total, filename, message) 参数
+        """
         self.supported_formats = ['.xlsx', '.xls']
         self.extracted_texts = {}
         self.processing_stats = {
@@ -31,6 +36,24 @@ class ExcelTextExtractor:
             'failed_files': 0,
             'total_texts': 0
         }
+        self.progress_callback = progress_callback
+    
+    def _report_progress(self, current: int, total: int, filename: str, message: str):
+        """
+        报告处理进度
+        
+        Args:
+            current: 当前处理的文件索引
+            total: 总文件数
+            filename: 当前处理的文件名
+            message: 处理消息
+        """
+        if self.progress_callback:
+            self.progress_callback(current, total, filename, message)
+        
+        # 同时输出到日志
+        percentage = (current / total * 100) if total > 0 else 0
+        logger.info(f"[{current}/{total}] ({percentage:.1f}%) {filename}: {message}")
     
     def scan_directory(self, directory_path: str) -> List[str]:
         """
@@ -64,41 +87,58 @@ class ExcelTextExtractor:
             logger.error(f"扫描目录失败: {str(e)}")
             raise
     
-    def extract_text_from_excel(self, file_path: str) -> Dict[str, List[Dict]]:
+    def extract_text_from_excel(self, file_path: str, current: int = 0, total: int = 0) -> Dict[str, List[Dict]]:
         """
         从Excel文件中提取文本内容
         
         Args:
             file_path: Excel文件路径
+            current: 当前文件索引（用于进度显示）
+            total: 总文件数（用于进度显示）
             
         Returns:
             字典，键为工作表名，值为包含文本和A列内容的字典列表
         """
+        filename = os.path.basename(file_path)
+        
         try:
-            logger.info(f"正在提取文件: {file_path}")
+            self._report_progress(current, total, filename, "开始读取文件")
             
             # 读取Excel文件的所有工作表
             excel_file = pd.ExcelFile(file_path)
-            extracted_data = {}
+            sheet_names = excel_file.sheet_names
+            self._report_progress(current, total, filename, f"发现 {len(sheet_names)} 个工作表")
             
-            for sheet_name in excel_file.sheet_names:
+            extracted_data = {}
+            total_texts = 0
+            
+            for i, sheet_name in enumerate(sheet_names):
                 try:
+                    self._report_progress(current, total, filename, f"处理工作表 '{sheet_name}' ({i+1}/{len(sheet_names)})")
+                    
                     # 读取工作表数据
                     df = pd.read_excel(file_path, sheet_name=sheet_name)
+                    self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 读取完成，共 {len(df)} 行")
                     
                     # 提取文本内容
                     texts = self._extract_texts_from_dataframe(df)
                     if texts:
                         extracted_data[sheet_name] = texts
-                        logger.info(f"工作表 '{sheet_name}': 提取到 {len(texts)} 个文本")
+                        total_texts += len(texts)
+                        self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 提取到 {len(texts)} 个文本")
+                    else:
+                        self._report_progress(current, total, filename, f"工作表 '{sheet_name}' 未提取到文本")
                     
                 except Exception as e:
+                    self._report_progress(current, total, filename, f"处理工作表 '{sheet_name}' 失败: {str(e)}")
                     logger.warning(f"处理工作表 '{sheet_name}' 失败: {str(e)}")
                     continue
             
+            self._report_progress(current, total, filename, f"文件处理完成，共提取 {total_texts} 个文本")
             return extracted_data
             
         except Exception as e:
+            self._report_progress(current, total, filename, f"文件处理失败: {str(e)}")
             logger.error(f"提取Excel文件文本失败: {str(e)}")
             return {}
     
@@ -427,10 +467,10 @@ class ExcelTextExtractor:
             failed_files = []
             
             # 处理每个Excel文件
-            for file_path in excel_files:
+            for i, file_path in enumerate(excel_files, 1):
                 try:
                     # 提取文本
-                    extracted_data = self.extract_text_from_excel(file_path)
+                    extracted_data = self.extract_text_from_excel(file_path, i, len(excel_files))
                     
                     if extracted_data:
                         # 生成输出文件名
@@ -438,22 +478,31 @@ class ExcelTextExtractor:
                         output_filename = f"{base_name}_文本提取.xlsx"
                         output_path = os.path.join(output_directory, output_filename)
                         
+                        filename = os.path.basename(file_path)
+                        self._report_progress(i, len(excel_files), filename, f"创建输出文件: {output_filename}")
+                        
                         # 创建文本Excel文件
                         success = self.create_text_excel(output_path, extracted_data, file_path)
                         
                         if success:
                             processed_files.append(output_path)
                             self.processing_stats['processed_files'] += 1
+                            self._report_progress(i, len(excel_files), filename, "处理成功")
                             logger.info(f"处理成功: {output_path}")
                         else:
                             failed_files.append(file_path)
                             self.processing_stats['failed_files'] += 1
+                            self._report_progress(i, len(excel_files), filename, "创建输出文件失败")
                     else:
+                        filename = os.path.basename(file_path)
+                        self._report_progress(i, len(excel_files), filename, "未提取到文本内容")
                         logger.warning(f"未提取到文本内容: {file_path}")
                         failed_files.append(file_path)
                         self.processing_stats['failed_files'] += 1
                 
                 except Exception as e:
+                    filename = os.path.basename(file_path)
+                    self._report_progress(i, len(excel_files), filename, f"处理失败: {str(e)}")
                     logger.error(f"处理文件失败 {file_path}: {str(e)}")
                     failed_files.append(file_path)
                     self.processing_stats['failed_files'] += 1
