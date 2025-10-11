@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Excel数据整合工具演示脚本
+Excel数据处理工具演示脚本
 展示工具的基本使用方法
 """
 
@@ -12,18 +12,18 @@ from pathlib import Path
 # 添加模块路径
 sys.path.append(str(Path(__file__).parent.parent))
 
-from tools.excel_consolidator import ExcelConsolidator
+from tools.excel_data_processor import ExcelDataProcessor
 
 
-def demo_excel_consolidator():
-    """演示Excel数据整合工具的使用"""
+def demo_excel_data_processor():
+    """演示Excel数据处理工具的使用"""
     
     print("=" * 60)
-    print("Excel数据整合工具演示")
+    print("Excel数据处理工具演示")
     print("=" * 60)
     
-    # 创建整合器实例
-    consolidator = ExcelConsolidator()
+    # 创建数据处理器实例
+    processor = ExcelDataProcessor()
     
     # 检查测试文件是否存在
     test_file = "test_data/test_data.xlsx"
@@ -37,7 +37,7 @@ def demo_excel_consolidator():
     # 读取文件
     print("\n[步骤] 正在读取Excel文件...")
     try:
-        df = consolidator.read_excel_file(test_file)
+        df = processor.read_excel_file(test_file)
         print(f"[成功] 成功读取文件，共 {len(df)} 行，{len(df.columns)} 列")
         print(f"[信息] 列名: {list(df.columns)}")
     except Exception as e:
@@ -59,18 +59,18 @@ def demo_excel_consolidator():
         count = len(df[df[first_col] == value])
         print(f"  {i}. {value} ({count} 行)")
     
-    # 执行数据整合
-    print(f"\n[处理] 开始数据整合...")
+    # 执行数据处理
+    print(f"\n[处理] 开始数据处理...")
     try:
-        consolidated_data = consolidator.consolidate_by_column_a(df)
-        print(f"[成功] 数据整合完成，共 {len(consolidated_data)} 个分组")
+        split_data = processor.process_by_column_a(df)
+        print(f"[成功] 数据处理完成，共 {len(split_data)} 个分组")
         
-        # 显示整合报告
-        print(f"\n[报告] 整合报告:")
-        print(consolidator.get_consolidation_report())
+        # 显示处理报告
+        print(f"\n[报告] 处理报告:")
+        print(processor.get_process_report())
         
     except Exception as e:
-        print(f"[错误] 数据整合失败: {str(e)}")
+        print(f"[错误] 数据处理失败: {str(e)}")
         return False
     
     # 创建输出文件
@@ -78,7 +78,7 @@ def demo_excel_consolidator():
     print(f"\n[保存] 正在创建输出文件到文件夹: {output_folder}")
     print(f"[信息] 将为每个A列内容创建单独的Excel文件")
     try:
-        success = consolidator.process_file(
+        success = processor.process_file(
             input_path=test_file,
             output_folder=output_folder,
             output_filename=None,  # 使用自动生成
@@ -113,7 +113,7 @@ def demo_excel_consolidator():
     print(f"[文件] 输入文件: {test_file}")
     print(f"[文件] 输出文件夹: {output_folder}")
     print(f"[文件] 输出模式: 多个单独文件（每个A列内容一个文件）")
-    print(f"\n[提示] 您可以使用Excel打开输出文件查看整合结果")
+    print(f"\n[提示] 您可以使用Excel打开输出文件查看处理结果")
     
     return True
 
@@ -121,7 +121,7 @@ def demo_excel_consolidator():
 def main():
     """主函数"""
     try:
-        success = demo_excel_consolidator()
+        success = demo_excel_data_processor()
         if success:
             print(f"\n[成功] 演示成功完成")
             return 0

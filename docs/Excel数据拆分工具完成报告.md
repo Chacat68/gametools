@@ -1,8 +1,8 @@
-# Excel数据整合工具 - 完成报告
+# Excel数据处理工具 - 完成报告
 
 ## 项目概述
 
-根据您的需求，我已经成功创建了一个Excel数据整合工具，该工具可以读取Excel文件中的数据，根据A列的内容进行分组，并将相同A列内容的数据整合到新的Excel文件中。
+根据您的需求，我已经成功创建了一个Excel数据处理工具，该工具可以读取Excel文件中的数据，根据A列的内容进行分组，并将相同A列内容的数据处理到新的Excel文件中。
 
 ## 功能实现
 
@@ -22,12 +22,12 @@
 
 ```
 tools/
-├── excel_consolidator.py              # 核心功能模块
-├── excel_consolidator_gui.py         # GUI界面
+├── excel_data_processor.py              # 核心功能模块
+├── excel_data_processor_gui.py         # GUI界面
 ├── create_test_excel.py              # 测试数据生成器
-├── demo_excel_consolidator.py        # 演示脚本
-├── start_excel_consolidator.bat     # 启动脚本
-└── excel_consolidator/
+├── demo_excel_data_processor.py        # 演示脚本
+├── start_excel_data_processor.bat     # 启动脚本
+└── excel_data_processor/
     └── README.md                     # 详细使用说明
 
 gui/
@@ -45,10 +45,10 @@ test_data/
 ### 1. GUI界面模式
 ```bash
 # 方式1: 独立GUI
-python tools/excel_consolidator_gui.py
+python tools/excel_data_processor_gui.py
 
 # 方式2: 使用启动脚本
-tools/start_excel_consolidator.bat
+tools/start_excel_data_processor.bat
 
 # 方式3: 通过主界面
 python gui/gametools_unified.py
@@ -57,10 +57,10 @@ python gui/gametools_unified.py
 ### 2. 命令行模式
 ```bash
 # 基本用法
-python tools/excel_consolidator.py input_file.xlsx output_file.xlsx
+python tools/excel_data_processor.py input_file.xlsx output_file.xlsx
 
 # 高级选项
-python tools/excel_consolidator.py input_file.xlsx output_file.xlsx \
+python tools/excel_data_processor.py input_file.xlsx output_file.xlsx \
     --group-column "列名" \
     --sheet-prefix "前缀" \
     --no-summary
@@ -72,7 +72,7 @@ python tools/excel_consolidator.py input_file.xlsx output_file.xlsx \
 python tools/create_test_excel.py
 
 # 运行演示
-python tools/demo_excel_consolidator.py
+python tools/demo_excel_data_processor.py
 ```
 
 ## 测试结果
@@ -108,15 +108,15 @@ python tools/demo_excel_consolidator.py
 
 ## 主要文件说明
 
-### 1. excel_consolidator.py
+### 1. excel_data_processor.py
 核心功能模块，包含：
-- `ExcelConsolidator`类：主要的数据整合逻辑
+- `ExcelDataProcessor`类：主要的数据处理逻辑
 - `read_excel_file()`: 读取Excel文件
-- `consolidate_by_column_a()`: 数据分组整合
-- `create_consolidated_excel()`: 创建输出文件
+- `process_by_column_a()`: 数据分组处理
+- `create_processed_excel()`: 创建输出文件
 - 命令行接口支持
 
-### 2. excel_consolidator_gui.py
+### 2. excel_data_processor_gui.py
 独立的GUI界面，提供：
 - 文件选择界面
 - 选项配置
@@ -126,7 +126,7 @@ python tools/demo_excel_consolidator.py
 
 ### 3. gametools_unified.py
 主界面集成，新增：
-- Excel数据整合工具页签
+- Excel数据处理工具页签
 - 完整的GUI界面集成
 - 与现有工具的协调
 

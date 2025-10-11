@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Excel数据整合工具 - GUI界面
-提供图形化界面来使用Excel数据整合功能
+Excel数据处理工具 - GUI界面
+提供图形化界面来使用Excel数据处理功能
 """
 
 import tkinter as tk
@@ -15,15 +15,15 @@ from pathlib import Path
 # 添加模块路径
 sys.path.append(str(Path(__file__).parent.parent))
 
-from tools.excel_consolidator import ExcelConsolidator
+from tools.excel_data_processor import ExcelDataProcessor
 
 
-class ExcelConsolidatorGUI:
-    """Excel数据整合工具GUI界面"""
+class ExcelDataProcessorGUI:
+    """Excel数据处理工具GUI界面"""
     
     def __init__(self, root):
         self.root = root
-        self.root.title("Excel数据整合工具")
+        self.root.title("Excel数据处理工具")
         self.root.geometry("900x700")
         self.root.minsize(800, 600)
         
@@ -39,8 +39,8 @@ class ExcelConsolidatorGUI:
         # 创建界面
         self.create_widgets()
         
-        # 初始化整合器
-        self.consolidator = ExcelConsolidator()
+        # 初始化数据处理器
+        self.processor = ExcelDataProcessor()
         
         # 处理状态
         self.is_processing = False
@@ -71,7 +71,7 @@ class ExcelConsolidatorGUI:
         main_frame.rowconfigure(6, weight=1)
         
         # 标题
-        title_label = ttk.Label(main_frame, text="Excel数据整合工具", 
+        title_label = ttk.Label(main_frame, text="Excel数据处理工具", 
                                style='Title.TLabel')
         title_label.grid(row=0, column=0, pady=(0, 20))
         
@@ -102,7 +102,7 @@ class ExcelConsolidatorGUI:
         
         # 输出文件名
         ttk.Label(file_frame, text="输出文件名:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
-        self.output_filename_var = tk.StringVar(value="整合结果.xlsx")
+        self.output_filename_var = tk.StringVar(value="处理结果.xlsx")
         self.output_filename_entry = ttk.Entry(file_frame, textvariable=self.output_filename_var, width=30)
         self.output_filename_entry.grid(row=2, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
         
@@ -147,8 +147,8 @@ class ExcelConsolidatorGUI:
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=5, column=0, pady=(0, 10))
         
-        self.process_button = ttk.Button(button_frame, text="开始整合", 
-                                        command=self.start_consolidation, 
+        self.process_button = ttk.Button(button_frame, text="开始处理", 
+                                        command=self.start_processing, 
                                         style='Accent.TButton')
         self.process_button.pack(side=tk.LEFT, padx=(0, 10))
         
@@ -199,7 +199,7 @@ class ExcelConsolidatorGUI:
             self.input_file_var.set(file_path)
             # 自动设置输出文件名
             if not self.output_filename_var.get():
-                self.output_filename_var.set("整合结果.xlsx")
+                self.output_filename_var.set("拆分结果.xlsx")
     
     def browse_output_folder(self):
         """浏览输出文件夹"""
@@ -208,10 +208,10 @@ class ExcelConsolidatorGUI:
             self.output_folder_var.set(folder_path)
             # 自动设置输出文件名
             if not self.output_filename_var.get():
-                self.output_filename_var.set("整合结果.xlsx")
+                self.output_filename_var.set("拆分结果.xlsx")
     
-    def start_consolidation(self):
-        """开始数据整合"""
+    def start_processing(self):
+        """开始数据处理"""
         input_file = self.input_file_var.get().strip()
         output_folder = self.output_folder_var.get().strip()
         output_filename = self.output_filename_var.get().strip()
@@ -242,18 +242,18 @@ class ExcelConsolidatorGUI:
         else:
             output_filename = output_filename
         
-        # 在新线程中执行整合
+        # 在新线程中执行处理
         self.process_button.config(state="disabled")
         self.preview_button.config(state="disabled")
         self.status_var.set("正在处理...")
         
-        thread = threading.Thread(target=self._consolidation_process, 
+        thread = threading.Thread(target=self._processing_process, 
                                  args=(input_file, output_folder, output_filename))
         thread.daemon = True
         thread.start()
     
-    def _consolidation_process(self, input_file, output_folder, output_filename):
-        """数据整合处理（后台线程）"""
+    def _processing_process(self, input_file, output_folder, output_filename):
+        """数据处理（后台线程）"""
         try:
             # 清空结果
             self.root.after(0, self.clear_results)
@@ -279,8 +279,8 @@ class ExcelConsolidatorGUI:
             auto_filename = self.auto_filename_var.get()
             separate_files = self.separate_files_var.get()
             
-            # 执行整合
-            success = self.consolidator.process_file(
+            # 执行处理
+            success = self.processor.process_file(
                 input_path=input_file,
                 output_folder=output_folder,
                 output_filename=output_filename,
@@ -304,7 +304,7 @@ class ExcelConsolidatorGUI:
     
     def _show_success_result(self):
         """显示成功结果"""
-        report = self.consolidator.get_consolidation_report()
+        report = self.processor.get_process_report()
         self.result_text.insert(tk.END, report)
         self.result_text.insert(tk.END, "\n\n✅ 文件处理成功！")
         
@@ -312,7 +312,7 @@ class ExcelConsolidatorGUI:
         self.preview_button.config(state="normal")
         self.status_var.set("处理完成")
         
-        messagebox.showinfo("成功", "Excel数据整合完成！")
+        messagebox.showinfo("成功", "Excel数据处理完成！")
     
     def _show_error_result(self, error_msg):
         """显示错误结果"""
@@ -338,7 +338,7 @@ class ExcelConsolidatorGUI:
         
         try:
             # 读取文件
-            df = self.consolidator.read_excel_file(input_file)
+            df = self.processor.read_excel_file(input_file)
             
             # 显示预览信息
             preview_text = f"文件预览: {os.path.basename(input_file)}\n"
@@ -375,7 +375,7 @@ class ExcelConsolidatorGUI:
 def main():
     """主函数"""
     root = tk.Tk()
-    app = ExcelConsolidatorGUI(root)
+    app = ExcelDataProcessorGUI(root)
     
     # 设置窗口关闭事件
     def on_closing():

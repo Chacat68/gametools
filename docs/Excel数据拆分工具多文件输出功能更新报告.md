@@ -1,22 +1,22 @@
-# Excel数据整合工具 - 多文件输出功能更新报告
+# Excel数据拆分工具 - 多文件输出功能更新报告
 
 ## 更新概述
 
-根据您的需求，我已经成功修改了Excel数据整合工具，现在可以为每个A列的内容创建单独的Excel文件，而不是在一个文件中创建多个工作表。
+根据您的需求，我已经成功修改了Excel数据拆分工具，现在可以为每个A列的内容创建单独的Excel文件，而不是在一个文件中创建多个工作表。
 
 ## 主要更新内容
 
-### 1. 核心功能更新 (`tools/excel_consolidator.py`)
+### 1. 核心功能更新 (`tools/excel_splitter.py`)
 
 #### 新增方法
 - ✅ **`_create_separate_files()`**: 为每个分组创建单独的Excel文件
 - ✅ **`_create_single_group_file()`**: 创建单个分组的Excel文件
-- ✅ **`_create_single_file()`**: 创建单个整合的Excel文件（原有逻辑）
+- ✅ **`_create_single_file()`**: 创建单个拆分的Excel文件（原有逻辑）
 
 #### 更新方法
 - ✅ **`process_file()`**: 新增 `separate_files` 参数控制输出模式
   - `separate_files=True`: 为每个A列内容创建单独的Excel文件（默认）
-  - `separate_files=False`: 创建单个整合的Excel文件
+  - `separate_files=False`: 创建单个拆分的Excel文件
 
 #### 多文件输出逻辑
 1. 遍历所有分组数据
@@ -26,7 +26,7 @@
    - "汇总信息"工作表：包含该分组的统计信息（可选）
 4. 检查重复文件并跳过（可选）
 
-### 2. GUI界面更新 (`tools/excel_consolidator_gui.py`)
+### 2. GUI界面更新 (`tools/excel_splitter_gui.py`)
 
 #### 界面改进
 - ✅ **文件输出模式选项**: 新增"为每个A列内容创建单独的Excel文件"复选框

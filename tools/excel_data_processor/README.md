@@ -1,8 +1,8 @@
-# Excel数据整合工具使用说明
+# Excel数据处理工具使用说明
 
 ## 工具简介
 
-Excel数据整合工具是一个专门用于处理Excel文件的工具，它可以根据A列（或指定列）的内容对数据进行分组，并将相同内容的数据整合到新的Excel文件中。每个分组会创建一个独立的工作表。
+Excel数据处理工具是一个专门用于处理Excel文件的工具，它可以根据A列（或指定列）的内容对数据进行分组，并将相同内容的数据处理到新的Excel文件中。每个分组会创建一个独立的工作表。
 
 ## 功能特性
 
@@ -20,10 +20,10 @@ Excel数据整合工具是一个专门用于处理Excel文件的工具，它可�
 #### 启动方式
 ```bash
 # 方式1: 直接运行GUI
-python tools/excel_consolidator_gui.py
+python tools/excel_data_processor_gui.py
 
 # 方式2: 使用启动脚本
-tools/start_excel_consolidator.bat
+tools/start_excel_data_processor.bat
 
 # 方式3: 通过主界面
 python gui/gametools_unified.py
@@ -32,25 +32,25 @@ python gui/gametools_unified.py
 #### 操作步骤
 1. **选择输入文件**: 点击"浏览"按钮选择要处理的Excel文件
 2. **选择输出文件夹**: 点击"浏览"按钮选择输出文件夹
-3. **设置输出文件名**: 输入整合后文件的名称（默认为"整合结果.xlsx"）
+3. **设置输出文件名**: 输入处理后文件的名称（默认为"处理结果.xlsx"）
 4. **配置选项**:
    - **分组列**: 指定用于分组的列名（留空使用第一列）
    - **工作表前缀**: 为生成的工作表添加前缀
    - **包含汇总信息**: 是否在输出文件中包含汇总统计
 5. **预览数据**: 点击"预览数据"查看文件内容和分组情况
-6. **开始整合**: 点击"开始整合"按钮执行处理
+6. **开始处理**: 点击"开始处理"按钮执行处理
 7. **查看结果**: 在结果区域查看处理报告
 
 ### 2. 命令行模式
 
 #### 基本用法
 ```bash
-python tools/excel_consolidator.py input_file.xlsx output_folder
+python tools/excel_splitter.py input_file.xlsx output_folder
 ```
 
 #### 高级选项
 ```bash
-python tools/excel_consolidator.py input_file.xlsx output_folder \
+python tools/excel_data_processor.py input_file.xlsx output_folder \
     --output-filename "自定义文件名.xlsx" \
     --group-column "列名" \
     --sheet-prefix "前缀" \
@@ -60,7 +60,7 @@ python tools/excel_consolidator.py input_file.xlsx output_folder \
 #### 参数说明
 - `input_file.xlsx`: 输入Excel文件路径
 - `output_folder`: 输出文件夹路径
-- `--output-filename`: 输出文件名（默认为"整合结果.xlsx"）
+- `--output-filename`: 输出文件名（默认为"处理结果.xlsx"）
 - `--group-column`: 指定分组列名（默认为第一列）
 - `--sheet-prefix`: 工作表名称前缀
 - `--no-summary`: 不包含汇总信息工作表
@@ -143,7 +143,7 @@ python tools/excel_consolidator.py input_file.xlsx output_folder \
 
 ### v1.0.0 (2024-10-10)
 - 初始版本发布
-- 支持基本的Excel数据整合功能
+- 支持基本的Excel数据处理功能
 - 提供GUI和命令行两种使用方式
 - 支持自定义分组列和工作表前缀
 - 包含汇总信息功能

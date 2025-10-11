@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Excel数据整合工具
-根据A列内容对Excel数据进行分组和整合
+Excel数据处理工具
+根据A列内容对Excel数据进行分组和处理
 """
 
 import pandas as pd
@@ -16,11 +16,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-class ExcelConsolidator:
-    """Excel数据整合器"""
+class ExcelDataProcessor:
+    """Excel数据处理器"""
     
     def __init__(self):
-        """初始化整合器"""
+        """初始化数据处理器"""
         self.supported_formats = ['.xlsx', '.xls']
         self.consolidated_data = {}
         self.original_columns = []
@@ -59,9 +59,9 @@ class ExcelConsolidator:
             logger.error(f"读取Excel文件失败: {str(e)}")
             raise
     
-    def consolidate_by_column_a(self, df: pd.DataFrame, group_column: str = None) -> Dict[str, pd.DataFrame]:
+    def process_by_column_a(self, df: pd.DataFrame, group_column: str = None) -> Dict[str, pd.DataFrame]:
         """
-        根据A列（或指定列）内容进行数据整合
+        根据A列（或指定列）内容进行数据处理
         
         Args:
             df: 输入的DataFrame
@@ -90,8 +90,8 @@ class ExcelConsolidator:
             # 按分组列进行分组
             grouped = df.groupby(group_column)
             
-            # 创建整合后的数据字典
-            consolidated_data = {}
+            # 创建拆分后的数据字典
+            split_data = {}
             
             for group_value, group_df in grouped:
                 # 确保分组值不为空
@@ -102,24 +102,24 @@ class ExcelConsolidator:
                 
                 # 重置索引
                 group_df = group_df.reset_index(drop=True)
-                consolidated_data[group_key] = group_df
+                split_data[group_key] = group_df
                 
                 logger.info(f"分组 '{group_key}': {len(group_df)} 行数据")
             
-            self.consolidated_data = consolidated_data
-            logger.info(f"数据整合完成，共 {len(consolidated_data)} 个分组")
+            self.consolidated_data = split_data
+            logger.info(f"数据处理完成，共 {len(split_data)} 个分组")
             
-            return consolidated_data
+            return split_data
             
         except Exception as e:
-            logger.error(f"数据整合失败: {str(e)}")
+            logger.error(f"数据处理失败: {str(e)}")
             raise
     
-    def create_consolidated_excel(self, output_path: str, 
+    def create_processed_excel(self, output_path: str, 
                                 include_summary: bool = True,
                                 sheet_prefix: str = "") -> bool:
         """
-        创建整合后的Excel文件
+        创建处理后的Excel文件
         
         Args:
             output_path: 输出文件路径
@@ -131,10 +131,10 @@ class ExcelConsolidator:
         """
         try:
             if not self.consolidated_data:
-                logger.error("没有可整合的数据")
+                logger.error("没有可拆分的数据")
                 return False
             
-            logger.info(f"正在创建整合Excel文件: {output_path}")
+            logger.info(f"正在创建处理后的Excel文件: {output_path}")
             
             # 创建Excel写入器
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
@@ -159,11 +159,11 @@ class ExcelConsolidator:
                     summary_df = pd.DataFrame(summary_data)
                     summary_df.to_excel(writer, sheet_name="汇总信息", index=False)
             
-            logger.info(f"整合Excel文件创建成功: {output_path}")
+            logger.info(f"处理后的Excel文件创建成功: {output_path}")
             return True
             
         except Exception as e:
-            logger.error(f"创建整合Excel文件失败: {str(e)}")
+            logger.error(f"创建处理后的Excel文件失败: {str(e)}")
             return False
     
     def _clean_sheet_name(self, name: str) -> str:
@@ -230,19 +230,19 @@ class ExcelConsolidator:
         
         return summary_data
     
-    def get_consolidation_report(self) -> str:
+    def get_process_report(self) -> str:
         """
-        获取整合报告
+        获取处理报告
         
         Returns:
-            整合报告字符串
+            拆分报告字符串
         """
         if not self.consolidated_data:
-            return "没有可整合的数据"
+            return "没有可拆分的数据"
         
         report_lines = []
         report_lines.append("=" * 50)
-        report_lines.append("Excel数据整合报告")
+        report_lines.append("Excel数据处理报告")
         report_lines.append("=" * 50)
         report_lines.append(f"总分组数: {len(self.consolidated_data)}")
         report_lines.append(f"原始列数: {len(self.original_columns)}")
@@ -273,20 +273,20 @@ class ExcelConsolidator:
         """
         try:
             if df.empty:
-                return "整合结果.xlsx"
+                return "处理结果.xlsx"
             
             # 确定分组列
             if group_column is None:
                 group_column = df.columns[0]  # 使用第一列（A列）
             
             if group_column not in df.columns:
-                return "整合结果.xlsx"
+                return "处理结果.xlsx"
             
             # 获取A列的唯一值
             unique_values = df[group_column].unique()
             
             if len(unique_values) == 0:
-                return "整合结果.xlsx"
+                return "处理结果.xlsx"
             
             # 如果只有一个唯一值，使用该值作为文件名
             if len(unique_values) == 1:
@@ -300,7 +300,7 @@ class ExcelConsolidator:
             
             # 确保文件名不为空
             if not filename:
-                filename = "整合结果"
+                filename = "拆分结果"
             
             # 添加扩展名
             if not filename.endswith('.xlsx'):
@@ -311,7 +311,7 @@ class ExcelConsolidator:
             
         except Exception as e:
             logger.error(f"生成文件名失败: {str(e)}")
-            return "整合结果.xlsx"
+            return "处理结果.xlsx"
     
     def _clean_filename(self, filename: str) -> str:
         """
@@ -367,14 +367,14 @@ class ExcelConsolidator:
             # 读取Excel文件
             df = self.read_excel_file(input_path)
             
-            # 整合数据
-            self.consolidate_by_column_a(df, group_column)
+            # 处理数据
+            self.process_by_column_a(df, group_column)
             
             if separate_files:
                 # 为每个分组创建单独的Excel文件
                 return self._create_separate_files(output_folder, skip_duplicates, include_summary, sheet_prefix)
             else:
-                # 创建单个整合的Excel文件（原有逻辑）
+                # 创建单个拆分的Excel文件（原有逻辑）
                 return self._create_single_file(output_folder, output_filename, skip_duplicates, include_summary, sheet_prefix, auto_filename_from_column)
             
         except Exception as e:
@@ -486,7 +486,7 @@ class ExcelConsolidator:
                            skip_duplicates: bool, include_summary: bool, 
                            sheet_prefix: str, auto_filename_from_column: bool) -> bool:
         """
-        创建单个整合的Excel文件（原有逻辑）
+        创建单个拆分的Excel文件（原有逻辑）
         
         Args:
             output_folder: 输出文件夹路径
@@ -509,10 +509,10 @@ class ExcelConsolidator:
                     if not output_filename.endswith('.xlsx'):
                         output_filename += '.xlsx'
                 else:
-                    output_filename = "整合结果.xlsx"
+                    output_filename = "处理结果.xlsx"
             
             if output_filename is None:
-                output_filename = "整合结果.xlsx"
+                output_filename = "处理结果.xlsx"
             
             # 构建完整的输出文件路径
             output_path = os.path.join(output_folder, output_filename)
@@ -523,12 +523,12 @@ class ExcelConsolidator:
                 print(f"[跳过] 文件已存在: {output_path}")
                 return True
             
-            # 创建整合后的Excel文件
-            success = self.create_consolidated_excel(output_path, include_summary, sheet_prefix)
+            # 创建处理后的Excel文件
+            success = self.create_processed_excel(output_path, include_summary, sheet_prefix)
             
             if success:
                 logger.info("文件处理完成")
-                print(self.get_consolidation_report())
+                print(self.get_process_report())
             
             return success
             
@@ -541,7 +541,7 @@ def main():
     """主函数 - 命令行使用示例"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Excel数据整合工具")
+    parser = argparse.ArgumentParser(description="Excel数据处理工具")
     parser.add_argument("input_file", help="输入Excel文件路径")
     parser.add_argument("output_folder", help="输出文件夹路径")
     parser.add_argument("--output-filename", help="输出文件名（留空则使用A列内容自动生成）")
@@ -550,15 +550,15 @@ def main():
     parser.add_argument("--sheet-prefix", default="", help="工作表名称前缀")
     parser.add_argument("--no-auto-filename", action="store_true", help="不使用A列内容自动生成文件名")
     parser.add_argument("--no-skip-duplicates", action="store_true", help="不跳过重复文件")
-    parser.add_argument("--single-file", action="store_true", help="创建单个整合文件（默认创建多个单独文件）")
+    parser.add_argument("--single-file", action="store_true", help="创建单个拆分文件（默认创建多个单独文件）")
     
     args = parser.parse_args()
     
-    # 创建整合器实例
-    consolidator = ExcelConsolidator()
+    # 创建数据处理器实例
+    processor = ExcelDataProcessor()
     
     # 处理文件
-    success = consolidator.process_file(
+    success = processor.process_file(
         input_path=args.input_file,
         output_folder=args.output_folder,
         output_filename=args.output_filename,

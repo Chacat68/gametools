@@ -18,7 +18,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from core.localization_checker import LocalizationChecker
 from tools.json_format_detector.json_format_detector import JSONFormatDetector
-from tools.excel_consolidator import ExcelConsolidator
+from tools.excel_data_processor import ExcelDataProcessor
 
 
 class GameToolsUnified:
@@ -45,7 +45,7 @@ class GameToolsUnified:
         # 初始化检测器
         self.localization_checker = LocalizationChecker()
         self.json_detector = JSONFormatDetector()
-        self.excel_consolidator = ExcelConsolidator()
+        self.excel_processor = ExcelDataProcessor()
         
         # 扫描状态
         self.is_scanning = False
@@ -87,7 +87,7 @@ class GameToolsUnified:
         # 创建各个功能页签
         self.create_localization_tab()
         self.create_json_detector_tab()
-        self.create_excel_consolidator_tab()
+        self.create_excel_data_processor_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -227,18 +227,18 @@ class GameToolsUnified:
                                                          height=15)
         self.json_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
-    def create_excel_consolidator_tab(self):
-        """创建Excel数据整合工具页签"""
-        # Excel整合工具框架
+    def create_excel_data_processor_tab(self):
+        """创建Excel数据处理工具页签"""
+        # Excel数据处理工具框架
         excel_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(excel_frame, text="Excel数据整合工具")
+        self.notebook.add(excel_frame, text="Excel数据处理工具")
         
         # 配置网格
         excel_frame.columnconfigure(1, weight=1)
         excel_frame.rowconfigure(4, weight=1)
         
         # 标题
-        title_label = ttk.Label(excel_frame, text="Excel数据整合工具", 
+        title_label = ttk.Label(excel_frame, text="Excel数据处理工具", 
                                style='Heading.TLabel')
         title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
         
@@ -342,7 +342,7 @@ gametools - 游戏工具集
 功能模块:
 • 策划本地化工具 - 检测表格文件中的越南文内容
 • JSON格式检测工具 - 检测JSON文件中text字段的格式一致性
-• Excel数据整合工具 - 根据A列内容对Excel数据进行分组和整合
+• Excel数据处理工具 - 根据A列内容对Excel数据进行分组和处理
 
 主要特性:
 • 支持多种文件格式 (Excel, CSV, JSON)
@@ -563,7 +563,7 @@ gametools - 游戏工具集
             except Exception as e:
                 messagebox.showerror("错误", f"保存失败: {str(e)}")
     
-    # Excel数据整合工具相关方法
+    # Excel数据处理工具相关方法
     def browse_excel_input_file(self):
         """浏览Excel输入文件"""
         file_path = filedialog.askopenfilename(
@@ -645,8 +645,8 @@ gametools - 游戏工具集
             include_summary = self.excel_include_summary_var.get()
             sheet_prefix = self.excel_sheet_prefix_var.get().strip()
             
-            # 执行整合
-            success = self.excel_consolidator.process_file(
+            # 执行处理
+            success = self.excel_processor.process_file(
                 input_path=input_file,
                 output_folder=os.path.dirname(output_file),
                 output_filename=os.path.basename(output_file),
@@ -667,23 +667,23 @@ gametools - 游戏工具集
     
     def _show_excel_success_result(self):
         """显示Excel整合成功结果"""
-        report = self.excel_consolidator.get_consolidation_report()
+        report = self.excel_processor.get_process_report()
         self.excel_result_text.insert(tk.END, report)
-        self.excel_result_text.insert(tk.END, "\n\n✅ Excel数据整合完成！")
+        self.excel_result_text.insert(tk.END, "\n\n✅ Excel数据处理完成！")
         
         self.excel_process_button.config(state="normal")
         self.excel_preview_button.config(state="normal")
-        self.status_var.set("Excel整合完成")
+        self.status_var.set("Excel处理完成")
         
-        messagebox.showinfo("成功", "Excel数据整合完成！")
+        messagebox.showinfo("成功", "Excel数据处理完成！")
     
     def _show_excel_error_result(self, error_msg):
-        """显示Excel整合错误结果"""
+        """显示Excel处理错误结果"""
         self.excel_result_text.insert(tk.END, f"❌ {error_msg}\n")
         
         self.excel_process_button.config(state="normal")
         self.excel_preview_button.config(state="normal")
-        self.status_var.set("Excel整合失败")
+        self.status_var.set("Excel处理失败")
         
         messagebox.showerror("错误", error_msg)
     
@@ -701,7 +701,7 @@ gametools - 游戏工具集
         
         try:
             # 读取文件
-            df = self.excel_consolidator.read_excel_file(input_file)
+            df = self.excel_processor.read_excel_file(input_file)
             
             # 显示预览信息
             preview_text = f"文件预览: {os.path.basename(input_file)}\n"
