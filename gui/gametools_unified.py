@@ -19,6 +19,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 from core.localization_checker import LocalizationChecker
 from tools.json_format_detector.json_format_detector import JSONFormatDetector
 from tools.excel_data_processor import ExcelDataProcessor
+from tools.excel_text_extractor import ExcelTextExtractor
+from version import get_version, format_version_string, get_description, get_latest_changes
 
 
 class GameToolsUnified:
@@ -26,7 +28,7 @@ class GameToolsUnified:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("gametools - 游戏工具集")
+        self.root.title(f"gametools - 游戏工具集 v{get_version()}")
         self.root.geometry("1000x700")
         self.root.minsize(800, 600)
         
@@ -46,6 +48,7 @@ class GameToolsUnified:
         self.localization_checker = LocalizationChecker()
         self.json_detector = JSONFormatDetector()
         self.excel_processor = ExcelDataProcessor()
+        self.text_extractor = ExcelTextExtractor()
         
         # 扫描状态
         self.is_scanning = False
@@ -66,316 +69,560 @@ class GameToolsUnified:
     def create_widgets(self):
         """创建界面控件"""
         # 主框架
-        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame = ttk.Frame(self.root, padding="15")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 配置网格权重
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(2, weight=1)
+        main_frame.rowconfigure(1, weight=1)
         
-        # 标题
-        title_label = ttk.Label(main_frame, text="gametools - 游戏工具集", 
-                               style='Title.TLabel')
-        title_label.grid(row=0, column=0, pady=(0, 20))
+        # 标题区域（隐藏）
+        # title_frame = ttk.Frame(main_frame)
+        # title_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        # title_frame.columnconfigure(0, weight=1)
+        
+        # # 主标题
+        # title_label = ttk.Label(title_frame, text="gametools - 游戏工具集", 
+        #                        style='Title.TLabel')
+        # title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        # # 副标题
+        # subtitle_label = ttk.Label(title_frame, text="集成策划本地化、JSON检测、Excel处理、翻译提取等功能", 
+        #                           style='Info.TLabel')
+        # subtitle_label.grid(row=1, column=0)
         
         # 创建笔记本控件（页签）
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         
         # 创建各个功能页签
         self.create_localization_tab()
         self.create_json_detector_tab()
         self.create_excel_data_processor_tab()
+        self.create_excel_text_extractor_tab()
         self.create_about_tab()
         
         # 状态栏
         self.status_var = tk.StringVar(value="就绪")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
-                              relief=tk.SUNKEN, anchor=tk.W)
-        status_bar.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+                              relief=tk.SUNKEN, anchor=tk.W, padding="5")
+        status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
     
     def create_localization_tab(self):
         """创建策划本地化工具页签"""
         # 本地化工具框架
-        loc_frame = ttk.Frame(self.notebook, padding="10")
+        loc_frame = ttk.Frame(self.notebook, padding="15")
         self.notebook.add(loc_frame, text="策划本地化工具")
         
         # 配置网格
-        loc_frame.columnconfigure(1, weight=1)
-        loc_frame.rowconfigure(3, weight=1)
+        loc_frame.columnconfigure(0, weight=1)
+        loc_frame.rowconfigure(2, weight=1)
         
-        # 标题
-        title_label = ttk.Label(loc_frame, text="越南文表格检测器", 
+        # 标题和描述
+        header_frame = ttk.Frame(loc_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="越南文表格检测器", 
                                style='Heading.TLabel')
-        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        title_label.grid(row=0, column=0, pady=(0, 5))
         
-        # 功能选择框架
-        func_frame = ttk.LabelFrame(loc_frame, text="功能选择", padding="10")
-        func_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
-        func_frame.columnconfigure(1, weight=1)
+        desc_label = ttk.Label(header_frame, text="检测Excel和CSV表格文件中的越南文内容，支持批量扫描", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
         
-        # 批量扫描
-        ttk.Label(func_frame, text="批量扫描:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        # 左侧控制面板
+        control_frame = ttk.Frame(loc_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件选择", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.columnconfigure(1, weight=1)
+        
+        # 目录选择
+        ttk.Label(file_frame, text="扫描目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
         self.loc_directory_var = tk.StringVar()
-        self.loc_directory_entry = ttk.Entry(func_frame, textvariable=self.loc_directory_var, width=50)
-        self.loc_directory_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.loc_directory_entry = ttk.Entry(file_frame, textvariable=self.loc_directory_var, 
+                                           font=("Microsoft YaHei", 9))
+        self.loc_directory_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
         
-        self.loc_browse_button = ttk.Button(func_frame, text="浏览", 
+        self.loc_browse_button = ttk.Button(file_frame, text="浏览目录", 
                                            command=self.browse_localization_directory)
-        self.loc_browse_button.grid(row=0, column=2)
+        self.loc_browse_button.grid(row=0, column=2, pady=(0, 5))
         
-        # 递归扫描选项
+        # 选项设置
+        options_frame = ttk.LabelFrame(control_frame, text="扫描选项", padding="12")
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
         self.loc_recursive_var = tk.BooleanVar(value=True)
-        self.loc_recursive_check = ttk.Checkbutton(func_frame, text="递归扫描子目录", 
+        self.loc_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
                                                   variable=self.loc_recursive_var)
-        self.loc_recursive_check.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        self.loc_recursive_check.grid(row=0, column=0, sticky=tk.W)
         
-        # 控制按钮
-        button_frame = ttk.Frame(loc_frame)
-        button_frame.grid(row=2, column=0, columnspan=3, pady=(0, 10))
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
         
-        self.loc_scan_button = ttk.Button(button_frame, text="开始扫描", 
+        # 主要操作按钮
+        self.loc_scan_button = ttk.Button(button_frame, text="🔍 开始扫描", 
                                          command=self.start_localization_scan, 
                                          style='Accent.TButton')
-        self.loc_scan_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.loc_scan_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.loc_clear_button = ttk.Button(button_frame, text="清空结果", 
+        # 辅助操作按钮
+        self.loc_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
                                           command=self.clear_localization_results)
-        self.loc_clear_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.loc_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.loc_demo_button = ttk.Button(button_frame, text="创建演示文件", 
+        self.loc_demo_button = ttk.Button(button_frame, text="📁 创建演示文件", 
                                          command=self.create_demo_files)
         self.loc_demo_button.pack(side=tk.LEFT)
         
         # 结果显示区域
         result_frame = ttk.LabelFrame(loc_frame, text="扫描结果", padding="10")
-        result_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)
         
         self.loc_result_text = scrolledtext.ScrolledText(result_frame, 
                                                         wrap=tk.WORD, 
-                                                        font=("Consolas", 10),
-                                                        height=15)
+                                                        font=("Consolas", 9),
+                                                        height=12)
         self.loc_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_json_detector_tab(self):
         """创建JSON格式检测工具页签"""
         # JSON检测工具框架
-        json_frame = ttk.Frame(self.notebook, padding="10")
+        json_frame = ttk.Frame(self.notebook, padding="15")
         self.notebook.add(json_frame, text="JSON格式检测工具")
         
         # 配置网格
-        json_frame.columnconfigure(1, weight=1)
-        json_frame.rowconfigure(3, weight=1)
+        json_frame.columnconfigure(0, weight=1)
+        json_frame.rowconfigure(2, weight=1)
         
-        # 标题
-        title_label = ttk.Label(json_frame, text="JSON格式一致性检测器", 
+        # 标题和描述
+        header_frame = ttk.Frame(json_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="JSON格式一致性检测器", 
                                style='Heading.TLabel')
-        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        title_label.grid(row=0, column=0, pady=(0, 5))
         
-        # 文件选择框架
-        file_frame = ttk.LabelFrame(json_frame, text="文件选择", padding="10")
-        file_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        desc_label = ttk.Label(header_frame, text="检测JSON文件中指定字段的格式一致性，支持多种格式类型", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(json_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件选择", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         file_frame.columnconfigure(1, weight=1)
         
         # JSON文件路径
-        ttk.Label(file_frame, text="JSON文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(file_frame, text="JSON文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
         self.json_file_var = tk.StringVar()
-        self.json_file_entry = ttk.Entry(file_frame, textvariable=self.json_file_var, width=50)
-        self.json_file_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.json_file_entry = ttk.Entry(file_frame, textvariable=self.json_file_var, 
+                                       font=("Microsoft YaHei", 9))
+        self.json_file_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
         
-        self.json_browse_button = ttk.Button(file_frame, text="浏览", 
+        self.json_browse_button = ttk.Button(file_frame, text="浏览文件", 
                                             command=self.browse_json_file)
-        self.json_browse_button.grid(row=0, column=2)
+        self.json_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 检测设置区域
+        settings_frame = ttk.LabelFrame(control_frame, text="检测设置", padding="12")
+        settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        settings_frame.columnconfigure(1, weight=1)
         
         # 字段名设置
-        ttk.Label(file_frame, text="检测字段:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        ttk.Label(settings_frame, text="检测字段:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
         self.json_field_var = tk.StringVar(value="text")
-        self.json_field_entry = ttk.Entry(file_frame, textvariable=self.json_field_var, width=20)
-        self.json_field_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        self.json_field_entry = ttk.Entry(settings_frame, textvariable=self.json_field_var, 
+                                        width=20, font=("Microsoft YaHei", 9))
+        self.json_field_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
         
-        # 控制按钮
-        button_frame = ttk.Frame(json_frame)
-        button_frame.grid(row=2, column=0, columnspan=3, pady=(0, 10))
+        ttk.Label(settings_frame, text="(默认检测text字段)", style='Info.TLabel').grid(row=0, column=2, sticky=tk.W)
         
-        self.json_detect_button = ttk.Button(button_frame, text="开始检测", 
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        
+        # 主要操作按钮
+        self.json_detect_button = ttk.Button(button_frame, text="🔍 开始检测", 
                                             command=self.start_json_detection, 
                                             style='Accent.TButton')
-        self.json_detect_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.json_detect_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.json_clear_button = ttk.Button(button_frame, text="清空结果", 
+        # 辅助操作按钮
+        self.json_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
                                            command=self.clear_json_results)
-        self.json_clear_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.json_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.json_save_button = ttk.Button(button_frame, text="保存报告", 
+        self.json_save_button = ttk.Button(button_frame, text="💾 保存报告", 
                                           command=self.save_json_report, 
                                           state="disabled")
         self.json_save_button.pack(side=tk.LEFT)
         
         # 结果显示区域
         result_frame = ttk.LabelFrame(json_frame, text="检测结果", padding="10")
-        result_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)
         
         self.json_result_text = scrolledtext.ScrolledText(result_frame, 
                                                          wrap=tk.WORD, 
-                                                         font=("Consolas", 10),
-                                                         height=15)
+                                                         font=("Consolas", 9),
+                                                         height=12)
         self.json_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_excel_data_processor_tab(self):
         """创建Excel数据处理工具页签"""
         # Excel数据处理工具框架
-        excel_frame = ttk.Frame(self.notebook, padding="10")
+        excel_frame = ttk.Frame(self.notebook, padding="15")
         self.notebook.add(excel_frame, text="Excel数据处理工具")
         
         # 配置网格
-        excel_frame.columnconfigure(1, weight=1)
-        excel_frame.rowconfigure(4, weight=1)
+        excel_frame.columnconfigure(0, weight=1)
+        excel_frame.rowconfigure(2, weight=1)
         
-        # 标题
-        title_label = ttk.Label(excel_frame, text="Excel数据处理工具", 
+        # 标题和描述
+        header_frame = ttk.Frame(excel_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="Excel数据处理工具", 
                                style='Heading.TLabel')
-        title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
+        title_label.grid(row=0, column=0, pady=(0, 5))
         
-        # 文件选择框架
-        file_frame = ttk.LabelFrame(excel_frame, text="文件选择", padding="10")
-        file_frame.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        desc_label = ttk.Label(header_frame, text="根据指定列对Excel数据进行分组处理，支持多工作表输出", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(excel_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件选择", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         file_frame.columnconfigure(1, weight=1)
         
         # 输入文件
-        ttk.Label(file_frame, text="输入文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(file_frame, text="输入文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
         self.excel_input_var = tk.StringVar()
-        self.excel_input_entry = ttk.Entry(file_frame, textvariable=self.excel_input_var, width=50)
-        self.excel_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.excel_input_entry = ttk.Entry(file_frame, textvariable=self.excel_input_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.excel_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
         
-        self.excel_input_browse_button = ttk.Button(file_frame, text="浏览", 
+        self.excel_input_browse_button = ttk.Button(file_frame, text="浏览文件", 
                                                     command=self.browse_excel_input_file)
-        self.excel_input_browse_button.grid(row=0, column=2)
+        self.excel_input_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 输出设置
+        output_frame = ttk.LabelFrame(control_frame, text="输出设置", padding="12")
+        output_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        output_frame.columnconfigure(1, weight=1)
         
         # 输出文件夹
-        ttk.Label(file_frame, text="输出文件夹:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        ttk.Label(output_frame, text="输出文件夹:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
         self.excel_output_folder_var = tk.StringVar()
-        self.excel_output_folder_entry = ttk.Entry(file_frame, textvariable=self.excel_output_folder_var, width=50)
-        self.excel_output_folder_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(10, 0))
+        self.excel_output_folder_entry = ttk.Entry(output_frame, textvariable=self.excel_output_folder_var, 
+                                                 font=("Microsoft YaHei", 9))
+        self.excel_output_folder_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
         
-        self.excel_output_browse_button = ttk.Button(file_frame, text="浏览", 
+        self.excel_output_browse_button = ttk.Button(output_frame, text="浏览文件夹", 
                                                      command=self.browse_excel_output_folder)
-        self.excel_output_browse_button.grid(row=1, column=2, pady=(10, 0))
+        self.excel_output_browse_button.grid(row=0, column=2, pady=(0, 5))
         
         # 输出文件名
-        ttk.Label(file_frame, text="输出文件名:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        ttk.Label(output_frame, text="输出文件名:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
         self.excel_output_filename_var = tk.StringVar(value="整合结果.xlsx")
-        self.excel_output_filename_entry = ttk.Entry(file_frame, textvariable=self.excel_output_filename_var, width=30)
-        self.excel_output_filename_entry.grid(row=2, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        self.excel_output_filename_entry = ttk.Entry(output_frame, textvariable=self.excel_output_filename_var, 
+                                                   width=25, font=("Microsoft YaHei", 9))
+        self.excel_output_filename_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(5, 0))
         
-        # 选项设置框架
-        options_frame = ttk.LabelFrame(excel_frame, text="选项设置", padding="10")
-        options_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+        # 处理选项区域
+        options_frame = ttk.LabelFrame(control_frame, text="处理选项", padding="12")
+        options_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         options_frame.columnconfigure(1, weight=1)
         
         # 分组列设置
         ttk.Label(options_frame, text="分组列:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
         self.excel_group_column_var = tk.StringVar()
-        self.excel_group_column_entry = ttk.Entry(options_frame, textvariable=self.excel_group_column_var, width=20)
+        self.excel_group_column_entry = ttk.Entry(options_frame, textvariable=self.excel_group_column_var, 
+                                                width=15, font=("Microsoft YaHei", 9))
         self.excel_group_column_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
         ttk.Label(options_frame, text="(留空使用第一列)", style='Info.TLabel').grid(row=0, column=2, sticky=tk.W)
         
         # 工作表前缀
-        ttk.Label(options_frame, text="工作表前缀:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        ttk.Label(options_frame, text="工作表前缀:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
         self.excel_sheet_prefix_var = tk.StringVar()
-        self.excel_sheet_prefix_entry = ttk.Entry(options_frame, textvariable=self.excel_sheet_prefix_var, width=20)
-        self.excel_sheet_prefix_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(10, 0))
+        self.excel_sheet_prefix_entry = ttk.Entry(options_frame, textvariable=self.excel_sheet_prefix_var, 
+                                                width=15, font=("Microsoft YaHei", 9))
+        self.excel_sheet_prefix_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(5, 0))
         
         # 包含汇总信息选项
         self.excel_include_summary_var = tk.BooleanVar(value=True)
         self.excel_include_summary_check = ttk.Checkbutton(options_frame, text="包含汇总信息工作表", 
                                                           variable=self.excel_include_summary_var)
-        self.excel_include_summary_check.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        self.excel_include_summary_check.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
         
-        # 控制按钮框架
-        button_frame = ttk.Frame(excel_frame)
-        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
         
-        self.excel_process_button = ttk.Button(button_frame, text="开始整合", 
+        # 主要操作按钮
+        self.excel_process_button = ttk.Button(button_frame, text="⚙️ 开始整合", 
                                                command=self.start_excel_consolidation, 
                                                style='Accent.TButton')
-        self.excel_process_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.excel_process_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.excel_clear_button = ttk.Button(button_frame, text="清空结果", 
+        # 辅助操作按钮
+        self.excel_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
                                              command=self.clear_excel_results)
-        self.excel_clear_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.excel_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.excel_preview_button = ttk.Button(button_frame, text="预览数据", 
+        self.excel_preview_button = ttk.Button(button_frame, text="👁️ 预览数据", 
                                                command=self.preview_excel_data,
                                                state="disabled")
         self.excel_preview_button.pack(side=tk.LEFT)
         
         # 结果显示区域
         result_frame = ttk.LabelFrame(excel_frame, text="处理结果", padding="10")
-        result_frame.grid(row=5, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(0, weight=1)
         
         self.excel_result_text = scrolledtext.ScrolledText(result_frame, 
                                                           wrap=tk.WORD, 
-                                                          font=("Consolas", 10),
-                                                          height=15)
+                                                          font=("Consolas", 9),
+                                                          height=12)
         self.excel_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
+    def create_excel_text_extractor_tab(self):
+        """创建Excel文本提取器页签"""
+        # Excel文本提取器框架
+        extractor_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(extractor_frame, text="翻译提取")
+        
+        # 配置网格
+        extractor_frame.columnconfigure(0, weight=1)
+        extractor_frame.rowconfigure(2, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(extractor_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="翻译提取工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, text="批量提取Excel文件中的文本内容，支持智能文本识别和分类", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(extractor_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 目录选择区域
+        dir_frame = ttk.LabelFrame(control_frame, text="目录选择", padding="12")
+        dir_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        dir_frame.columnconfigure(1, weight=1)
+        
+        # 输入目录
+        ttk.Label(dir_frame, text="输入目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.extractor_input_var = tk.StringVar()
+        self.extractor_input_entry = ttk.Entry(dir_frame, textvariable=self.extractor_input_var, 
+                                             font=("Microsoft YaHei", 9))
+        self.extractor_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.extractor_input_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                                       command=self.browse_extractor_input_directory)
+        self.extractor_input_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 输出目录
+        ttk.Label(dir_frame, text="输出目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
+        self.extractor_output_var = tk.StringVar()
+        self.extractor_output_entry = ttk.Entry(dir_frame, textvariable=self.extractor_output_var, 
+                                              font=("Microsoft YaHei", 9))
+        self.extractor_output_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(5, 0))
+        
+        self.extractor_output_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                                        command=self.browse_extractor_output_directory)
+        self.extractor_output_browse_button.grid(row=1, column=2, pady=(5, 0))
+        
+        # 提取选项区域
+        options_frame = ttk.LabelFrame(control_frame, text="提取选项", padding="12")
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        options_frame.columnconfigure(1, weight=1)
+        
+        # 递归扫描选项
+        self.extractor_recursive_var = tk.BooleanVar(value=True)
+        self.extractor_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
+                                                         variable=self.extractor_recursive_var)
+        self.extractor_recursive_check.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
+        
+        # 文本类型过滤
+        ttk.Label(options_frame, text="文本类型:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        self.extractor_text_type_var = tk.StringVar(value="全部")
+        text_type_combo = ttk.Combobox(options_frame, textvariable=self.extractor_text_type_var, 
+                                      values=["全部", "中文", "英文", "中英混合"], state="readonly", 
+                                      width=15, font=("Microsoft YaHei", 9))
+        text_type_combo.grid(row=1, column=1, sticky=tk.W, padx=(0, 10))
+        
+        ttk.Label(options_frame, text="(选择要提取的文本类型)", style='Info.TLabel').grid(row=1, column=2, sticky=tk.W)
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        
+        # 主要操作按钮
+        self.extractor_process_button = ttk.Button(button_frame, text="📄 开始提取", 
+                                                   command=self.start_text_extraction, 
+                                                   style='Accent.TButton')
+        self.extractor_process_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 辅助操作按钮
+        self.extractor_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                                command=self.clear_extractor_results)
+        self.extractor_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.extractor_preview_button = ttk.Button(button_frame, text="👁️ 预览文件", 
+                                                  command=self.preview_extractor_files,
+                                                  state="disabled")
+        self.extractor_preview_button.pack(side=tk.LEFT)
+        
+        # 结果显示区域
+        result_frame = ttk.LabelFrame(extractor_frame, text="提取结果", padding="10")
+        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.columnconfigure(0, weight=1)
+        result_frame.rowconfigure(0, weight=1)
+        
+        self.extractor_result_text = scrolledtext.ScrolledText(result_frame, 
+                                                              wrap=tk.WORD, 
+                                                              font=("Consolas", 9),
+                                                              height=12)
+        self.extractor_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_about_tab(self):
         """创建关于页签"""
         about_frame = ttk.Frame(self.notebook, padding="20")
         self.notebook.add(about_frame, text="关于")
         
-        # 关于信息
-        about_text = """
-gametools - 游戏工具集
+        # 配置网格
+        about_frame.columnconfigure(0, weight=1)
+        about_frame.rowconfigure(1, weight=1)
+        
+        # 标题区域
+        title_frame = ttk.Frame(about_frame)
+        title_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        title_frame.columnconfigure(0, weight=1)
+        
+        # 主标题
+        title_label = ttk.Label(title_frame, text="gametools - 游戏工具集", 
+                               style='Title.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 10))
+        
+        # 版本信息
+        version_label = ttk.Label(title_frame, text=format_version_string(), 
+                                 style='Info.TLabel')
+        version_label.grid(row=1, column=0, pady=(0, 20))
+        
+        # 内容区域
+        content_frame = ttk.Frame(about_frame)
+        content_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        content_frame.columnconfigure(0, weight=1)
+        content_frame.columnconfigure(1, weight=1)
+        
+        # 左侧：功能模块
+        left_frame = ttk.LabelFrame(content_frame, text="功能模块", padding="15")
+        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        
+        features_text = f"""🔍 策划本地化工具
+   检测表格文件中的越南文内容
 
-版本: v1.3.0
-开发日期: 2024年
+📊 JSON格式检测工具  
+   检测JSON文件中text字段的格式一致性
 
-功能模块:
-• 策划本地化工具 - 检测表格文件中的越南文内容
-• JSON格式检测工具 - 检测JSON文件中text字段的格式一致性
-• Excel数据处理工具 - 根据A列内容对Excel数据进行分组和处理
+📈 Excel数据处理工具
+   根据指定列对Excel数据进行分组和处理
 
-主要特性:
-• 支持多种文件格式 (Excel, CSV, JSON)
-• 图形化界面，操作简单
-• 多线程处理，界面响应流畅
-• 支持exe文件打包和分发
+📄 翻译提取工具
+   批量提取Excel文件中的文本内容
 
-技术栈:
+📋 版本信息
+   当前版本: v{get_version()}
+   项目描述: {get_description()}"""
+        
+        features_label = ttk.Label(left_frame, text=features_text, 
+                                  font=("Microsoft YaHei", 10), 
+                                  justify=tk.LEFT)
+        features_label.pack(anchor=tk.W)
+        
+        # 右侧：技术信息
+        right_frame = ttk.LabelFrame(content_frame, text="技术信息", padding="15")
+        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0))
+        
+        # 获取最新更新内容
+        latest_changes = get_latest_changes()
+        changes_text = "\n".join([f"• {change}" for change in latest_changes])
+        
+        tech_text = f"""🛠️ 技术栈:
 • Python 3.7+
 • Tkinter (GUI界面)
 • pandas (数据处理)
 • openpyxl (Excel文件处理)
 
-使用方法:
-1. 选择相应的功能页签
-2. 按照界面提示操作
-3. 查看检测结果
+✨ 主要特性:
+• 支持多种文件格式
+• 图形化界面，操作简单
+• 多线程处理，界面响应流畅
+• 支持exe文件打包和分发
 
-注意事项:
+🆕 最新更新 (v{get_version()}):
+{changes_text}
+
+⚠️ 注意事项:
 • 确保文件格式正确
 • 大文件处理可能需要较长时间
-• 建议在检测前备份重要文件
-
-技术支持:
-如有问题或建议，请联系开发团队。
-
-版权所有 © 2024 gametools
-        """
+• 建议在检测前备份重要文件"""
         
-        about_label = ttk.Label(about_frame, text=about_text, 
+        tech_label = ttk.Label(right_frame, text=tech_text, 
+                              font=("Microsoft YaHei", 10), 
+                              justify=tk.LEFT)
+        tech_label.pack(anchor=tk.W)
+        
+        # 底部信息
+        bottom_frame = ttk.Frame(about_frame)
+        bottom_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(20, 0))
+        bottom_frame.columnconfigure(0, weight=1)
+        
+        # 使用方法
+        usage_text = "📖 使用方法: 选择相应的功能页签 → 按照界面提示操作 → 查看检测结果"
+        usage_label = ttk.Label(bottom_frame, text=usage_text, 
                                font=("Microsoft YaHei", 10), 
-                               justify=tk.LEFT)
-        about_label.pack(anchor=tk.W)
+                               style='Info.TLabel')
+        usage_label.grid(row=0, column=0, pady=(0, 10))
+        
+        # 版权信息
+        copyright_text = "💬 技术支持: 如有问题或建议，请联系开发团队\n© 2024 gametools - 版权所有"
+        copyright_label = ttk.Label(bottom_frame, text=copyright_text, 
+                                   font=("Microsoft YaHei", 9), 
+                                   style='Info.TLabel')
+        copyright_label.grid(row=1, column=0)
     
     # 策划本地化工具相关方法
     def browse_localization_directory(self):
@@ -733,6 +980,139 @@ gametools - 游戏工具集
     def clear_excel_results(self):
         """清空Excel整合结果"""
         self.excel_result_text.delete(1.0, tk.END)
+    
+    # Excel文本提取器相关方法
+    def browse_extractor_input_directory(self):
+        """浏览文本提取器输入目录"""
+        directory = filedialog.askdirectory(title="选择包含Excel文件的目录")
+        if directory:
+            self.extractor_input_var.set(directory)
+            # 自动设置输出目录为输入目录
+            if not self.extractor_output_var.get():
+                self.extractor_output_var.set(directory)
+    
+    def browse_extractor_output_directory(self):
+        """浏览文本提取器输出目录"""
+        directory = filedialog.askdirectory(title="选择输出目录")
+        if directory:
+            self.extractor_output_var.set(directory)
+    
+    def start_text_extraction(self):
+        """开始文本提取"""
+        input_dir = self.extractor_input_var.get().strip()
+        output_dir = self.extractor_output_var.get().strip()
+        
+        if not input_dir:
+            messagebox.showerror("错误", "请选择输入目录")
+            return
+        
+        if not os.path.exists(input_dir):
+            messagebox.showerror("错误", "输入目录不存在")
+            return
+        
+        # 设置输出目录
+        if not output_dir:
+            output_dir = input_dir
+        
+        # 在新线程中执行提取
+        self.extractor_process_button.config(state="disabled")
+        self.status_var.set("正在提取文本...")
+        
+        thread = threading.Thread(target=self._text_extraction, 
+                                 args=(input_dir, output_dir))
+        thread.daemon = True
+        thread.start()
+    
+    def _text_extraction(self, input_dir, output_dir):
+        """文本提取（后台线程）"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_extractor_results)
+            
+            # 开始提取
+            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                f"开始扫描目录: {input_dir}\n"))
+            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                f"输出目录: {output_dir}\n"))
+            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                "支持的格式: .xlsx, .xls\n"))
+            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                "-" * 50 + "\n"))
+            
+            # 执行提取
+            success = self.text_extractor.process_directory(input_dir, output_dir)
+            
+            # 显示结果
+            if success:
+                self.root.after(0, self._show_extractor_success_result)
+            else:
+                self.root.after(0, self._show_extractor_error_result, "提取失败")
+            
+        except Exception as e:
+            error_msg = f"提取过程中发生错误: {str(e)}"
+            self.root.after(0, self._show_extractor_error_result, error_msg)
+    
+    def _show_extractor_success_result(self):
+        """显示文本提取成功结果"""
+        report = self.text_extractor.get_processing_report()
+        self.extractor_result_text.insert(tk.END, report)
+        self.extractor_result_text.insert(tk.END, "\n\n✅ Excel文本提取完成！")
+        
+        self.extractor_process_button.config(state="normal")
+        self.extractor_preview_button.config(state="normal")
+        self.status_var.set("文本提取完成")
+        
+        messagebox.showinfo("成功", "Excel文本提取完成！")
+    
+    def _show_extractor_error_result(self, error_msg):
+        """显示文本提取错误结果"""
+        self.extractor_result_text.insert(tk.END, f"❌ {error_msg}\n")
+        
+        self.extractor_process_button.config(state="normal")
+        self.extractor_preview_button.config(state="normal")
+        self.status_var.set("文本提取失败")
+        
+        messagebox.showerror("错误", error_msg)
+    
+    def preview_extractor_files(self):
+        """预览Excel文件"""
+        input_dir = self.extractor_input_var.get().strip()
+        
+        if not input_dir:
+            messagebox.showerror("错误", "请先选择输入目录")
+            return
+        
+        if not os.path.exists(input_dir):
+            messagebox.showerror("错误", "输入目录不存在")
+            return
+        
+        try:
+            # 扫描Excel文件
+            excel_files = self.text_extractor.scan_directory(input_dir)
+            
+            # 显示预览信息
+            preview_text = f"目录预览: {input_dir}\n"
+            preview_text += f"找到Excel文件: {len(excel_files)} 个\n\n"
+            
+            if excel_files:
+                preview_text += "Excel文件列表:\n"
+                for i, file_path in enumerate(excel_files[:20]):  # 只显示前20个
+                    preview_text += f"{i+1}. {os.path.basename(file_path)}\n"
+                if len(excel_files) > 20:
+                    preview_text += f"... 还有 {len(excel_files) - 20} 个文件\n"
+            else:
+                preview_text += "未找到Excel文件\n"
+            
+            # 清空并显示预览
+            self.extractor_result_text.delete(1.0, tk.END)
+            self.extractor_result_text.insert(1.0, preview_text)
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"预览文件失败: {str(e)}")
+    
+    def clear_extractor_results(self):
+        """清空文本提取结果"""
+        self.extractor_result_text.delete(1.0, tk.END)
 
 
 def main():

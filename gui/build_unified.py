@@ -11,6 +11,10 @@ import subprocess
 import shutil
 from pathlib import Path
 
+# 添加父目录到路径以导入版本信息
+sys.path.append(str(Path(__file__).parent.parent))
+from version import get_version, get_build_date, get_author, get_description
+
 
 def run_command(command, description):
     """运行命令并处理错误"""
@@ -92,6 +96,7 @@ a = Analysis(
     datas=[
         ('../core', 'core'),
         ('../tools/json_format_detector', 'tools/json_format_detector'),
+        ('../tools/excel_text_extractor', 'tools/excel_text_extractor'),
         ('../tools', 'tools'),
         ('../docs', 'docs'),
     ],
@@ -103,6 +108,9 @@ a = Analysis(
         'tkinter.filedialog',
         'tkinter.messagebox',
         'tkinter.scrolledtext',
+        'tools.excel_text_extractor',
+        'tools.excel_data_processor',
+        'core.localization_checker',
     ],
     hookspath=[],
     hooksconfig={},
@@ -204,19 +212,33 @@ def create_portable_package():
     shutil.copy2(exe_path, portable_dir / "gametools.exe")
     
     # 创建说明文件
-    readme_content = """gametools - 游戏工具集 便携版
+    readme_content = f"""gametools - 游戏工具集 便携版
+
+{get_description()}
+
+版本信息:
+- 版本号: v{get_version()}
+- 构建日期: {get_build_date()}
+- 作者: {get_author()}
+- 构建时间: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- Python版本: {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}
+- PyInstaller版本: {__import__('PyInstaller').__version__}
 
 使用说明:
 1. 双击 "gametools.exe" 启动程序
 2. 选择相应的功能页签：
    - 策划本地化工具：检测表格文件中的越南文
    - JSON格式检测工具：检测JSON文件格式一致性
+   - Excel数据处理工具：根据A列内容对Excel数据进行分组和处理
+   - 翻译提取：检测目录中的Excel文件并提取文本内容
 3. 按照界面提示操作
 4. 查看检测结果
 
 功能特点:
 - 策划本地化工具：支持Excel和CSV文件，检测越南文内容
 - JSON格式检测工具：检测JSON文件中text字段的格式一致性
+- Excel数据处理工具：智能分组Excel数据，支持多文件输出
+- 翻译提取：批量提取Excel文件中的文本内容，智能文本识别
 - 图形化界面，操作简单直观
 - 多线程处理，界面响应流畅
 - 支持保存检测报告
@@ -226,20 +248,11 @@ def create_portable_package():
 - 大文件处理可能需要较长时间
 - 建议在检测前备份重要文件
 
-版本信息:
-- 构建时间: {build_time}
-- Python版本: {python_version}
-- PyInstaller版本: {pyinstaller_version}
-
 技术支持:
 如有问题或建议，请联系开发团队。
 
 版权所有 © 2024 gametools
-""".format(
-        build_time=__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-        pyinstaller_version=__import__('PyInstaller').__version__
-    )
+"""
     
     with open(portable_dir / "使用说明.txt", 'w', encoding='utf-8') as f:
         f.write(readme_content)
@@ -251,6 +264,8 @@ def create_portable_package():
 def main():
     """主函数"""
     print("gametools统一版本构建脚本")
+    print(f"版本: v{get_version()}")
+    print(f"构建日期: {get_build_date()}")
     print("="*50)
     
     # 检查当前目录

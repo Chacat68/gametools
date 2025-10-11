@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import pandas as pd
 from core.localization_checker import LocalizationChecker
+from version import get_version, format_version_string, get_description
 
 
 class LocalizationGUI:
@@ -18,7 +19,7 @@ class LocalizationGUI:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("策划本地化工具 - 越南文表格检测器")
+        self.root.title(f"策划本地化工具 - 越南文表格检测器 v{get_version()}")
         self.root.geometry("800x600")
         self.root.resizable(True, True)
         
@@ -56,15 +57,19 @@ class LocalizationGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(1, weight=1)
+        main_frame.rowconfigure(2, weight=1)
         
         # 标题
         title_label = ttk.Label(main_frame, text="策划本地化工具", style='Title.TLabel')
-        title_label.grid(row=0, column=0, pady=(0, 10))
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        # 版本信息
+        version_label = ttk.Label(main_frame, text=format_version_string(), style='Info.TLabel')
+        version_label.grid(row=1, column=0, pady=(0, 10))
         
         # 创建页签控件
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.notebook.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 创建两个页签
         self.create_scan_tab()
