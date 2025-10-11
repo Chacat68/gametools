@@ -80,8 +80,11 @@ description = get_description()
 构建脚本会自动包含版本信息：
 
 - **exe文件**: 标题栏显示版本号
+- **exe文件名**: 自动生成带版本号的文件名（如：`gametools_v1.4.0.exe`）
 - **便携版包**: 使用说明文件包含完整版本信息
+- **便携版包名**: 自动生成带版本号的目录名（如：`gametools_v1.4.0_便携版`）
 - **构建日志**: 显示当前构建的版本号
+- **兼容性**: 同时生成不带版本号的文件，确保向后兼容
 
 ## 更新版本号
 
@@ -132,6 +135,26 @@ python version.py
 # 测试GUI界面版本显示
 python gametool.py
 python gui/gametools_unified.py
+
+# 测试构建脚本（在gui目录中运行）
+cd gui
+python build_unified.py
+```
+
+### 构建输出示例
+
+构建完成后会生成以下文件：
+
+```
+dist/
+├── gametools_v1.4.0.exe          # 主程序（带版本号）
+├── gametools.exe                 # 主程序（兼容性版本）
+├── gametools_v1.4.0_便携版/      # 便携版包（带版本号）
+│   ├── gametools.exe
+│   └── 使用说明.txt
+└── gametools_便携版/             # 便携版包（兼容性版本）
+    ├── gametools.exe
+    └── 使用说明.txt
 ```
 
 ## 注意事项

@@ -170,8 +170,10 @@ def build_exe():
     # 检查构建结果
     exe_path = Path("dist/gametools.exe")
     if exe_path.exists():
-        # 将exe文件复制到项目根目录的dist文件夹
-        target_exe = dist_dir / "gametools.exe"
+        # 生成带版本号的文件名
+        version = get_version()
+        versioned_exe_name = f"gametools_v{version}.exe"
+        target_exe = dist_dir / versioned_exe_name
         
         # 如果目标文件已存在，先删除
         if target_exe.exists():
@@ -185,6 +187,17 @@ def build_exe():
             print(f"\n[SUCCESS] 构建成功!")
             print(f"exe文件位置: {target_exe.absolute()}")
             print(f"文件大小: {target_exe.stat().st_size / 1024 / 1024:.2f} MB")
+            
+            # 同时创建一个不带版本号的副本（用于兼容性）
+            compat_exe = dist_dir / "gametools.exe"
+            if compat_exe.exists():
+                try:
+                    compat_exe.unlink()
+                except:
+                    pass
+            shutil.copy2(exe_path, compat_exe)
+            print(f"兼容性文件: {compat_exe.absolute()}")
+            
             return True
         except Exception as e:
             print(f"[WARNING] 复制文件失败: {e}")
@@ -204,12 +217,19 @@ def create_portable_package():
         print("[ERROR] exe文件不存在，无法创建便携版")
         return False
     
-    # 创建便携版目录
-    portable_dir = Path("../dist/gametools_便携版")
+    # 生成带版本号的便携版目录名
+    version = get_version()
+    portable_dir_name = f"gametools_v{version}_便携版"
+    portable_dir = Path(f"../dist/{portable_dir_name}")
     portable_dir.mkdir(exist_ok=True)
     
     # 复制exe文件
     shutil.copy2(exe_path, portable_dir / "gametools.exe")
+    
+    # 同时创建兼容性版本的便携版包
+    compat_portable_dir = Path("../dist/gametools_便携版")
+    compat_portable_dir.mkdir(exist_ok=True)
+    shutil.copy2(exe_path, compat_portable_dir / "gametools.exe")
     
     # 创建说明文件
     readme_content = f"""gametools - 游戏工具集 便携版
@@ -254,10 +274,16 @@ def create_portable_package():
 版权所有 © 2024 gametools
 """
     
+    # 为两个便携版包都创建说明文件
     with open(portable_dir / "使用说明.txt", 'w', encoding='utf-8') as f:
         f.write(readme_content)
     
-    print(f"[SUCCESS] 便携版包已创建: {portable_dir.absolute()}")
+    with open(compat_portable_dir / "使用说明.txt", 'w', encoding='utf-8') as f:
+        f.write(readme_content)
+    
+    print(f"[SUCCESS] 便携版包已创建:")
+    print(f"  - 带版本号: {portable_dir.absolute()}")
+    print(f"  - 兼容性版本: {compat_portable_dir.absolute()}")
     return True
 
 
@@ -296,11 +322,16 @@ def main():
     print("[SUCCESS] 构建完成!")
     print("="*50)
     print("生成的文件:")
-    print("- dist/gametools.exe (主程序)")
-    print("- dist/gametools_便携版/ (便携版包)")
+    version = get_version()
+    print(f"- dist/gametools_v{version}.exe (主程序 - 带版本号)")
+    print(f"- dist/gametools.exe (主程序 - 兼容性版本)")
+    print(f"- dist/gametools_v{version}_便携版/ (便携版包 - 带版本号)")
+    print(f"- dist/gametools_便携版/ (便携版包 - 兼容性版本)")
     print("\n使用方法:")
-    print("1. 直接运行 dist/gametools.exe")
-    print("2. 或使用便携版包中的程序")
+    print(f"1. 直接运行 dist/gametools_v{version}.exe (推荐)")
+    print("2. 或运行 dist/gametools.exe (兼容性版本)")
+    print(f"3. 或使用便携版包 gametools_v{version}_便携版/ 中的程序")
+    print("4. 或使用便携版包 gametools_便携版/ 中的程序")
     print("\n输出目录: dist/")
     
     return True
