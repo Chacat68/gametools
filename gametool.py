@@ -20,8 +20,8 @@ class LocalizationGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(f"策划本地化工具 - 越南文表格检测器 v{get_version()}")
-        self.root.geometry("1000x750")
-        self.root.minsize(900, 700)
+        self.root.geometry("1000x800")
+        self.root.minsize(900, 750)
         self.root.resizable(True, True)
         
         # 设置窗口图标和样式

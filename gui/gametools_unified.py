@@ -29,8 +29,8 @@ class GameToolsUnified:
     def __init__(self, root):
         self.root = root
         self.root.title(f"gametools - 游戏工具集 v{get_version()}")
-        self.root.geometry("1200x800")
-        self.root.minsize(1000, 700)
+        self.root.geometry("1200x900")
+        self.root.minsize(1000, 800)
         
         # 设置窗口图标
         try:
@@ -69,7 +69,7 @@ class GameToolsUnified:
     def create_widgets(self):
         """创建界面控件"""
         # 主框架
-        main_frame = ttk.Frame(self.root, padding="15")
+        main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 配置网格权重
@@ -95,7 +95,7 @@ class GameToolsUnified:
         
         # 创建笔记本控件（页签）
         self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
         
         # 创建各个功能页签
         self.create_localization_tab()
@@ -107,13 +107,13 @@ class GameToolsUnified:
         # 状态栏
         self.status_var = tk.StringVar(value="就绪")
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
-                              relief=tk.SUNKEN, anchor=tk.W, padding="5")
-        status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
+                              relief=tk.SUNKEN, anchor=tk.W, padding="3")
+        status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(2, 0))
     
     def create_localization_tab(self):
         """创建策划本地化工具页签"""
         # 本地化工具框架
-        loc_frame = ttk.Frame(self.notebook, padding="15")
+        loc_frame = ttk.Frame(self.notebook, padding="10")
         self.notebook.add(loc_frame, text="策划本地化工具")
         
         # 配置网格
@@ -122,7 +122,7 @@ class GameToolsUnified:
         
         # 标题和描述
         header_frame = ttk.Frame(loc_frame)
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         header_frame.columnconfigure(0, weight=1)
         
         title_label = ttk.Label(header_frame, text="越南文表格检测器", 
@@ -135,7 +135,7 @@ class GameToolsUnified:
         
         # 左侧控制面板
         control_frame = ttk.Frame(loc_frame)
-        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         control_frame.columnconfigure(0, weight=1)
         
         # 文件选择区域
