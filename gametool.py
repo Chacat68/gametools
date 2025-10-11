@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-策划本地化工具 - 图形界面版本
+越南文检测 - 图形界面版本
 """
 
 import tkinter as tk
@@ -19,7 +19,7 @@ class LocalizationGUI:
     
     def __init__(self, root):
         self.root = root
-        self.root.title(f"策划本地化工具 - 越南文表格检测器 v{get_version()}")
+        self.root.title(f"越南文检测 - 越南文表格检测器 v{get_version()}")
         self.root.geometry("1000x800")
         self.root.minsize(900, 750)
         self.root.resizable(True, True)
@@ -61,7 +61,7 @@ class LocalizationGUI:
         main_frame.rowconfigure(2, weight=1)
         
         # 标题
-        title_label = ttk.Label(main_frame, text="策划本地化工具", style='Title.TLabel')
+        title_label = ttk.Label(main_frame, text="越南文检测", style='Title.TLabel')
         title_label.grid(row=0, column=0, pady=(0, 5))
         
         # 版本信息

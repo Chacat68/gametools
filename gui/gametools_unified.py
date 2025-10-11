@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 gametools - 统一用户界面
-集成策划本地化工具和JSON格式检测工具
+集成越南文检测和JSON格式检测工具
 """
 
 import tkinter as tk
@@ -111,10 +111,10 @@ class GameToolsUnified:
         status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(2, 0))
     
     def create_localization_tab(self):
-        """创建策划本地化工具页签"""
+        """创建越南文检测页签"""
         # 本地化工具框架
         loc_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(loc_frame, text="策划本地化工具")
+        self.notebook.add(loc_frame, text="越南文检测")
         
         # 配置网格
         loc_frame.columnconfigure(0, weight=1)
@@ -552,7 +552,7 @@ class GameToolsUnified:
         left_frame = ttk.LabelFrame(content_frame, text="功能模块", padding="15")
         left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         
-        features_text = f"""🔍 策划本地化工具
+        features_text = f"""🔍 越南文检测
    检测表格文件中的越南文内容
 
 📊 JSON格式检测工具  
@@ -625,7 +625,7 @@ class GameToolsUnified:
                                    style='Info.TLabel')
         copyright_label.grid(row=1, column=0)
     
-    # 策划本地化工具相关方法
+    # 越南文检测相关方法
     def browse_localization_directory(self):
         """浏览本地化工具目录"""
         directory = filedialog.askdirectory(title="选择要扫描的目录")

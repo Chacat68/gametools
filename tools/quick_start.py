@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-快速启动脚本 - 策划本地化工具
+快速启动脚本 - 越南文检测
 """
 
 import os
@@ -12,7 +12,7 @@ from pathlib import Path
 def main():
     """快速启动主函数"""
     print("=" * 60)
-    print("策划本地化工具 - 越南文表格检测器")
+    print("越南文检测 - 越南文表格检测器")
     print("=" * 60)
     print()
     
