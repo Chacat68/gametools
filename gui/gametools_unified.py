@@ -29,8 +29,8 @@ class GameToolsUnified:
     def __init__(self, root):
         self.root = root
         self.root.title(f"gametools - 游戏工具集 v{get_version()}")
-        self.root.geometry("1000x700")
-        self.root.minsize(800, 600)
+        self.root.geometry("1200x800")
+        self.root.minsize(1000, 700)
         
         # 设置窗口图标
         try:
@@ -525,6 +525,7 @@ class GameToolsUnified:
         # 配置网格
         about_frame.columnconfigure(0, weight=1)
         about_frame.rowconfigure(1, weight=1)
+        about_frame.rowconfigure(2, weight=0)  # 底部信息不扩展
         
         # 标题区域
         title_frame = ttk.Frame(about_frame)
