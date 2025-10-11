@@ -144,7 +144,7 @@ class ExcelTextExtractor:
     
     def _extract_texts_from_dataframe(self, df: pd.DataFrame) -> Dict:
         """
-        从DataFrame中提取文本内容，从第7行开始检测
+        从DataFrame中提取文本内容，使用Excel物理行数从第7行开始检测
         
         Args:
             df: pandas DataFrame
@@ -174,9 +174,12 @@ class ExcelTextExtractor:
             else:
                 headers = list(df.columns)
             
-            # 从第7行开始遍历（索引从6开始）
-            for row_idx in range(6, len(df)):  # 从第7行开始（索引6）
+            # 从第7行开始遍历，使用Excel物理行数（从1开始计数）
+            # pandas DataFrame的索引从0开始，但Excel物理行数从1开始
+            # 所以第7行的DataFrame索引是6，但Excel物理行号是7
+            for row_idx in range(6, len(df)):  # DataFrame索引从6开始（对应Excel第7行）
                 row_data = df.iloc[row_idx]
+                excel_physical_row = row_idx + 1  # Excel物理行号（从1开始）
                 a_column_value = str(row_data[a_column]).strip() if pd.notna(row_data[a_column]) else ""
                 
                 # 遍历该行的所有列
@@ -185,15 +188,15 @@ class ExcelTextExtractor:
                     if pd.notna(value):  # 跳过空值
                         text = str(value).strip()
                         if text and self._is_text_content(text):
-                            # 生成Excel物理位置（如F5）
-                            excel_position = self._get_excel_position(col_idx, row_idx + 1)
+                            # 生成Excel物理位置（如F7），使用Excel物理行号
+                            excel_position = self._get_excel_position(col_idx, excel_physical_row)
                             extracted_items.append({
                                 'text': text,
                                 'a_column': a_column_value,
-                                'row': row_idx + 1,  # 实际行号（从1开始）
+                                'row': excel_physical_row,  # Excel物理行号（从1开始）
                                 'column': col,
                                 'column_index': col_idx,
-                                'excel_row_ref': excel_position  # Excel物理位置（如F5）
+                                'excel_row_ref': excel_position  # Excel物理位置（如F7）
                             })
             
             # 去重并保持顺序（基于文本内容去重）
@@ -409,15 +412,7 @@ class ExcelTextExtractor:
                         # E列：name（提取的文本内容）
                         text_data = []
                         
-                        # 第一行：字段名（参考用户格式）
-                        header_row = {
-                            'id': headers[0] if headers else a_column,  # A列：原字段名
-                            '位置': '位置',  # B列：位置标题
-                            '字段名': '字段名',  # C列：字段名标题
-                            'doc': 'doc',  # D列：doc标题
-                            'name': 'name'  # E列：name标题
-                        }
-                        text_data.append(header_row)
+                        # 跳过第二行，直接从数据行开始
                         
                         # 数据行
                         for item in sheet_data['items']:

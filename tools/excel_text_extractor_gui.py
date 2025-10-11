@@ -287,7 +287,7 @@ class ExcelTextExtractorGUI:
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
                 f"🌐 支持语言: 中文、越南文（跳过纯英文）\n"))
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
-                f"📍 检测起始行: 第7行\n"))
+                f"📍 检测起始行: 第7行（使用Excel物理行数）\n"))
             self.root.after(0, lambda: self.result_text.insert(tk.END, 
                 "=" * 60 + "\n"))
             
