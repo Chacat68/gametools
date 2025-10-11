@@ -109,6 +109,18 @@ class ExcelTextExtractorGUI:
                                       values=["全部", "中文", "英文", "中英混合"], state="readonly", width=15)
         text_type_combo.grid(row=1, column=1, sticky=tk.W, pady=(10, 0))
         
+        # 策划检测说明
+        planner_info = ttk.Label(options_frame, 
+                                text="💡 自动检测：如果Excel文件第7行包含'策划'，将跳过该文件的文本提取", 
+                                style='Info.TLabel', foreground='blue')
+        planner_info.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        
+        # 语言支持说明
+        language_info = ttk.Label(options_frame, 
+                                 text="🌐 支持语言：中文、越南文、英文，从第7行开始检测，同时提取A列内容", 
+                                 style='Info.TLabel', foreground='green')
+        language_info.grid(row=3, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
         # 控制按钮框架
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=3, column=0, pady=(0, 10))

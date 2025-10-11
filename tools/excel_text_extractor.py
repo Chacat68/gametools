@@ -64,7 +64,7 @@ class ExcelTextExtractor:
             logger.error(f"扫描目录失败: {str(e)}")
             raise
     
-    def extract_text_from_excel(self, file_path: str) -> Dict[str, List[str]]:
+    def extract_text_from_excel(self, file_path: str) -> Dict[str, List[Dict]]:
         """
         从Excel文件中提取文本内容
         
@@ -72,7 +72,7 @@ class ExcelTextExtractor:
             file_path: Excel文件路径
             
         Returns:
-            字典，键为工作表名，值为文本列表
+            字典，键为工作表名，值为包含文本和A列内容的字典列表
         """
         try:
             logger.info(f"正在提取文件: {file_path}")
@@ -102,44 +102,97 @@ class ExcelTextExtractor:
             logger.error(f"提取Excel文件文本失败: {str(e)}")
             return {}
     
-    def _extract_texts_from_dataframe(self, df: pd.DataFrame) -> List[str]:
+    def _extract_texts_from_dataframe(self, df: pd.DataFrame) -> List[Dict]:
         """
-        从DataFrame中提取文本内容
+        从DataFrame中提取文本内容，从第7行开始检测
         
         Args:
             df: pandas DataFrame
             
         Returns:
-            文本列表
+            包含文本和A列内容的字典列表
         """
-        texts = []
+        extracted_items = []
         
         try:
-            # 遍历所有单元格
-            for col in df.columns:
-                for idx, value in df[col].items():
+            # 检查第7行（索引为6）是否为策划，如果是则跳过提取
+            if self._is_planner_row(df):
+                logger.info("检测到第7行为策划，跳过文本提取")
+                return []
+            
+            # 获取A列（第一列）的列名
+            a_column = df.columns[0] if len(df.columns) > 0 else None
+            if a_column is None:
+                logger.warning("未找到A列，无法提取A列内容")
+                return []
+            
+            # 从第7行开始遍历（索引从6开始）
+            for row_idx in range(6, len(df)):  # 从第7行开始（索引6）
+                row_data = df.iloc[row_idx]
+                a_column_value = str(row_data[a_column]).strip() if pd.notna(row_data[a_column]) else ""
+                
+                # 遍历该行的所有列
+                for col in df.columns:
+                    value = row_data[col]
                     if pd.notna(value):  # 跳过空值
                         text = str(value).strip()
                         if text and self._is_text_content(text):
-                            texts.append(text)
+                            extracted_items.append({
+                                'text': text,
+                                'a_column': a_column_value,
+                                'row': row_idx + 1,  # 实际行号（从1开始）
+                                'column': col
+                            })
             
-            # 去重并保持顺序
-            seen = set()
-            unique_texts = []
-            for text in texts:
-                if text not in seen:
-                    seen.add(text)
-                    unique_texts.append(text)
+            # 去重并保持顺序（基于文本内容去重）
+            seen_texts = set()
+            unique_items = []
+            for item in extracted_items:
+                if item['text'] not in seen_texts:
+                    seen_texts.add(item['text'])
+                    unique_items.append(item)
             
-            return unique_texts
+            return unique_items
             
         except Exception as e:
             logger.error(f"从DataFrame提取文本失败: {str(e)}")
             return []
     
+    def _is_planner_row(self, df: pd.DataFrame) -> bool:
+        """
+        检查第7行（索引为6）是否为策划
+        
+        Args:
+            df: pandas DataFrame
+            
+        Returns:
+            如果第7行包含"策划"则返回True，否则返回False
+        """
+        try:
+            # 检查DataFrame是否有足够的行数（至少7行）
+            if len(df) < 7:
+                return False
+            
+            # 获取第7行（索引为6）的所有值
+            row_7 = df.iloc[6]  # 第7行，索引为6
+            
+            # 检查第7行的任何单元格是否包含"策划"
+            for value in row_7:
+                if pd.notna(value):
+                    text = str(value).strip()
+                    if "策划" in text:
+                        logger.info(f"第7行检测到策划标识: {text}")
+                        return True
+            
+            return False
+            
+        except Exception as e:
+            logger.warning(f"检查第7行策划标识失败: {str(e)}")
+            return False
+    
     def _is_text_content(self, text: str) -> bool:
         """
-        判断是否为文本内容
+        判断是否为文本内容，支持中文和越南文
         
         Args:
             text: 待判断的文本
@@ -169,10 +222,15 @@ class ExcelTextExtractor:
         except ValueError:
             pass
         
-        # 包含中文字符、英文字符或其他文本特征
+        # 包含中文字符
         if re.search(r'[\u4e00-\u9fff]', text):  # 中文字符
             return True
         
+        # 包含越南文字符
+        if re.search(r'[\u1e00-\u1eff\u1f00-\u1fff\u0100-\u017f\u0180-\u024f]', text):  # 越南文字符范围
+            return True
+        
+        # 包含英文字符
         if re.search(r'[a-zA-Z]', text):  # 英文字符
             return True
         
@@ -182,7 +240,7 @@ class ExcelTextExtractor:
         
         return False
     
-    def create_text_excel(self, output_path: str, extracted_data: Dict[str, List[str]], 
+    def create_text_excel(self, output_path: str, extracted_data: Dict[str, List[Dict]], 
                          source_file: str) -> bool:
         """
         创建包含提取文本的新Excel文件
@@ -212,12 +270,15 @@ class ExcelTextExtractor:
                         
                         # 创建文本数据
                         text_data = []
-                        for i, text in enumerate(texts, 1):
+                        for i, item in enumerate(texts, 1):
                             text_data.append({
                                 '序号': i,
-                                '文本内容': text,
-                                '文本长度': len(text),
-                                '字符类型': self._analyze_text_type(text)
+                                '文本内容': item['text'],
+                                'A列内容': item['a_column'],
+                                '行号': item['row'],
+                                '列名': item['column'],
+                                '文本长度': len(item['text']),
+                                '字符类型': self._analyze_text_type(item['text'])
                             })
                         
                         text_df = pd.DataFrame(text_data)
@@ -230,7 +291,7 @@ class ExcelTextExtractor:
             logger.error(f"创建文本Excel文件失败: {str(e)}")
             return False
     
-    def _create_summary_data(self, extracted_data: Dict[str, List[str]], 
+    def _create_summary_data(self, extracted_data: Dict[str, List[Dict]], 
                            source_file: str) -> List[Dict]:
         """
         创建汇总数据
@@ -308,7 +369,7 @@ class ExcelTextExtractor:
     
     def _analyze_text_type(self, text: str) -> str:
         """
-        分析文本类型
+        分析文本类型，支持中文和越南文
         
         Args:
             text: 文本内容
@@ -316,12 +377,21 @@ class ExcelTextExtractor:
         Returns:
             文本类型描述
         """
-        if re.search(r'[\u4e00-\u9fff]', text):
-            if re.search(r'[a-zA-Z]', text):
-                return "中英混合"
-            else:
-                return "中文"
-        elif re.search(r'[a-zA-Z]', text):
+        has_chinese = re.search(r'[\u4e00-\u9fff]', text)
+        has_vietnamese = re.search(r'[\u1e00-\u1eff\u1f00-\u1fff\u0100-\u017f\u0180-\u024f]', text)
+        has_english = re.search(r'[a-zA-Z]', text)
+        
+        if has_chinese and has_vietnamese:
+            return "中越混合"
+        elif has_chinese and has_english:
+            return "中英混合"
+        elif has_vietnamese and has_english:
+            return "越英混合"
+        elif has_chinese:
+            return "中文"
+        elif has_vietnamese:
+            return "越南文"
+        elif has_english:
             return "英文"
         else:
             return "其他"
