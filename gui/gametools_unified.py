@@ -19,6 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from core.localization_checker import LocalizationChecker
 from core.excel_vietnamese_scanner import ExcelVietnameseScanner
 from core.vietnamese_excel_processor import VietnameseExcelProcessor
+from core.cross_project_translator import CrossProjectTranslator
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from tools.excel_text_extractor import ExcelTextExtractor
@@ -50,6 +51,7 @@ class GameToolsUnified:
         self.localization_checker = LocalizationChecker()
         self.excel_scanner = ExcelVietnameseScanner()
         self.vietnamese_processor = VietnameseExcelProcessor()
+        self.cross_project_translator = CrossProjectTranslator()
         self.json_detector = JSONErrorDetector()
         self.excel_processor = ExcelDataProcessor()
         self.text_extractor = ExcelTextExtractor()
@@ -103,6 +105,7 @@ class GameToolsUnified:
         
         # 创建各个功能页签
         self.create_vietnamese_processor_tab()
+        self.create_cross_project_translator_tab()
         self.create_json_detector_tab()
         self.create_excel_data_processor_tab()
         self.create_excel_text_extractor_tab()
@@ -230,6 +233,109 @@ class GameToolsUnified:
                                                        font=("Consolas", 9),
                                                        height=12)
         self.vp_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
+    def create_cross_project_translator_tab(self):
+        """创建跨项目翻译对应页签"""
+        # 跨项目翻译对应框架
+        translator_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(translator_frame, text="跨项目翻译对应")
+        
+        # 配置网格
+        translator_frame.columnconfigure(0, weight=1)
+        translator_frame.rowconfigure(2, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(translator_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="跨项目翻译对应工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, text="根据Excel表格中的文件名列和位置列查找对应的内容", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(translator_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件选择", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.columnconfigure(1, weight=1)
+        
+        # 映射文件选择
+        ttk.Label(file_frame, text="映射文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.cpt_mapping_file_var = tk.StringVar()
+        self.cpt_mapping_file_entry = ttk.Entry(file_frame, textvariable=self.cpt_mapping_file_var, 
+                                               font=("Microsoft YaHei", 9))
+        self.cpt_mapping_file_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.cpt_mapping_browse_button = ttk.Button(file_frame, text="浏览文件", 
+                                                   command=self.browse_cpt_mapping_file)
+        self.cpt_mapping_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 项目目录选择
+        ttk.Label(file_frame, text="项目目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
+        self.cpt_project_dir_var = tk.StringVar()
+        self.cpt_project_dir_entry = ttk.Entry(file_frame, textvariable=self.cpt_project_dir_var, 
+                                              font=("Microsoft YaHei", 9))
+        self.cpt_project_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(5, 0))
+        
+        self.cpt_project_browse_button = ttk.Button(file_frame, text="浏览目录", 
+                                                   command=self.browse_cpt_project_directory)
+        self.cpt_project_browse_button.grid(row=1, column=2, pady=(5, 0))
+        
+        # 输出设置区域
+        output_frame = ttk.LabelFrame(control_frame, text="输出设置", padding="12")
+        output_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        output_frame.columnconfigure(1, weight=1)
+        
+        # 输出文件选择
+        ttk.Label(output_frame, text="输出文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.cpt_output_file_var = tk.StringVar()
+        self.cpt_output_file_entry = ttk.Entry(output_frame, textvariable=self.cpt_output_file_var, 
+                                              font=("Microsoft YaHei", 9))
+        self.cpt_output_file_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.cpt_output_browse_button = ttk.Button(output_frame, text="选择文件", 
+                                                  command=self.browse_cpt_output_file)
+        self.cpt_output_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        
+        # 主要操作按钮
+        self.cpt_process_button = ttk.Button(button_frame, text="🔍 开始对应", 
+                                            command=self.start_cross_project_translation, 
+                                            style='Accent.TButton')
+        self.cpt_process_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 辅助操作按钮
+        self.cpt_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                          command=self.clear_cpt_results)
+        self.cpt_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.cpt_export_button = ttk.Button(button_frame, text="💾 导出结果", 
+                                           command=self.export_cpt_results,
+                                           state="disabled")
+        self.cpt_export_button.pack(side=tk.LEFT)
+        
+        # 结果显示区域
+        result_frame = ttk.LabelFrame(translator_frame, text="处理结果", padding="10")
+        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        result_frame.columnconfigure(0, weight=1)
+        result_frame.rowconfigure(0, weight=1)
+        
+        self.cpt_result_text = scrolledtext.ScrolledText(result_frame, 
+                                                        wrap=tk.WORD, 
+                                                        font=("Consolas", 9),
+                                                        height=12)
+        self.cpt_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     
     def create_json_detector_tab(self):
@@ -1191,6 +1297,178 @@ class GameToolsUnified:
         """清空文本提取结果"""
         self.extractor_result_text.delete(1.0, tk.END)
     
+    # ==================== 跨项目翻译对应相关方法 ====================
+    
+    def browse_cpt_mapping_file(self):
+        """浏览映射文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择映射文件",
+            filetypes=[
+                ("Excel文件", "*.xlsx *.xls"),
+                ("所有文件", "*.*")
+            ]
+        )
+        if file_path:
+            self.cpt_mapping_file_var.set(file_path)
+            # 自动设置输出文件名
+            if not self.cpt_output_file_var.get():
+                base_name = os.path.splitext(os.path.basename(file_path))[0]
+                output_path = os.path.join(os.path.dirname(file_path), f"{base_name}_翻译对应结果.xlsx")
+                self.cpt_output_file_var.set(output_path)
+    
+    def browse_cpt_project_directory(self):
+        """浏览项目目录"""
+        dir_path = filedialog.askdirectory(title="选择项目目录")
+        if dir_path:
+            self.cpt_project_dir_var.set(dir_path)
+    
+    def browse_cpt_output_file(self):
+        """浏览输出文件"""
+        file_path = filedialog.asksaveasfilename(
+            title="选择输出文件",
+            defaultextension=".xlsx",
+            filetypes=[
+                ("Excel文件", "*.xlsx"),
+                ("所有文件", "*.*")
+            ]
+        )
+        if file_path:
+            self.cpt_output_file_var.set(file_path)
+    
+    def start_cross_project_translation(self):
+        """开始跨项目翻译对应"""
+        mapping_file = self.cpt_mapping_file_var.get().strip()
+        project_dir = self.cpt_project_dir_var.get().strip()
+        output_file = self.cpt_output_file_var.get().strip()
+        
+        # 验证输入
+        if not mapping_file:
+            messagebox.showerror("错误", "请选择映射文件")
+            return
+        
+        if not project_dir:
+            messagebox.showerror("错误", "请选择项目目录")
+            return
+        
+        if not output_file:
+            messagebox.showerror("错误", "请设置输出文件")
+            return
+        
+        if not os.path.exists(mapping_file):
+            messagebox.showerror("错误", "映射文件不存在")
+            return
+        
+        if not os.path.exists(project_dir):
+            messagebox.showerror("错误", "项目目录不存在")
+            return
+        
+        # 在新线程中执行翻译对应
+        self.cpt_process_button.config(state="disabled")
+        self.status_var.set("正在处理翻译对应...")
+        
+        thread = threading.Thread(target=self._cross_project_translation, 
+                                 args=(mapping_file, project_dir, output_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _cross_project_translation(self, mapping_file, project_dir, output_file):
+        """跨项目翻译对应（后台线程）"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_cpt_results)
+            
+            # 开始处理
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"开始处理翻译对应...\n"))
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"映射文件: {mapping_file}\n"))
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"项目目录: {project_dir}\n"))
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"输出文件: {output_file}\n"))
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"{'='*60}\n"))
+            
+            # 处理翻译映射
+            results = self.cross_project_translator.process_translation_mapping(
+                mapping_file, project_dir)
+            
+            if results:
+                # 显示处理报告
+                report = self.cross_project_translator.get_processing_report()
+                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    f"{report}\n"))
+                
+                # 导出结果
+                if self.cross_project_translator.export_results(output_file):
+                    self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                        f"结果已导出到: {output_file}\n"))
+                    # 启用导出按钮
+                    self.root.after(0, lambda: self.cpt_export_button.config(state="normal"))
+                else:
+                    self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                        f"导出失败！\n"))
+                
+                # 显示详细结果（前20条）
+                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    f"\n详细结果（前20条）:\n"))
+                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    f"{'='*60}\n"))
+                
+                for i, result in enumerate(results[:20]):
+                    status_icon = "✅" if result['status'] == 'success' else "❌"
+                    self.root.after(0, lambda r=result, icon=status_icon: 
+                        self.cpt_result_text.insert(tk.END, 
+                            f"{icon} 第{r['index']}行: {r['file_name']} -> {r['content'][:50]}...\n"))
+                
+                if len(results) > 20:
+                    self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                        f"... 还有 {len(results) - 20} 条结果，请查看导出的Excel文件\n"))
+                
+            else:
+                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    f"处理失败，没有生成结果\n"))
+            
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"\n处理完成！\n"))
+            self.root.after(0, lambda: self.cpt_result_text.see(tk.END))
+            
+        except Exception as e:
+            error_msg = f"处理过程中发生错误: {str(e)}"
+            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                f"❌ {error_msg}\n"))
+            self.root.after(0, lambda: self.cpt_result_text.see(tk.END))
+        
+        # 恢复按钮状态
+        self.root.after(0, lambda: self.cpt_process_button.config(state="normal"))
+        self.root.after(0, lambda: self.status_var.set("翻译对应完成"))
+    
+    def clear_cpt_results(self):
+        """清空跨项目翻译对应结果"""
+        self.cpt_result_text.delete(1.0, tk.END)
+        self.cpt_export_button.config(state="disabled")
+    
+    def export_cpt_results(self):
+        """导出跨项目翻译对应结果"""
+        if not self.cross_project_translator.translation_results:
+            messagebox.showwarning("警告", "没有结果可导出")
+            return
+        
+        # 选择导出文件
+        file_path = filedialog.asksaveasfilename(
+            title="导出翻译对应结果",
+            defaultextension=".xlsx",
+            filetypes=[
+                ("Excel文件", "*.xlsx"),
+                ("所有文件", "*.*")
+            ]
+        )
+        
+        if file_path:
+            if self.cross_project_translator.export_results(file_path):
+                messagebox.showinfo("成功", f"结果已导出到:\n{file_path}")
+            else:
+                messagebox.showerror("错误", "导出失败")
 
 
 def main():
