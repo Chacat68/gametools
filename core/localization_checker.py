@@ -46,12 +46,7 @@ class VietnameseDetector:
         self.chinese_patterns = [
             r'[\u4e00-\u9fff]',  # 基本中文字符
             r'[\u3400-\u4dbf]',  # 扩展A区
-            r'[\u20000-\u2a6df]', # 扩展B区
-            r'[\u2a700-\u2b73f]', # 扩展C区
-            r'[\u2b740-\u2b81f]', # 扩展D区
-            r'[\u2b820-\u2ceaf]', # 扩展E区
             r'[\uf900-\ufaff]',   # 兼容汉字
-            r'[\u2f800-\u2fa1f]'  # 兼容汉字补充
         ]
         
         # 编译中文字符正则表达式
@@ -134,13 +129,47 @@ class VietnameseDetector:
         chinese_count = sum(1 for pattern in self.chinese_compiled_patterns for _ in pattern.finditer(text))
         english_count = len(re.findall(r'[a-zA-Z]', text))
         
-        # 判断主要语言类型
+        # 计算总字符数（排除空格和标点）
+        total_chars = len(re.findall(r'[^\s\W]', text))
+        
+        # 如果总字符数很少，使用简单判断
+        if total_chars <= 3:
+            if has_vietnamese and has_chinese:
+                return "中越混合"
+            elif has_vietnamese and has_english:
+                return "越英混合"
+            elif has_vietnamese:
+                return "越南文"
+            elif has_chinese:
+                return "中文"
+            elif has_english:
+                return "英文"
+            else:
+                return "其他"
+        
+        # 计算各种字符的比例
+        vietnamese_ratio = vietnamese_count / total_chars if total_chars > 0 else 0
+        chinese_ratio = chinese_count / total_chars if total_chars > 0 else 0
+        english_ratio = english_count / total_chars if total_chars > 0 else 0
+        
+        # 优化判断逻辑：
+        # 1. 如果包含越南文声调符号，优先考虑越南文
+        # 2. 如果越南文字符比例 > 20%，且没有中文，判断为越南文
+        # 3. 如果同时有越南文和中文，判断为混合
+        # 4. 如果只有英文，判断为英文
+        
         if has_vietnamese and has_chinese:
             return "中越混合"
-        elif has_vietnamese and has_english:
-            return "越英混合"
         elif has_vietnamese:
-            return "越南文"
+            # 如果越南文字符比例 > 20%，判断为越南文
+            if vietnamese_ratio > 0.2:
+                return "越南文"
+            else:
+                # 如果越南文字符很少，但有英文，可能是越英混合
+                if has_english and english_ratio > 0.5:
+                    return "越英混合"
+                else:
+                    return "越南文"
         elif has_chinese:
             return "中文"
         elif has_english:

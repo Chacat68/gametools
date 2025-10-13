@@ -87,7 +87,9 @@ class VietnameseExcelProcessor:
                     for row_idx, row in df.iterrows():
                         for col_idx, value in enumerate(row):
                             if pd.notna(value) and self.vietnamese_detector.contains_vietnamese(str(value)):
+                                # 获取实际检测到的单元格内容
                                 content = str(value)
+                                # 基于实际检测到的内容判断语言类型
                                 language_type = self.vietnamese_detector.detect_language_type(content)
                                 results.append({
                                     'excel_file': file_path.name,
@@ -96,7 +98,7 @@ class VietnameseExcelProcessor:
                                     'col': col_idx + 1,  # +1 因为pandas从0开始
                                     'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
                                     'content': content,
-                                    'language_type': language_type,
+                                    'language_type': language_type,  # 基于实际检测内容判断的语言类型
                                     'position': self._get_excel_cell_reference(row_idx + 2, col_idx + 1),
                                     'file_path': str(file_path)
                                 })
@@ -134,7 +136,9 @@ class VietnameseExcelProcessor:
                     for row_idx, row in df.iterrows():
                         for col_idx, value in enumerate(row):
                             if pd.notna(value) and self.vietnamese_detector.contains_vietnamese(str(value)):
+                                # 获取实际检测到的单元格内容
                                 content = str(value)
+                                # 基于实际检测到的内容判断语言类型
                                 language_type = self.vietnamese_detector.detect_language_type(content)
                                 results.append({
                                     'excel_file': file_path.name,
@@ -143,7 +147,7 @@ class VietnameseExcelProcessor:
                                     'col': col_idx + 1,  # +1 因为pandas从0开始
                                     'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
                                     'content': content,
-                                    'language_type': language_type,
+                                    'language_type': language_type,  # 基于实际检测内容判断的语言类型
                                     'position': self._get_excel_cell_reference(row_idx + 2, col_idx + 1),
                                     'file_path': str(file_path)
                                 })
