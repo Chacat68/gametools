@@ -8,6 +8,8 @@
 ```
 gametools/
 ├── core/                    # 核心功能模块
+│   ├── cache_manager.py     # 缓存管理系统
+│   ├── cross_project_translator_cached.py  # 增强版翻译工具（支持缓存）
 │   ├── localization_checker.py
 │   └── requirements.txt
 ├── tools/                   # 工具脚本和模块
@@ -19,11 +21,21 @@ gametools/
 ├── gui/                     # GUI和打包相关文件
 │   ├── gametools_unified.py # 统一界面主程序
 │   ├── json_format_detector_gui.py # JSON检测GUI
+│   ├── cross_project_translator_cache_gui.py # 缓存翻译工具GUI
 │   ├── build_unified.py     # 统一版本构建脚本
 │   └── ...                  # 其他GUI相关文件
+├── test/                    # ⭐ 测试文件夹 (v1.19.0新增)
+│   ├── README.md            # 测试文档
+│   ├── test_cache_*.py      # 缓存系统测试
+│   ├── test_*.py            # 其他功能测试
+│   ├── create_test_*.py     # 测试数据生成
+│   ├── run_all_tests.py     # 测试运行脚本
+│   └── run_tests.bat        # 测试启动脚本
 ├── docs/                    # 文档
 │   ├── README.md
-│   └── 完整使用说明.md
+│   ├── CACHE_SYSTEM_GUIDE.md # 缓存系统使用指南
+│   ├── CACHE_IMPLEMENTATION.md # 缓存实现说明
+│   └── ...                  # 其他文档
 ├── dist/                    # 输出文件目录
 ├── gametool.py             # 主程序
 └── README.md               # 项目说明
@@ -151,7 +163,57 @@ python tools/run.bat
 - 功能特性说明
 - 使用方法和注意事项
 
-## 测试示例
+## 测试说明
+
+### 📋 测试文件夹结构
+
+所有测试文件已集中在 `test/` 文件夹中。详见 [test/README.md](test/README.md)
+
+```
+test/
+├── test_cache_basic.py          # ⭐ 缓存系统基本功能测试
+├── test_cache_performance.py    # ⭐ 缓存性能对比测试
+├── test_new_column_names.py     # 新列名兼容性测试
+├── test_fixed_compatibility.py  # 兼容性修复测试
+├── test_cross_project_redesigned.py # 跨项目翻译设计测试
+├── create_test_excel.py         # 创建测试数据工具
+├── create_test_mapping_file.py  # 创建映射文件工具
+├── check_mixed_test.py          # 混合文本检测测试
+├── test_layout.py               # GUI布局测试
+├── run_all_tests.py             # 运行所有测试脚本
+├── run_tests.bat                # 测试启动脚本
+└── README.md                    # 详细测试文档
+```
+
+### 🧪 运行测试
+
+#### 快速运行单个测试
+```bash
+cd d:\dev\gametools
+python test\test_cache_basic.py
+```
+
+#### 运行所有测试
+```bash
+# 使用Python脚本运行
+python test\run_all_tests.py
+
+# 或双击启动脚本
+# test\run_tests.bat
+```
+
+#### 缓存系统测试
+测试缓存系统的基本功能和性能提升：
+
+```bash
+# 基本功能测试（验证缓存机制工作正常）
+python test\test_cache_basic.py
+
+# 性能对比测试（演示8-10倍的性能提升）
+python test\test_cache_performance.py
+```
+
+**预期结果**: ✓ 所有测试通过，缓存系统性能提升 7-10 倍
 
 ### 越南文检测测试
 运行演示脚本创建测试文件：
@@ -167,7 +229,7 @@ python tools/demo.py
 
 ```bash
 # 创建测试数据
-python tools/create_test_excel.py
+python test/create_test_excel.py
 
 # 运行演示
 python tools/demo_excel_data_processor.py
@@ -177,6 +239,26 @@ python tools/excel_data_processor_gui.py
 ```
 
 这将创建包含分组数据的测试Excel文件，演示多文件输出功能。
+
+### 🔄 持续集成
+
+项目结构已支持 CI/CD 集成：
+
+```yaml
+# 示例 GitHub Actions 工作流 (.github/workflows/test.yml)
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - run: pip install -r core/requirements.txt
+      - run: python test\run_all_tests.py
+```
 
 ## 打包成exe文件
 
