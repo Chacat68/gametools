@@ -8,6 +8,7 @@
 import os
 import re
 import sys
+import unicodedata
 from pathlib import Path
 from typing import List, Set
 import pandas as pd
@@ -38,6 +39,8 @@ class VietnameseDetector:
             r'[ỲÝỴỶỸ]',
             r'[Đ]'
         ]
+        # 兼容分解形式（NFD）：任意拉丁字母后跟一个或多个组合音标（覆盖越南文常见分解写法）
+        self.vietnamese_patterns.append(r'[A-Za-z][\u0300-\u036f]+')
         
         # 编译正则表达式
         self.compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.vietnamese_patterns]
@@ -66,9 +69,15 @@ class VietnameseDetector:
         """
         if not isinstance(text, str):
             return False
-            
+        
+        # 规范化到 NFC，兼容分解写法
+        normalized = unicodedata.normalize('NFC', text)
+        # 快速 ASCII 过滤：纯 ASCII 文本直接判否
+        if all(ord(ch) < 128 for ch in normalized):
+            return False
+        
         # 先用合并正则快速判断
-        return bool(self.combined_pattern.search(text))
+        return bool(self.combined_pattern.search(normalized))
     
     def contains_chinese(self, text: str) -> bool:
         """
