@@ -41,6 +41,8 @@ class VietnameseDetector:
         
         # 编译正则表达式
         self.compiled_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in self.vietnamese_patterns]
+        # 合并后的高性能正则（用于向量化/批量匹配）
+        self.combined_pattern = re.compile("|".join(self.vietnamese_patterns), re.IGNORECASE)
         
         # 中文字符范围
         self.chinese_patterns = [
@@ -65,11 +67,8 @@ class VietnameseDetector:
         if not isinstance(text, str):
             return False
             
-        # 检查所有越南文模式
-        for pattern in self.compiled_patterns:
-            if pattern.search(text):
-                return True
-        return False
+        # 先用合并正则快速判断
+        return bool(self.combined_pattern.search(text))
     
     def contains_chinese(self, text: str) -> bool:
         """
@@ -199,26 +198,18 @@ class TableChecker:
     
     def read_excel_file(self, file_path: Path) -> List[str]:
         """
-        读取Excel文件内容
-        
-        Args:
-            file_path: Excel文件路径
-            
-        Returns:
-            List[str]: 所有单元格的文本内容
+        读取Excel文件内容（保留旧接口，仍返回所有文本）。
+        注意：为节省内存，扫描场景推荐使用流式检测而非一次性返回。
         """
         try:
-            # 使用openpyxl读取Excel文件
-            workbook = load_workbook(file_path, data_only=True)
+            workbook = load_workbook(file_path, data_only=True, read_only=True)
             all_text = []
-            
             for sheet_name in workbook.sheetnames:
                 sheet = workbook[sheet_name]
                 for row in sheet.iter_rows():
                     for cell in row:
                         if cell.value is not None:
                             all_text.append(str(cell.value))
-            
             return all_text
         except Exception as e:
             print(f"读取Excel文件 {file_path} 时出错: {e}")
@@ -226,37 +217,81 @@ class TableChecker:
     
     def read_csv_file(self, file_path: Path) -> List[str]:
         """
-        读取CSV文件内容
-        
-        Args:
-            file_path: CSV文件路径
-            
-        Returns:
-            List[str]: 所有单元格的文本内容
+        读取CSV/TSV文件内容（保留旧接口）。
+        注意：为节省内存，扫描场景推荐使用分块流式检测而非一次性返回。
         """
         try:
-            # 尝试不同的编码
             encodings = ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']
-            
+            sep = '\t' if file_path.suffix.lower() == '.tsv' else None
             for encoding in encodings:
                 try:
-                    df = pd.read_csv(file_path, encoding=encoding)
+                    df = pd.read_csv(file_path, encoding=encoding, sep=sep, dtype=str, engine='python')
                     all_text = []
-                    
                     for column in df.columns:
                         for value in df[column].dropna():
                             all_text.append(str(value))
-                    
                     return all_text
                 except UnicodeDecodeError:
                     continue
-            
             print(f"无法读取CSV文件 {file_path}，尝试了多种编码")
             return []
-            
         except Exception as e:
             print(f"读取CSV文件 {file_path} 时出错: {e}")
             return []
+
+    def _excel_contains_vietnamese_stream(self, file_path: Path) -> bool:
+        """
+        以只读流式方式扫描Excel，检测到即提前返回。
+        """
+        try:
+            workbook = load_workbook(file_path, data_only=True, read_only=True)
+            detector = self.vietnamese_detector
+            for sheet_name in workbook.sheetnames:
+                sheet = workbook[sheet_name]
+                for row in sheet.iter_rows():
+                    for cell in row:
+                        if cell.value is None:
+                            continue
+                        if detector.contains_vietnamese(str(cell.value)):
+                            return True
+            return False
+        except Exception as e:
+            print(f"读取Excel文件 {file_path} 时出错: {e}")
+            return False
+
+        
+    def _csv_contains_vietnamese_stream(self, file_path: Path) -> bool:
+        """
+        分块读取CSV/TSV并向量化检测，检测到即提前返回。
+        """
+        encodings = ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']
+        sep = '\t' if file_path.suffix.lower() == '.tsv' else None
+        pattern = self.vietnamese_detector.combined_pattern
+        for encoding in encodings:
+            try:
+                for chunk in pd.read_csv(
+                    file_path,
+                    encoding=encoding,
+                    sep=sep,
+                    dtype=str,
+                    engine='python',
+                    chunksize=10000,
+                    low_memory=True,
+                    on_bad_lines='skip'
+                ):
+                    for column in chunk.columns:
+                        series = chunk[column].astype(str)
+                        # 使用向量化正则匹配加速
+                        if series.str.contains(pattern, regex=True, na=False).any():
+                            return True
+                # 该编码读取完成仍未发现
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                # 其他读取异常，继续尝试下个编码
+                print(f"读取CSV文件 {file_path} 使用编码 {encoding} 时出错: {e}")
+                continue
+        return False
     
     def check_table_has_vietnamese(self, file_path: Path) -> bool:
         """
@@ -271,19 +306,12 @@ class TableChecker:
         if not self.is_table_file(file_path):
             return False
         
-        # 根据文件扩展名选择读取方法
-        if file_path.suffix.lower() in ['.xlsx', '.xls']:
-            text_content = self.read_excel_file(file_path)
-        elif file_path.suffix.lower() in ['.csv', '.tsv']:
-            text_content = self.read_csv_file(file_path)
-        else:
-            return False
-        
-        # 检查所有文本内容是否包含越南文
-        for text in text_content:
-            if self.vietnamese_detector.contains_vietnamese(text):
-                return True
-        
+        suffix = file_path.suffix.lower()
+        # 流式快速路径：避免一次性加载全部内容
+        if suffix in ['.xlsx', '.xls']:
+            return self._excel_contains_vietnamese_stream(file_path)
+        if suffix in ['.csv', '.tsv']:
+            return self._csv_contains_vietnamese_stream(file_path)
         return False
 
 

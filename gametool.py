@@ -470,19 +470,24 @@ class LocalizationGUI:
             self.log_locate_message(f"表格尺寸: {df.shape[0]} 行 x {df.shape[1]} 列", "INFO")
             self.log_locate_message("-" * 50, "INFO")
             
-            # 检测越南文位置
+            # 检测越南文位置（向量化加速）
             vietnamese_locations = []
             detector = self.checker.table_checker.vietnamese_detector
+            pattern = detector.combined_pattern
             
             for col_idx, column in enumerate(df.columns):
-                for row_idx, value in enumerate(df[column]):
-                    if pd.notna(value) and detector.contains_vietnamese(str(value)):
-                        vietnamese_locations.append({
-                            'row': row_idx + 2,  # +2 因为pandas从0开始，且Excel有标题行
-                            'col': col_idx + 1,  # +1 因为pandas从0开始
-                            'column_name': column,
-                            'content': str(value)
-                        })
+                series = df[column].astype(str)
+                mask = series.str.contains(pattern, regex=True, na=False)
+                if not mask.any():
+                    continue
+                matched = series[mask]
+                for row_idx, value in matched.items():
+                    vietnamese_locations.append({
+                        'row': int(row_idx) + 2,  # +2 因为pandas从0开始，且Excel有标题行
+                        'col': col_idx + 1,       # +1 因为pandas从0开始
+                        'column_name': column,
+                        'content': str(value)
+                    })
             
             # 显示结果
             self.log_locate_message("=" * 50, "INFO")
