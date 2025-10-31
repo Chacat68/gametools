@@ -244,16 +244,28 @@ class TableChecker:
         以只读流式方式扫描Excel，检测到即提前返回。
         """
         try:
-            workbook = load_workbook(file_path, data_only=True, read_only=True)
+            workbook = load_workbook(file_path, data_only=True, read_only=True, keep_links=False)
             detector = self.vietnamese_detector
+            combined = detector.combined_pattern
             for sheet_name in workbook.sheetnames:
                 sheet = workbook[sheet_name]
-                for row in sheet.iter_rows():
-                    for cell in row:
-                        if cell.value is None:
+                # 直接返回原始值，避免创建单元格对象，速度更快
+                for row in sheet.iter_rows(values_only=True):
+                    for value in row:
+                        if value is None:
                             continue
-                        if detector.contains_vietnamese(str(cell.value)):
-                            return True
+                        # 仅处理字符串，避免无意义的类型转换
+                        if isinstance(value, str):
+                            # 先做快速非ASCII过滤，减少正则调用
+                            has_non_ascii = False
+                            for ch in value:
+                                if ord(ch) > 127:
+                                    has_non_ascii = True
+                                    break
+                            if not has_non_ascii:
+                                continue
+                            if combined.search(value):
+                                return True
             return False
         except Exception as e:
             print(f"读取Excel文件 {file_path} 时出错: {e}")

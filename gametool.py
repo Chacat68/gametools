@@ -343,26 +343,55 @@ class LocalizationGUI:
             self.log_message(f"找到 {len(table_files)} 个表格文件", "INFO")
             self.log_message("-" * 50, "INFO")
             
+            # 目录层级优先级：按路径深度优先（浅层优先），再按文件体积（小优先），再按最近修改时间（新优先）
+            def _priority_key(p: Path):
+                try:
+                    stat = p.stat()
+                    size = stat.st_size
+                    mtime = stat.st_mtime
+                except Exception:
+                    size = 1 << 60
+                    mtime = 0
+                depth = len(p.parts)
+                return (depth, size, -mtime)
+
+            try:
+                table_files.sort(key=_priority_key)
+            except Exception:
+                pass
+
             valid_tables = []
             total_files = len(table_files)
-            
-            for i, file_path in enumerate(table_files, 1):
-                if not self.is_scanning:
-                    break
-                
-                self.update_progress(f"正在检测文件 {i}/{total_files}: {file_path.name}")
-                
+
+            # 并行检测以加速目录扫描
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            max_workers = max(4, min(8, (os.cpu_count() or 4) * 2))
+
+            def _check_one(path):
                 try:
-                    has_vietnamese = self.checker.table_checker.check_table_has_vietnamese(file_path)
-                    
+                    result = self.checker.table_checker.check_table_has_vietnamese(path)
+                    return (path, result, None)
+                except Exception as exc:
+                    return (path, False, exc)
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 按优先级顺序提交任务
+                future_to_path = {executor.submit(_check_one, p): p for p in table_files}
+                completed = 0
+                for future in as_completed(future_to_path):
+                    if not self.is_scanning:
+                        break
+                    completed += 1
+                    file_path, has_vietnamese, err = future.result()
+                    self.update_progress(f"正在检测文件 {completed}/{total_files}: {file_path.name}")
+                    if err is not None:
+                        self.log_message(f"✗ {file_path.name} - 检测失败: {str(err)}", "ERROR")
+                        continue
                     if has_vietnamese:
                         valid_tables.append(file_path.name)
                         self.log_message(f"✓ {file_path.name} - 包含越南文", "SUCCESS")
                     else:
                         self.log_message(f"✗ {file_path.name} - 不包含越南文", "INFO")
-                        
-                except Exception as e:
-                    self.log_message(f"✗ {file_path.name} - 检测失败: {str(e)}", "ERROR")
             
             self.scan_complete(valid_tables)
             
