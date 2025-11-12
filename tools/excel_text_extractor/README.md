@@ -20,15 +20,12 @@
 
 #### 启动方式
 ```bash
-# 方式1: 直接运行GUI
-python tools/excel_text_extractor_gui.py
-
-# 方式2: 使用启动脚本
-tools/start_excel_text_extractor.bat
-
-# 方式3: 通过主界面
+# 启动统一界面
 python gui/gametools_unified.py
+# 或双击 gui/启动gametools.bat
 ```
+
+然后切换到"翻译提取"页签
 
 #### 操作步骤
 1. **选择输入目录**: 点击"浏览"按钮选择包含Excel文件的目录
