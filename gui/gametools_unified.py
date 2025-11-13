@@ -1455,27 +1455,39 @@ class GameToolsUnified:
             from openpyxl import load_workbook
             from openpyxl.styles import Font, PatternFill, Alignment
             
-            # 以中文版为基准
-            if 'cn' not in all_lang_data or not all_lang_data['cn']:
-                logging.error("未找到中文版数据，无法生成汇总表格")
+            # 选择第一个有数据的语言作为基准
+            base_lang = None
+            base_data = None
+            lang_priority = ['cn', 'vn', 'en', 'th']  # 优先级顺序
+            
+            for lang in lang_priority:
+                if lang in all_lang_data and all_lang_data[lang]:
+                    base_lang = lang
+                    base_data = all_lang_data[lang]
+                    logging.info(f"使用 {lang} 作为基准语言")
+                    break
+            
+            if not base_lang or not base_data:
+                logging.error("未找到任何语言数据，无法生成汇总表格")
                 return False
             
             # 构建汇总数据
             summary_data = []
             
-            for file_name, cn_data in all_lang_data['cn'].items():
-                for sheet_name, sheet_data in cn_data.items():
+            for file_name, file_data in base_data.items():
+                for sheet_name, sheet_data in file_data.items():
                     if not sheet_data or 'items' not in sheet_data:
                         continue
                     
                     for item in sheet_data['items']:
                         excel_pos = item.get('excel_row_ref', '')
-                        cn_text = item.get('text', '')
+                        base_text = item.get('text', '')
                         
-                        # 查找其他语言对应位置的文本
-                        vn_text = self._find_extractor_text_at_position(all_lang_data.get('vn', {}), file_name, sheet_name, excel_pos)
-                        en_text = self._find_extractor_text_at_position(all_lang_data.get('en', {}), file_name, sheet_name, excel_pos)
-                        th_text = self._find_extractor_text_at_position(all_lang_data.get('th', {}), file_name, sheet_name, excel_pos)
+                        # 查找所有语言对应位置的文本
+                        cn_text = base_text if base_lang == 'cn' else self._find_extractor_text_at_position(all_lang_data.get('cn', {}), file_name, sheet_name, excel_pos)
+                        vn_text = base_text if base_lang == 'vn' else self._find_extractor_text_at_position(all_lang_data.get('vn', {}), file_name, sheet_name, excel_pos)
+                        en_text = base_text if base_lang == 'en' else self._find_extractor_text_at_position(all_lang_data.get('en', {}), file_name, sheet_name, excel_pos)
+                        th_text = base_text if base_lang == 'th' else self._find_extractor_text_at_position(all_lang_data.get('th', {}), file_name, sheet_name, excel_pos)
                         
                         summary_data.append({
                             'name': file_name,
