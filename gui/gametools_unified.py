@@ -62,6 +62,15 @@ class GameToolsUnified:
         
         # 扫描状态
         self.is_scanning = False
+        
+        # 结果存储字典
+        self.results_storage = {
+            'vietnamese_processor': '',
+            'cross_project_translator': '',
+            'json_detector': '',
+            'excel_processor': '',
+            'text_extractor': ''
+        }
     
     def setup_styles(self):
         """设置界面样式"""
@@ -212,7 +221,12 @@ class GameToolsUnified:
         
         self.vp_demo_button = ttk.Button(button_frame, text="📁 创建演示文件", 
                                         command=self.create_demo_files)
-        self.vp_demo_button.pack(side=tk.LEFT)
+        self.vp_demo_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 查看结果按钮
+        self.vp_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+                                                command=lambda: self.show_results_dialog('vietnamese_processor'))
+        self.vp_view_results_button.pack(side=tk.LEFT)
         
         # 进度条
         progress_frame = ttk.Frame(control_frame)
@@ -225,18 +239,6 @@ class GameToolsUnified:
         
         self.vp_progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate')
         self.vp_progress_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
-        
-        # 结果显示区域
-        result_frame = ttk.LabelFrame(processor_frame, text="处理结果", padding="10")
-        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
-        
-        self.vp_result_text = scrolledtext.ScrolledText(result_frame, 
-                                                       wrap=tk.WORD, 
-                                                       font=("Consolas", 9),
-                                                       height=12)
-        self.vp_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_cross_project_translator_tab(self):
         """创建跨项目翻译对应页签"""
@@ -327,19 +329,12 @@ class GameToolsUnified:
         self.cpt_export_button = ttk.Button(button_frame, text="💾 导出结果", 
                                            command=self.export_cpt_results,
                                            state="disabled")
-        self.cpt_export_button.pack(side=tk.LEFT)
+        self.cpt_export_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        # 结果显示区域
-        result_frame = ttk.LabelFrame(translator_frame, text="处理结果", padding="10")
-        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
-        
-        self.cpt_result_text = scrolledtext.ScrolledText(result_frame, 
-                                                        wrap=tk.WORD, 
-                                                        font=("Consolas", 9),
-                                                        height=12)
-        self.cpt_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # 查看结果按钮
+        self.cpt_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+                                                 command=lambda: self.show_results_dialog('cross_project_translator'))
+        self.cpt_view_results_button.pack(side=tk.LEFT)
     
     
     def create_json_detector_tab(self):
@@ -405,19 +400,12 @@ class GameToolsUnified:
         self.json_save_button = ttk.Button(button_frame, text="💾 保存报告", 
                                           command=self.save_json_report, 
                                           state="disabled")
-        self.json_save_button.pack(side=tk.LEFT)
+        self.json_save_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        # 结果显示区域
-        result_frame = ttk.LabelFrame(json_frame, text="检测结果", padding="10")
-        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
-        
-        self.json_result_text = scrolledtext.ScrolledText(result_frame, 
-                                                         wrap=tk.WORD, 
-                                                         font=("Consolas", 9),
-                                                         height=12)
-        self.json_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # 查看结果按钮
+        self.json_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+                                                  command=lambda: self.show_results_dialog('json_detector'))
+        self.json_view_results_button.pack(side=tk.LEFT)
     
     def create_excel_data_processor_tab(self):
         """创建Excel数据处理工具页签"""
@@ -530,19 +518,12 @@ class GameToolsUnified:
         self.excel_preview_button = ttk.Button(button_frame, text="👁️ 预览数据", 
                                                command=self.preview_excel_data,
                                                state="disabled")
-        self.excel_preview_button.pack(side=tk.LEFT)
+        self.excel_preview_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        # 结果显示区域
-        result_frame = ttk.LabelFrame(excel_frame, text="处理结果", padding="10")
-        result_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
-        
-        self.excel_result_text = scrolledtext.ScrolledText(result_frame, 
-                                                          wrap=tk.WORD, 
-                                                          font=("Consolas", 9),
-                                                          height=12)
-        self.excel_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # 查看结果按钮
+        self.excel_view_results_button = ttk.Button(button_frame, text="📊 查看结果", 
+                                                   command=lambda: self.show_results_dialog('excel_processor'))
+        self.excel_view_results_button.pack(side=tk.LEFT)
     
     def create_excel_text_extractor_tab(self):
         """创建Excel文本提取器页签 - 多语言版本"""
@@ -695,19 +676,12 @@ class GameToolsUnified:
         
         self.extractor_preview_button = ttk.Button(button_frame, text="👁️ 预览文件", 
                                                   command=self.preview_extractor_files)
-        self.extractor_preview_button.pack(side=tk.LEFT)
+        self.extractor_preview_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        # 结果显示区域
-        result_frame = ttk.LabelFrame(extractor_frame, text="提取结果", padding="10")
-        result_frame.grid(row=4, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
-        
-        self.extractor_result_text = scrolledtext.ScrolledText(result_frame, 
-                                                              wrap=tk.WORD, 
-                                                              font=("Consolas", 9),
-                                                              height=10)
-        self.extractor_result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # 查看结果按钮
+        self.extractor_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
+                                                       command=lambda: self.show_results_dialog('text_extractor'))
+        self.extractor_view_results_button.pack(side=tk.LEFT)
     
     def create_about_tab(self):
         """创建关于页签"""
@@ -817,6 +791,106 @@ class GameToolsUnified:
                                    style='Info.TLabel')
         copyright_label.grid(row=1, column=0)
     
+    # 结果存储辅助函数
+    def append_result(self, result_type, text):
+        """追加文本到结果存储"""
+        self.results_storage[result_type] += text
+    
+    def clear_result(self, result_type):
+        """清空结果存储"""
+        self.results_storage[result_type] = ''
+    
+    def get_result(self, result_type):
+        """获取结果存储内容"""
+        return self.results_storage.get(result_type, '')
+    
+    # 统一的结果查看对话框
+    def show_results_dialog(self, result_type):
+        """显示结果查看对话框（二级菜单）"""
+        # 获取对应的结果内容
+        result_content = self.results_storage.get(result_type, '')
+        
+        if not result_content.strip():
+            messagebox.showinfo("提示", "暂无处理结果")
+            return
+        
+        # 创建对话框窗口
+        dialog = tk.Toplevel(self.root)
+        dialog.title("查看处理结果")
+        dialog.geometry("900x700")
+        dialog.minsize(700, 500)
+        
+        # 结果标题映射
+        title_map = {
+            'vietnamese_processor': '越南文检测结果',
+            'cross_project_translator': '跨项目翻译对应结果',
+            'json_detector': 'JSON错误检测结果',
+            'excel_processor': 'Excel数据处理结果',
+            'text_extractor': '翻译提取结果'
+        }
+        
+        # 标题
+        title_frame = ttk.Frame(dialog, padding="10")
+        title_frame.pack(fill=tk.X)
+        
+        title_label = ttk.Label(title_frame, 
+                               text=title_map.get(result_type, '处理结果'),
+                               style='Heading.TLabel')
+        title_label.pack()
+        
+        # 结果显示区域
+        result_frame = ttk.Frame(dialog, padding="10")
+        result_frame.pack(fill=tk.BOTH, expand=True)
+        
+        result_text = scrolledtext.ScrolledText(result_frame, 
+                                               wrap=tk.WORD, 
+                                               font=("Consolas", 9))
+        result_text.pack(fill=tk.BOTH, expand=True)
+        result_text.insert(tk.END, result_content)
+        result_text.config(state='disabled')  # 只读
+        
+        # 按钮区域
+        button_frame = ttk.Frame(dialog, padding="10")
+        button_frame.pack(fill=tk.X)
+        
+        # 复制按钮
+        def copy_to_clipboard():
+            dialog.clipboard_clear()
+            dialog.clipboard_append(result_content)
+            messagebox.showinfo("成功", "结果已复制到剪贴板")
+        
+        copy_button = ttk.Button(button_frame, text="📋 复制到剪贴板", 
+                                command=copy_to_clipboard)
+        copy_button.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 保存按钮
+        def save_to_file():
+            file_path = filedialog.asksaveasfilename(
+                title="保存结果",
+                defaultextension=".txt",
+                filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")]
+            )
+            if file_path:
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(result_content)
+                    messagebox.showinfo("成功", f"结果已保存到: {file_path}")
+                except Exception as e:
+                    messagebox.showerror("错误", f"保存失败: {str(e)}")
+        
+        save_button = ttk.Button(button_frame, text="💾 保存到文件", 
+                                command=save_to_file)
+        save_button.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 关闭按钮
+        close_button = ttk.Button(button_frame, text="关闭", 
+                                 command=dialog.destroy)
+        close_button.pack(side=tk.RIGHT)
+        
+        # 设置对话框为模态
+        dialog.transient(self.root)
+        dialog.grab_set()
+    
     # 越南文处理器相关方法
     def browse_vp_scan_directory(self):
         """浏览越南文处理器扫描目录"""
@@ -869,15 +943,15 @@ class GameToolsUnified:
             self.root.after(0, self.clear_vp_results)
             
             # 开始处理
-            self.root.after(0, lambda: self.vp_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
                 f"开始扫描目录: {scan_dir}\n"))
-            self.root.after(0, lambda: self.vp_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
                 f"输出文件夹: {output_folder}\n"))
-            self.root.after(0, lambda: self.vp_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
                 f"递归扫描: {'是' if self.vp_recursive_var.get() else '否'}\n"))
-            self.root.after(0, lambda: self.vp_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
                 "支持的格式: .xlsx, .xls, .csv, .tsv\n"))
-            self.root.after(0, lambda: self.vp_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
                 "-" * 50 + "\n"))
             
             # 执行处理
@@ -901,23 +975,20 @@ class GameToolsUnified:
     
     def _show_vp_result(self, stats):
         """显示越南文处理结果"""
-        self.vp_result_text.insert(tk.END, "\n" + "=" * 50 + "\n")
-        self.vp_result_text.insert(tk.END, "处理完成！\n")
-        self.vp_result_text.insert(tk.END, "=" * 50 + "\n")
-        self.vp_result_text.insert(tk.END, f"扫描的文件总数: {stats['total_files_scanned']}\n")
-        self.vp_result_text.insert(tk.END, f"包含越南文的文件数: {stats['files_with_vietnamese']}\n")
-        self.vp_result_text.insert(tk.END, f"越南文位置总数: {stats['total_vietnamese_locations']}\n")
+        self.append_result('vietnamese_processor', "\n" + "=" * 50 + "\n")
+        self.append_result('vietnamese_processor', "处理完成！\n")
+        self.append_result('vietnamese_processor', "=" * 50 + "\n")
+        self.append_result('vietnamese_processor', f"扫描的文件总数: {stats['total_files_scanned']}\n")
+        self.append_result('vietnamese_processor', f"包含越南文的文件数: {stats['files_with_vietnamese']}\n")
+        self.append_result('vietnamese_processor', f"越南文位置总数: {stats['total_vietnamese_locations']}\n")
         
         if stats['output_files']:
-            self.vp_result_text.insert(tk.END, "\n✓ 输出文件创建成功！\n")
-            self.vp_result_text.insert(tk.END, "生成的文件:\n")
+            self.append_result('vietnamese_processor', "\n✓ 输出文件创建成功！\n")
+            self.append_result('vietnamese_processor', "生成的文件:\n")
             for output_file in stats['output_files']:
-                self.vp_result_text.insert(tk.END, f"  - {output_file}\n")
+                self.append_result('vietnamese_processor', f"  - {output_file}\n")
         else:
-            self.vp_result_text.insert(tk.END, "\n✗ 未找到越南文内容，未创建输出文件\n")
-        
-        # 滚动到底部
-        self.vp_result_text.see(tk.END)
+            self.append_result('vietnamese_processor', "\n✗ 未找到越南文内容，未创建输出文件\n")
         
         # 显示成功消息
         if stats['output_files']:
@@ -927,10 +998,9 @@ class GameToolsUnified:
     
     def _show_vp_error(self, error_msg):
         """显示越南文处理错误"""
-        self.vp_result_text.insert(tk.END, "\n" + "=" * 50 + "\n")
-        self.vp_result_text.insert(tk.END, f"错误: {error_msg}\n")
-        self.vp_result_text.insert(tk.END, "=" * 50 + "\n")
-        self.vp_result_text.see(tk.END)
+        self.append_result('vietnamese_processor', "\n" + "=" * 50 + "\n")
+        self.append_result('vietnamese_processor', f"错误: {error_msg}\n")
+        self.append_result('vietnamese_processor', "=" * 50 + "\n")
         messagebox.showerror("错误", error_msg)
     
     def _vp_finished(self):
@@ -942,7 +1012,7 @@ class GameToolsUnified:
     
     def clear_vp_results(self):
         """清空越南文处理结果"""
-        self.vp_result_text.delete(1.0, tk.END)
+        self.clear_result('vietnamese_processor')
         self.vp_progress_var.set("就绪")
     
     def create_demo_files(self):
@@ -953,15 +1023,16 @@ class GameToolsUnified:
                                   capture_output=True, text=True, encoding='utf-8')
             
             if result.returncode == 0:
-                self.vp_result_text.insert(tk.END, "演示文件创建成功！\n")
-                self.vp_result_text.insert(tk.END, "文件位置: demo_tables/\n")
-                self.vp_result_text.insert(tk.END, "现在可以使用批量扫描功能测试这些文件。\n")
+                self.append_result('vietnamese_processor', "演示文件创建成功！\n")
+                self.append_result('vietnamese_processor', "文件位置: demo_tables/\n")
+                self.append_result('vietnamese_processor', "现在可以使用批量扫描功能测试这些文件。\n")
                 self.status_var.set("演示文件创建成功")
+                messagebox.showinfo("成功", "演示文件创建成功！\n文件位置: demo_tables/")
             else:
-                self.vp_result_text.insert(tk.END, f"创建演示文件失败: {result.stderr}\n")
+                self.append_result('vietnamese_processor', f"创建演示文件失败: {result.stderr}\n")
                 self.status_var.set("演示文件创建失败")
         except Exception as e:
-            self.vp_result_text.insert(tk.END, f"创建演示文件时发生错误: {str(e)}\n")
+            self.append_result('vietnamese_processor', f"创建演示文件时发生错误: {str(e)}\n")
             self.status_var.set("演示文件创建失败")
     
     # JSON格式检测工具相关方法
@@ -1010,18 +1081,18 @@ class GameToolsUnified:
     
     def _update_json_results(self, report):
         """更新JSON错误检测结果"""
-        self.json_result_text.delete(1.0, tk.END)
-        self.json_result_text.insert(1.0, report)
-        self.json_result_text.see(1.0)
+        self.clear_result('json_detector')
+        self.append_result('json_detector', report)
         
         self.json_detect_button.config(state="normal")
         self.json_save_button.config(state="normal")
         self.status_var.set("检测完成")
+        messagebox.showinfo("完成", "JSON检测完成！请点击查看结果按钮查看详细报告")
     
     def _show_json_error(self, error_msg):
         """显示JSON错误检测错误"""
-        self.json_result_text.delete(1.0, tk.END)
-        self.json_result_text.insert(1.0, error_msg)
+        self.clear_result('json_detector')
+        self.append_result('json_detector', error_msg)
         
         self.json_detect_button.config(state="normal")
         self.status_var.set("检测失败")
@@ -1029,12 +1100,12 @@ class GameToolsUnified:
     
     def clear_json_results(self):
         """清空JSON检测结果"""
-        self.json_result_text.delete(1.0, tk.END)
+        self.clear_result('json_detector')
         self.json_save_button.config(state="disabled")
     
     def save_json_report(self):
         """保存JSON检测报告"""
-        content = self.json_result_text.get(1.0, tk.END).strip()
+        content = self.get_result('json_detector').strip()
         if not content:
             messagebox.showwarning("警告", "没有可保存的内容")
             return
@@ -1124,11 +1195,11 @@ class GameToolsUnified:
             self.root.after(0, self.clear_excel_results)
             
             # 显示开始信息
-            self.root.after(0, lambda: self.excel_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('excel_processor', 
                 f"开始处理文件: {input_file}\n"))
-            self.root.after(0, lambda: self.excel_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('excel_processor', 
                 f"输出文件: {output_file}\n"))
-            self.root.after(0, lambda: self.excel_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('excel_processor', 
                 "-" * 50 + "\n"))
             
             # 获取选项
@@ -1159,18 +1230,18 @@ class GameToolsUnified:
     def _show_excel_success_result(self):
         """显示Excel整合成功结果"""
         report = self.excel_processor.get_process_report()
-        self.excel_result_text.insert(tk.END, report)
-        self.excel_result_text.insert(tk.END, "\n\n✅ Excel数据处理完成！")
+        self.append_result('excel_processor', report)
+        self.append_result('excel_processor', "\n\n✅ Excel数据处理完成！")
         
         self.excel_process_button.config(state="normal")
         self.excel_preview_button.config(state="normal")
         self.status_var.set("Excel处理完成")
         
-        messagebox.showinfo("成功", "Excel数据处理完成！")
+        messagebox.showinfo("成功", "Excel数据处理完成！请点击查看结果按钮查看详细报告")
     
     def _show_excel_error_result(self, error_msg):
         """显示Excel处理错误结果"""
-        self.excel_result_text.insert(tk.END, f"❌ {error_msg}\n")
+        self.append_result('excel_processor', f"❌ {error_msg}\n")
         
         self.excel_process_button.config(state="normal")
         self.excel_preview_button.config(state="normal")
@@ -1215,15 +1286,16 @@ class GameToolsUnified:
                     preview_text += f"... 还有 {len(unique_values) - 10} 个值\n"
             
             # 清空并显示预览
-            self.excel_result_text.delete(1.0, tk.END)
-            self.excel_result_text.insert(1.0, preview_text)
+            self.clear_result('excel_processor')
+            self.append_result('excel_processor', preview_text)
+            messagebox.showinfo("预览", "预览数据加载完成！请点击查看结果按钮查看")
             
         except Exception as e:
             messagebox.showerror("错误", f"预览数据失败: {str(e)}")
     
     def clear_excel_results(self):
         """清空Excel整合结果"""
-        self.excel_result_text.delete(1.0, tk.END)
+        self.clear_result('excel_processor')
     
     # Excel文本提取器相关方法 - 多语言版本
     def browse_extractor_language_path(self, language_name):
@@ -1344,8 +1416,7 @@ class GameToolsUnified:
         else:
             log_message = f"ℹ️ [{timestamp}] {progress_text}\n"
         
-        self.extractor_result_text.insert(tk.END, log_message)
-        self.extractor_result_text.see(tk.END)
+        self.append_result('text_extractor', log_message)
         self.root.update_idletasks()
     
     def _sanitize_folder_name(self, name):
@@ -1364,15 +1435,15 @@ class GameToolsUnified:
             
             # 显示开始信息
             timestamp = self._get_timestamp()
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 f"🚀 [{timestamp}] 开始多语言翻译提取任务\n"))
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 f"📁 输出目录: {output_dir}\n"))
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 f"🌐 配置语言数: {len(active_languages)} 种\n"))
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 f"📋 输出格式: name | num | cn | vn | en | th\n"))
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 "=" * 60 + "\n\n"))
             
             # 语言映射
@@ -1389,7 +1460,7 @@ class GameToolsUnified:
             for idx, (lang_name, lang_path) in enumerate(active_languages.items(), 1):
                 lang_code = lang_map[lang_name]
                 self.root.after(0, lambda n=lang_name, i=idx, t=len(active_languages): 
-                              self.extractor_result_text.insert(tk.END, 
+                              self.append_result('text_extractor', 
                                   f"\n📚 提取 [{i}/{t}]: {n}\n"))
                 
                 try:
@@ -1400,7 +1471,7 @@ class GameToolsUnified:
                         # 单个文件
                         file_name = os.path.splitext(os.path.basename(lang_path))[0]
                         self.root.after(0, lambda f=file_name: 
-                                      self.extractor_result_text.insert(tk.END, f"  📄 {f}\n"))
+                                      self.append_result('text_extractor', f"  📄 {f}\n"))
                         extracted_data = lang_extractor.extract_text_from_excel(lang_path, 1, 1)
                         if extracted_data:
                             file_data[file_name] = extracted_data
@@ -1408,7 +1479,7 @@ class GameToolsUnified:
                         # 目录批量处理
                         excel_files = lang_extractor.scan_directory(lang_path)
                         self.root.after(0, lambda c=len(excel_files): 
-                                      self.extractor_result_text.insert(tk.END, f"  📁 找到 {c} 个文件\n"))
+                                      self.append_result('text_extractor', f"  📁 找到 {c} 个文件\n"))
                         
                         for file_idx, file_path in enumerate(excel_files, 1):
                             file_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -1418,29 +1489,29 @@ class GameToolsUnified:
                     
                     all_lang_data[lang_code] = file_data
                     self.root.after(0, lambda c=len(file_data): 
-                                  self.extractor_result_text.insert(tk.END, f"  ✅ 成功提取 {c} 个文件\n"))
+                                  self.append_result('text_extractor', f"  ✅ 成功提取 {c} 个文件\n"))
                     
                 except Exception as e:
                     error_msg = f"  ❌ 提取 {lang_name} 时出错: {str(e)}\n"
-                    self.root.after(0, lambda m=error_msg: self.extractor_result_text.insert(tk.END, m))
+                    self.root.after(0, lambda m=error_msg: self.append_result('text_extractor', m))
             
             # 生成汇总Excel表格
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 f"\n{'='*60}\n"))
-            self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('text_extractor', 
                 f"📊 生成汇总Excel表格\n"))
             
             output_file = os.path.join(output_dir, "翻译提取汇总.xlsx")
             success = self._create_extractor_summary_excel(all_lang_data, output_file)
             
             if success:
-                self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('text_extractor', 
                     f"✅ 汇总表格已生成: {output_file}\n"))
-                self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('text_extractor', 
                     f"{'='*60}\n\n"))
                 self.root.after(0, self._show_extractor_multi_lang_success)
             else:
-                self.root.after(0, lambda: self.extractor_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('text_extractor', 
                     f"❌ 生成汇总表格失败\n"))
                 self.root.after(0, self._show_extractor_error_result, "生成汇总表格失败")
             
@@ -1558,19 +1629,17 @@ class GameToolsUnified:
     def _show_extractor_multi_lang_success(self):
         """显示多语言提取成功结果"""
         timestamp = self._get_timestamp()
-        self.extractor_result_text.insert(tk.END, f"✅ [{timestamp}] 多语言文本提取完成！\n")
-        self.extractor_result_text.see(tk.END)
+        self.append_result('text_extractor', f"✅ [{timestamp}] 多语言文本提取完成！\n")
         
         self.extractor_process_button.config(state="normal")
         self.status_var.set("多语言提取完成")
         
-        messagebox.showinfo("成功", "多语言Excel文本提取完成！\n\n汇总Excel表格已生成，格式：name | num | cn | vn | en | th")
+        messagebox.showinfo("成功", "多语言Excel文本提取完成！\n\n汇总Excel表格已生成，格式：name | num | cn | vn | en | th\n\n请点击查看结果按钮查看详细日志")
     
     def _show_extractor_error_result(self, error_msg):
         """显示文本提取错误结果"""
         timestamp = self._get_timestamp()
-        self.extractor_result_text.insert(tk.END, f"❌ [{timestamp}] {error_msg}\n")
-        self.extractor_result_text.see(tk.END)
+        self.append_result('text_extractor', f"❌ [{timestamp}] {error_msg}\n")
         
         self.extractor_process_button.config(state="normal")
         self.status_var.set("文本提取失败")
@@ -1630,14 +1699,16 @@ class GameToolsUnified:
             preview_text += f"📊 总计: {len(active_languages)} 种语言，{total_files} 个文件\n"
             preview_text += "=" * 60 + "\n"
             
-            self.extractor_result_text.insert(1.0, preview_text)
+            self.clear_result('text_extractor')
+            self.append_result('text_extractor', preview_text)
+            messagebox.showinfo("预览", "文件预览加载完成！请点击查看结果按钮查看")
             
         except Exception as e:
             messagebox.showerror("错误", f"预览文件失败: {str(e)}")
     
     def clear_extractor_results(self):
         """清空文本提取结果"""
-        self.extractor_result_text.delete(1.0, tk.END)
+        self.clear_result('text_extractor')
     
     # ==================== 跨项目翻译对应相关方法 ====================
     
@@ -1720,15 +1791,15 @@ class GameToolsUnified:
             self.root.after(0, self.clear_cpt_results)
             
             # 开始处理
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"开始处理翻译对应...\n"))
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"映射文件: {mapping_file}\n"))
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"项目目录: {project_dir}\n"))
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"输出文件: {output_file}\n"))
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"{'='*60}\n"))
             
             # 处理翻译映射
@@ -1738,56 +1809,55 @@ class GameToolsUnified:
             if results:
                 # 显示处理报告
                 report = self.cross_project_translator.get_processing_report()
-                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('cross_project_translator', 
                     f"{report}\n"))
                 
                 # 导出结果
                 if self.cross_project_translator.export_results(output_file):
-                    self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    self.root.after(0, lambda: self.append_result('cross_project_translator', 
                         f"结果已导出到: {output_file}\n"))
                     # 启用导出按钮
                     self.root.after(0, lambda: self.cpt_export_button.config(state="normal"))
                 else:
-                    self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    self.root.after(0, lambda: self.append_result('cross_project_translator', 
                         f"导出失败！\n"))
                 
                 # 显示详细结果（前20条）
-                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('cross_project_translator', 
                     f"\n详细结果（前20条）:\n"))
-                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('cross_project_translator', 
                     f"{'='*60}\n"))
                 
                 for i, result in enumerate(results[:20]):
                     status_icon = "✅" if result['status'] == 'success' else "❌"
                     self.root.after(0, lambda r=result, icon=status_icon: 
-                        self.cpt_result_text.insert(tk.END, 
+                        self.append_result('cross_project_translator', 
                             f"{icon} 第{r['index']}行: {r['file_name']} -> {r['content'][:50]}...\n"))
                 
                 if len(results) > 20:
-                    self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                    self.root.after(0, lambda: self.append_result('cross_project_translator', 
                         f"... 还有 {len(results) - 20} 条结果，请查看导出的Excel文件\n"))
                 
             else:
-                self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+                self.root.after(0, lambda: self.append_result('cross_project_translator', 
                     f"处理失败，没有生成结果\n"))
             
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"\n处理完成！\n"))
-            self.root.after(0, lambda: self.cpt_result_text.see(tk.END))
             
         except Exception as e:
             error_msg = f"处理过程中发生错误: {str(e)}"
-            self.root.after(0, lambda: self.cpt_result_text.insert(tk.END, 
+            self.root.after(0, lambda: self.append_result('cross_project_translator', 
                 f"❌ {error_msg}\n"))
-            self.root.after(0, lambda: self.cpt_result_text.see(tk.END))
         
         # 恢复按钮状态
         self.root.after(0, lambda: self.cpt_process_button.config(state="normal"))
         self.root.after(0, lambda: self.status_var.set("翻译对应完成"))
+        self.root.after(0, lambda: messagebox.showinfo("完成", "翻译对应完成！请点击查看结果按钮查看详细报告"))
     
     def clear_cpt_results(self):
         """清空跨项目翻译对应结果"""
-        self.cpt_result_text.delete(1.0, tk.END)
+        self.clear_result('cross_project_translator')
         self.cpt_export_button.config(state="disabled")
     
     def export_cpt_results(self):
