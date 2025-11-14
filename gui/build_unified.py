@@ -188,16 +188,6 @@ def build_exe():
             print(f"exe文件位置: {target_exe.absolute()}")
             print(f"文件大小: {target_exe.stat().st_size / 1024 / 1024:.2f} MB")
             
-            # 同时创建一个不带版本号的副本（用于兼容性）
-            compat_exe = dist_dir / "gametools.exe"
-            if compat_exe.exists():
-                try:
-                    compat_exe.unlink()
-                except:
-                    pass
-            shutil.copy2(exe_path, compat_exe)
-            print(f"兼容性文件: {compat_exe.absolute()}")
-            
             return True
         except Exception as e:
             print(f"[WARNING] 复制文件失败: {e}")
@@ -225,11 +215,6 @@ def create_portable_package():
     
     # 复制exe文件
     shutil.copy2(exe_path, portable_dir / "gametools.exe")
-    
-    # 同时创建兼容性版本的便携版包
-    compat_portable_dir = Path("../dist/gametools_便携版")
-    compat_portable_dir.mkdir(exist_ok=True)
-    shutil.copy2(exe_path, compat_portable_dir / "gametools.exe")
     
     # 创建说明文件
     readme_content = f"""gametools - 游戏工具集 便携版
@@ -274,16 +259,12 @@ def create_portable_package():
 版权所有 © 2024 gametools
 """
     
-    # 为两个便携版包都创建说明文件
+    # 创建说明文件
     with open(portable_dir / "使用说明.txt", 'w', encoding='utf-8') as f:
         f.write(readme_content)
     
-    with open(compat_portable_dir / "使用说明.txt", 'w', encoding='utf-8') as f:
-        f.write(readme_content)
-    
     print(f"[SUCCESS] 便携版包已创建:")
-    print(f"  - 带版本号: {portable_dir.absolute()}")
-    print(f"  - 兼容性版本: {compat_portable_dir.absolute()}")
+    print(f"  便携版位置: {portable_dir.absolute()}")
     return True
 
 
@@ -315,23 +296,14 @@ def main():
         print("[ERROR] 构建失败")
         return False
     
-    # 创建便携版包
-    create_portable_package()
-    
     print("\n" + "="*50)
     print("[SUCCESS] 构建完成!")
     print("="*50)
     print("生成的文件:")
     version = get_version()
-    print(f"- dist/gametools_v{version}.exe (主程序 - 带版本号)")
-    print(f"- dist/gametools.exe (主程序 - 兼容性版本)")
-    print(f"- dist/gametools_v{version}_便携版/ (便携版包 - 带版本号)")
-    print(f"- dist/gametools_便携版/ (便携版包 - 兼容性版本)")
+    print(f"- dist/gametools_v{version}.exe (主程序)")
     print("\n使用方法:")
-    print(f"1. 直接运行 dist/gametools_v{version}.exe (推荐)")
-    print("2. 或运行 dist/gametools.exe (兼容性版本)")
-    print(f"3. 或使用便携版包 gametools_v{version}_便携版/ 中的程序")
-    print("4. 或使用便携版包 gametools_便携版/ 中的程序")
+    print(f"直接运行 dist/gametools_v{version}.exe")
     print("\n输出目录: dist/")
     
     return True
