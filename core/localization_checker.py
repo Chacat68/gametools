@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Set
 import pandas as pd
@@ -56,6 +57,7 @@ class VietnameseDetector:
         
         # 编译中文字符正则表达式
         self.chinese_compiled_patterns = [re.compile(pattern) for pattern in self.chinese_patterns]
+        self.english_pattern = re.compile(r'[a-zA-Z]')
     
     def contains_vietnamese(self, text: str) -> bool:
         """
@@ -73,7 +75,7 @@ class VietnameseDetector:
         # 规范化到 NFC，兼容分解写法
         normalized = unicodedata.normalize('NFC', text)
         # 快速 ASCII 过滤：纯 ASCII 文本直接判否
-        if all(ord(ch) < 128 for ch in normalized):
+        if normalized.isascii():
             return False
         
         # 先用合并正则快速判断
@@ -112,8 +114,7 @@ class VietnameseDetector:
             return False
         
         # 英文字符范围：基本拉丁字母
-        english_pattern = re.compile(r'[a-zA-Z]')
-        return bool(english_pattern.search(text))
+        return bool(self.english_pattern.search(text))
     
     def detect_language_type(self, text: str) -> str:
         """
@@ -301,9 +302,16 @@ class TableChecker:
                     on_bad_lines='skip'
                 ):
                     for column in chunk.columns:
-                        series = chunk[column].astype(str)
+                        series = chunk[column].dropna().astype(str)
+                        if series.empty:
+                            continue
+                        # 先过滤掉纯 ASCII 的文本，避免无意义的正则匹配
+                        has_non_ascii = series.str.contains(r'[^\x00-\x7F]', regex=True, na=False)
+                        if not has_non_ascii.any():
+                            continue
+                        searchable = series[has_non_ascii]
                         # 使用向量化正则匹配加速
-                        if series.str.contains(pattern, regex=True, na=False).any():
+                        if searchable.str.contains(pattern, regex=True, na=False).any():
                             return True
                 # 该编码读取完成仍未发现
             except UnicodeDecodeError:
@@ -363,36 +371,37 @@ class LocalizationChecker:
             print(f"错误: {directory_path} 不是一个目录")
             return []
         
-        valid_tables = []
-        
         print(f"Scanning directory: {directory_path}")
         print(f"Recursive scan: {'Yes' if recursive else 'No'}")
         print("Supported formats: .xlsx, .xls, .csv, .tsv")
         print("-" * 50)
-        
-        # 根据recursive参数决定扫描方式
-        if recursive:
-            # 递归扫描所有文件
-            for file_path in directory.rglob('*'):
-                if file_path.is_file() and self.table_checker.is_table_file(file_path):
-                    print(f"Checking file: {file_path.name}...", end=" ")
-                    
-                    if self.table_checker.check_table_has_vietnamese(file_path):
-                        valid_tables.append(file_path.name)
-                        print("YES - Contains Vietnamese")
-                    else:
-                        print("NO - No Vietnamese")
-        else:
-            # 只扫描当前目录
-            for file_path in directory.iterdir():
-                if file_path.is_file() and self.table_checker.is_table_file(file_path):
-                    print(f"Checking file: {file_path.name}...", end=" ")
-                    
-                    if self.table_checker.check_table_has_vietnamese(file_path):
-                        valid_tables.append(file_path.name)
-                        print("YES - Contains Vietnamese")
-                    else:
-                        print("NO - No Vietnamese")
+
+        iterator = directory.rglob('*') if recursive else directory.iterdir()
+        files_to_scan = [
+            file_path for file_path in iterator
+            if file_path.is_file() and self.table_checker.is_table_file(file_path)
+        ]
+
+        if not files_to_scan:
+            print("No supported table files found.")
+            return []
+
+        print(f"Total supported table files: {len(files_to_scan)}")
+        valid_tables: List[str] = []
+
+        max_workers = min(max(1, (os.cpu_count() or 1) * 2), len(files_to_scan))
+
+        def scan_file(path: Path):
+            return path, self.table_checker.check_table_has_vietnamese(path)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for file_path, has_vietnamese in executor.map(scan_file, files_to_scan):
+                print(f"Checking file: {file_path.name}...", end=" ")
+                if has_vietnamese:
+                    valid_tables.append(file_path.name)
+                    print("YES - Contains Vietnamese")
+                else:
+                    print("NO - No Vietnamese")
         
         return valid_tables
     

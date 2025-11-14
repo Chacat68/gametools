@@ -61,22 +61,27 @@ class CacheEntry:
 
 
 class MemoryCache:
-    """内存缓存管理器 - 使用LRU淘汰策略"""
+    """内存缓存管理器 - 使用LRU淘汰策略（支持内存大小限制）"""
     
-    def __init__(self, max_size: int = 1000, default_ttl: Optional[float] = None):
+    def __init__(self, max_size: int = 1000, default_ttl: Optional[float] = None, 
+                 max_memory_mb: float = 500.0):
         """
         初始化内存缓存
         
         Args:
             max_size: 最大缓存条目数
             default_ttl: 默认过期时间（秒）
+            max_memory_mb: 最大内存使用量（MB），默认500MB
         """
         self.max_size = max_size
         self.default_ttl = default_ttl
+        self.max_memory_bytes = max_memory_mb * 1024 * 1024
+        self.current_memory_bytes = 0
         self.cache: Dict[str, CacheEntry] = {}
         self._lock = RLock()
         self.hit_count = 0  # 命中次数
         self.miss_count = 0  # 未命中次数
+        self.eviction_count = 0  # 淘汰次数
     
     def get(self, key: str) -> Optional[Any]:
         """
@@ -112,7 +117,7 @@ class MemoryCache:
     
     def set(self, key: str, value: Any, ttl: Optional[float] = None) -> None:
         """
-        设置缓存值
+        设置缓存值（支持内存大小检查）
         
         Args:
             key: 缓存键
@@ -122,13 +127,29 @@ class MemoryCache:
         with self._lock:
             ttl = ttl if ttl is not None else self.default_ttl
             
-            # 如果缓存已满，删除最少使用的条目
-            if len(self.cache) >= self.max_size and key not in self.cache:
-                self._evict_lru()
+            # 计算value的大小
+            value_size = self._estimate_size(value)
+            
+            # 如果新值太大，直接拒绝
+            if value_size > self.max_memory_bytes:
+                logger.warning(f"缓存值过大，拒绝缓存: {key} ({value_size / 1024 / 1024:.2f}MB)")
+                return
+            
+            # 如果要替换现有key，先减去旧值的大小
+            if key in self.cache:
+                old_size = self._estimate_size(self.cache[key].value)
+                self.current_memory_bytes -= old_size
+            
+            # 当内存不足或条目数过多时进行淘汰
+            while (self.current_memory_bytes + value_size > self.max_memory_bytes or 
+                   len(self.cache) >= self.max_size) and key not in self.cache:
+                if not self._evict_lru():
+                    break  # 无法继续淘汰
             
             entry = CacheEntry(key=key, value=value, ttl=ttl)
             self.cache[key] = entry
-            logger.debug(f"缓存已设置: {key}")
+            self.current_memory_bytes += value_size
+            logger.debug(f"缓存已设置: {key} (大小: {value_size / 1024:.2f}KB)")
     
     def delete(self, key: str) -> bool:
         """
@@ -142,7 +163,9 @@ class MemoryCache:
         """
         with self._lock:
             if key in self.cache:
+                value_size = self._estimate_size(self.cache[key].value)
                 del self.cache[key]
+                self.current_memory_bytes -= value_size
                 logger.debug(f"缓存已删除: {key}")
                 return True
             return False
@@ -151,25 +174,78 @@ class MemoryCache:
         """清空所有缓存"""
         with self._lock:
             self.cache.clear()
+            self.current_memory_bytes = 0
             logger.info("缓存已清空")
     
-    def _evict_lru(self) -> None:
-        """删除最少使用的缓存条目"""
+    def _evict_lru(self) -> bool:
+        """
+        删除最少使用的缓存条目
+        
+        Returns:
+            是否成功淘汰
+        """
         if not self.cache:
-            return
+            return False
         
-        # 找到访问次数最少且最久未使用的条目
-        lru_key = min(self.cache.keys(), 
-                     key=lambda k: (self.cache[k].access_count, self.cache[k].last_accessed))
+        # 使用更智能的评分系统：考虑访问频率、最后访问时间和数据大小
+        current_time = time.time()
         
+        def calculate_score(key: str) -> float:
+            entry = self.cache[key]
+            time_factor = current_time - entry.last_accessed  # 时间越久分数越高
+            access_factor = 1.0 / (entry.access_count + 1)  # 访问越少分数越高
+            # 综合评分（时间因素权重更高）
+            return time_factor * 0.7 + access_factor * 0.3
+        
+        # 找到评分最高（最应该被淘汰）的条目
+        lru_key = max(self.cache.keys(), key=calculate_score)
+        
+        value_size = self._estimate_size(self.cache[lru_key].value)
         del self.cache[lru_key]
-        logger.debug(f"LRU淘汰: {lru_key}")
+        self.current_memory_bytes -= value_size
+        self.eviction_count += 1
+        
+        logger.debug(f"LRU淘汰: {lru_key} (释放: {value_size / 1024:.2f}KB)")
+        return True
+    
+    def _estimate_size(self, obj: Any) -> int:
+        """
+        估算对象的内存大小
+        
+        Args:
+            obj: 要估算的对象
+            
+        Returns:
+            估算的字节数
+        """
+        try:
+            import sys
+            
+            # 对于常见类型进行特殊处理
+            if isinstance(obj, (str, bytes)):
+                return sys.getsizeof(obj)
+            elif isinstance(obj, dict):
+                return sys.getsizeof(obj) + sum(
+                    self._estimate_size(k) + self._estimate_size(v) 
+                    for k, v in obj.items()
+                )
+            elif isinstance(obj, (list, tuple)):
+                return sys.getsizeof(obj) + sum(self._estimate_size(item) for item in obj)
+            elif isinstance(obj, pd.DataFrame):
+                return obj.memory_usage(deep=True).sum()
+            else:
+                return sys.getsizeof(obj)
+        except Exception as e:
+            logger.warning(f"估算对象大小失败: {e}")
+            return 1024  # 默认1KB
     
     def get_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
         with self._lock:
             total_requests = self.hit_count + self.miss_count
             hit_rate = self.hit_count / total_requests if total_requests > 0 else 0
+            memory_usage_mb = self.current_memory_bytes / 1024 / 1024
+            memory_usage_percent = (self.current_memory_bytes / self.max_memory_bytes * 100) if self.max_memory_bytes > 0 else 0
             
             return {
                 'size': len(self.cache),
@@ -177,7 +253,11 @@ class MemoryCache:
                 'hit_count': self.hit_count,
                 'miss_count': self.miss_count,
                 'hit_rate': f"{hit_rate*100:.1f}%",
-                'total_requests': total_requests
+                'total_requests': total_requests,
+                'eviction_count': self.eviction_count,
+                'memory_usage_mb': f"{memory_usage_mb:.2f}MB",
+                'max_memory_mb': f"{self.max_memory_bytes / 1024 / 1024:.2f}MB",
+                'memory_usage_percent': f"{memory_usage_percent:.1f}%"
             }
     
     def cleanup_expired(self) -> int:
@@ -185,7 +265,9 @@ class MemoryCache:
         with self._lock:
             expired_keys = [k for k, v in self.cache.items() if v.is_expired()]
             for key in expired_keys:
+                value_size = self._estimate_size(self.cache[key].value)
                 del self.cache[key]
+                self.current_memory_bytes -= value_size
             
             if expired_keys:
                 logger.info(f"清理过期缓存: {len(expired_keys)} 个条目")

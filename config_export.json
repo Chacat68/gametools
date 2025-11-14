@@ -1,0 +1,42 @@
+{
+  "version": "1.23.0",
+  "last_updated": "2025-11-14T14:44:31.949348",
+  "scan": {
+    "recursive": true,
+    "enable_parallel": true,
+    "max_workers": 4,
+    "chunk_size": 20000,
+    "auto_open_result": false
+  },
+  "cache": {
+    "enabled": true,
+    "max_size": 1000,
+    "max_memory_mb": 1000,
+    "default_ttl": 3600.0
+  },
+  "log": {
+    "level": "INFO",
+    "log_to_file": true,
+    "log_to_console": true,
+    "use_colors": true,
+    "keep_days": 7
+  },
+  "ui": {
+    "theme": "default",
+    "window_width": 1200,
+    "window_height": 900,
+    "font_size": 10,
+    "auto_save_position": true
+  },
+  "path": {
+    "last_scan_dir": "",
+    "last_output_dir": "",
+    "default_output_format": "xlsx"
+  },
+  "detection": {
+    "detect_vietnamese": true,
+    "detect_chinese": true,
+    "detect_english": true,
+    "min_confidence": 0.8
+  }
+}

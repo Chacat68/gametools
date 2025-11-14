@@ -3,32 +3,56 @@
 """
 越南文Excel处理器
 合并越南文检测和Excel扫描导出功能，支持文件夹输出
+支持并行处理和流式读取大文件
 """
 
 import os
 import re
 import sys
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple, Union, Optional
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import multiprocessing
+from functools import partial
 
 # 添加当前目录到路径
 current_dir = Path(__file__).parent
 sys.path.insert(0, str(current_dir))
 
 from localization_checker import VietnameseDetector
+from error_handler import (
+    FileProcessingError, DirectoryError, ExcelReadError, CSVReadError,
+    validate_file_path, validate_directory, handle_errors, safe_execute,
+    log_error_with_context
+)
+from log_manager import get_logger
+
+# 使用增强的日志系统
+logger = get_logger(__name__)
 
 
 class VietnameseExcelProcessor:
     """越南文Excel处理器 - 合并检测和导出功能"""
     
-    def __init__(self):
+    def __init__(self, max_workers: Optional[int] = None, enable_parallel: bool = True, chunk_size: int = 10000):
+        """
+        初始化处理器
+        
+        Args:
+            max_workers: 最大并行工作进程数，None表示使用CPU核心数
+            enable_parallel: 是否启用并行处理
+            chunk_size: 大文件分块读取的行数
+        """
         self.vietnamese_detector = VietnameseDetector()
         self.supported_extensions = {'.xlsx', '.xls', '.csv', '.tsv'}
+        self.max_workers = max_workers or max(1, multiprocessing.cpu_count() - 1)
+        self.enable_parallel = enable_parallel
+        self.chunk_size = chunk_size
     
     def _get_excel_cell_reference(self, row: int, col: int) -> str:
         """
@@ -62,12 +86,14 @@ class VietnameseExcelProcessor:
         """
         return file_path.suffix.lower() in self.supported_extensions
     
-    def scan_excel_file(self, file_path: Path) -> List[Dict]:
+    @handle_errors(default_return=[])
+    def scan_excel_file(self, file_path: Path, use_chunks: bool = False) -> List[Dict]:
         """
-        扫描单个Excel文件中的越南文
+        扫描单个Excel文件中的越南文（支持大文件流式处理）
         
         Args:
             file_path: Excel文件路径
+            use_chunks: 是否使用分块读取（适用于大文件）
             
         Returns:
             List[Dict]: 包含越南文的位置信息列表
@@ -75,40 +101,137 @@ class VietnameseExcelProcessor:
         results = []
         
         try:
+            # 验证文件
+            validate_file_path(str(file_path), must_exist=True, extensions=['.xlsx', '.xls'])
+            
+            # 获取文件大小以决定是否使用分块
+            file_size_mb = file_path.stat().st_size / (1024 * 1024)
+            should_use_chunks = use_chunks or file_size_mb > 50  # 大于50MB使用分块
+            
+            if should_use_chunks:
+                logger.info(f"文件大小 {file_size_mb:.2f}MB，使用分块读取模式")
+            
             # 读取Excel文件的所有工作表
             excel_file = pd.ExcelFile(file_path)
             
             for sheet_name in excel_file.sheet_names:
                 try:
-                    # 读取工作表
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                    
-                    # 扫描每个单元格
-                    for row_idx, row in df.iterrows():
-                        for col_idx, value in enumerate(row):
-                            if pd.notna(value) and self.vietnamese_detector.contains_vietnamese(str(value)):
-                                # 获取实际检测到的单元格内容
-                                content = str(value)
-                                # 基于实际检测到的内容判断语言类型
-                                language_type = self.vietnamese_detector.detect_language_type(content)
-                                results.append({
-                                    'excel_file': file_path.name,
-                                    'sheet_name': sheet_name,
-                                    'row': row_idx + 2,  # +2 因为pandas从0开始，且Excel有标题行
-                                    'col': col_idx + 1,  # +1 因为pandas从0开始
-                                    'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
-                                    'content': content,
-                                    'language_type': language_type,  # 基于实际检测内容判断的语言类型
-                                    'position': self._get_excel_cell_reference(row_idx + 2, col_idx + 1),
-                                    'file_path': str(file_path)
-                                })
+                    if should_use_chunks:
+                        # 大文件使用分块读取
+                        results.extend(self._scan_sheet_chunked(
+                            excel_file, sheet_name, file_path
+                        ))
+                    else:
+                        # 小文件一次性读取
+                        df = excel_file.parse(sheet_name=sheet_name)
+                        results.extend(self._scan_dataframe(
+                            df, sheet_name, file_path
+                        ))
                 
                 except Exception as e:
-                    print(f"读取工作表 '{sheet_name}' 时出错: {e}")
+                    error = ExcelReadError(str(file_path), sheet_name, e)
+                    log_error_with_context(error, {'sheet': sheet_name}, logger)
                     continue
         
+        except ExcelReadError:
+            raise
         except Exception as e:
-            print(f"读取Excel文件 {file_path} 时出错: {e}")
+            raise ExcelReadError(str(file_path), original_error=e)
+        
+        return results
+    
+    def _scan_dataframe(self, df: pd.DataFrame, sheet_name: str, 
+                       file_path: Path) -> List[Dict]:
+        """
+        扫描DataFrame中的越南文
+        
+        Args:
+            df: 要扫描的DataFrame
+            sheet_name: 工作表名
+            file_path: 文件路径
+            
+        Returns:
+            List[Dict]: 扫描结果列表
+        """
+        results = []
+        
+        for row_idx, row in df.iterrows():
+            for col_idx, value in enumerate(row):
+                if pd.notna(value) and self.vietnamese_detector.contains_vietnamese(str(value)):
+                    # 获取实际检测到的单元格内容
+                    content = str(value)
+                    # 基于实际检测到的内容判断语言类型
+                    language_type = self.vietnamese_detector.detect_language_type(content)
+                    results.append({
+                        'excel_file': file_path.name,
+                        'sheet_name': sheet_name,
+                        'row': row_idx + 2,  # +2 因为pandas从0开始，且Excel有标题行
+                        'col': col_idx + 1,  # +1 因为pandas从0开始
+                        'column_name': df.columns[col_idx] if col_idx < len(df.columns) else f'Column_{col_idx + 1}',
+                        'content': content,
+                        'language_type': language_type,
+                        'position': self._get_excel_cell_reference(row_idx + 2, col_idx + 1),
+                        'file_path': str(file_path)
+                    })
+        
+        return results
+    
+    def _scan_sheet_chunked(self, excel_file: pd.ExcelFile, sheet_name: str, 
+                           file_path: Path) -> List[Dict]:
+        """
+        分块扫描工作表（适用于大文件）
+        
+        Args:
+            excel_file: Excel文件对象
+            sheet_name: 工作表名
+            file_path: 文件路径
+            
+        Returns:
+            List[Dict]: 扫描结果列表
+        """
+        results = []
+        
+        try:
+            # 读取工作表以获取列信息
+            df_sample = excel_file.parse(sheet_name=sheet_name, nrows=1)
+            columns = df_sample.columns
+            
+            # 分块读取
+            chunk_iter = pd.read_excel(
+                file_path, 
+                sheet_name=sheet_name, 
+                chunksize=self.chunk_size
+            )
+            
+            row_offset = 0
+            for chunk_idx, df_chunk in enumerate(chunk_iter):
+                for local_row_idx, row in df_chunk.iterrows():
+                    actual_row_idx = row_offset + local_row_idx
+                    
+                    for col_idx, value in enumerate(row):
+                        if pd.notna(value) and self.vietnamese_detector.contains_vietnamese(str(value)):
+                            content = str(value)
+                            language_type = self.vietnamese_detector.detect_language_type(content)
+                            results.append({
+                                'excel_file': file_path.name,
+                                'sheet_name': sheet_name,
+                                'row': actual_row_idx + 2,
+                                'col': col_idx + 1,
+                                'column_name': columns[col_idx] if col_idx < len(columns) else f'Column_{col_idx + 1}',
+                                'content': content,
+                                'language_type': language_type,
+                                'position': self._get_excel_cell_reference(actual_row_idx + 2, col_idx + 1),
+                                'file_path': str(file_path)
+                            })
+                
+                row_offset += len(df_chunk)
+                
+                # 每处理一个块输出进度（可选）
+                if chunk_idx % 10 == 0 and chunk_idx > 0:
+                    print(f"  - 已处理 {row_offset} 行...")
+        
+        except Exception as e:
+            print(f"分块读取工作表 '{sheet_name}' 时出错: {e}")
         
         return results
     
@@ -181,26 +304,29 @@ class VietnameseExcelProcessor:
         
         return []
     
-    def scan_directory(self, directory_path: str, recursive: bool = True) -> List[Dict]:
+    def scan_directory(
+        self,
+        directory_path: str,
+        recursive: bool = True,
+        return_files: bool = False
+    ) -> Union[List[Dict], Tuple[List[Dict], List[Path]]]:
         """
-        扫描目录下的所有支持文件
+        扫描目录下的所有支持文件（支持并行处理）
         
         Args:
             directory_path: 要扫描的目录路径
             recursive: 是否递归扫描子目录
+            return_files: 是否返回文件列表，供统计使用
             
         Returns:
-            List[Dict]: 所有文件中越南文的位置信息
+            List[Dict] 或 (List[Dict], List[Path]): 越南文位置信息及可选的文件列表
         """
-        directory = Path(directory_path)
-        
-        if not directory.exists():
-            print(f"错误: 目录 {directory_path} 不存在")
-            return []
-        
-        if not directory.is_dir():
-            print(f"错误: {directory_path} 不是一个目录")
-            return []
+        try:
+            # 验证目录
+            directory = validate_directory(directory_path, must_exist=True)
+        except DirectoryError as e:
+            logger.error(str(e))
+            return ([], []) if return_files else []
         
         all_results = []
         supported_files = []
@@ -217,9 +343,29 @@ class VietnameseExcelProcessor:
         
         print(f"找到 {len(supported_files)} 个支持的文件")
         
-        # 扫描每个文件
-        for i, file_path in enumerate(supported_files, 1):
-            print(f"正在扫描 ({i}/{len(supported_files)}): {file_path.name}")
+        # 根据配置选择串行或并行处理
+        if self.enable_parallel and len(supported_files) > 3:
+            all_results = self._scan_directory_parallel(supported_files)
+        else:
+            all_results = self._scan_directory_serial(supported_files)
+        
+        if return_files:
+            return all_results, supported_files
+        return all_results
+    
+    def _scan_directory_serial(self, file_paths: List[Path]) -> List[Dict]:
+        """
+        串行扫描文件列表
+        
+        Args:
+            file_paths: 文件路径列表
+            
+        Returns:
+            List[Dict]: 扫描结果列表
+        """
+        all_results = []
+        for i, file_path in enumerate(file_paths, 1):
+            print(f"正在扫描 ({i}/{len(file_paths)}): {file_path.name}")
             
             file_results = self.scan_single_file(file_path)
             all_results.extend(file_results)
@@ -228,6 +374,44 @@ class VietnameseExcelProcessor:
                 print(f"  - 找到 {len(file_results)} 个越南文位置")
             else:
                 print(f"  - 未找到越南文")
+        
+        return all_results
+    
+    def _scan_directory_parallel(self, file_paths: List[Path]) -> List[Dict]:
+        """
+        并行扫描文件列表
+        
+        Args:
+            file_paths: 文件路径列表
+            
+        Returns:
+            List[Dict]: 扫描结果列表
+        """
+        all_results = []
+        total_files = len(file_paths)
+        
+        print(f"使用并行处理模式，工作进程数: {self.max_workers}")
+        
+        # 使用ThreadPoolExecutor以避免序列化问题
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # 提交所有任务
+            future_to_file = {executor.submit(self.scan_single_file, fp): fp for fp in file_paths}
+            
+            # 处理完成的任务
+            completed = 0
+            for future in as_completed(future_to_file):
+                file_path = future_to_file[future]
+                completed += 1
+                
+                try:
+                    file_results = future.result()
+                    all_results.extend(file_results)
+                    
+                    status = f"找到 {len(file_results)} 个越南文位置" if file_results else "未找到越南文"
+                    print(f"[{completed}/{total_files}] {file_path.name}: {status}")
+                    
+                except Exception as e:
+                    print(f"[{completed}/{total_files}] {file_path.name}: 处理失败 - {str(e)}")
         
         return all_results
     
@@ -320,15 +504,12 @@ class VietnameseExcelProcessor:
         print("开始扫描文件中的越南文...")
         print("=" * 50)
         
-        # 扫描目录
-        results = self.scan_directory(directory_path, recursive)
+        # 扫描目录，复用已收集的文件列表用于统计
+        results, supported_files = self.scan_directory(directory_path, recursive, return_files=True)
         
         # 统计信息
         stats = {
-            'total_files_scanned': len(list(Path(directory_path).rglob('*.xlsx'))) + 
-                                 len(list(Path(directory_path).rglob('*.xls'))) +
-                                 len(list(Path(directory_path).rglob('*.csv'))) +
-                                 len(list(Path(directory_path).rglob('*.tsv'))),
+            'total_files_scanned': len(supported_files),
             'files_with_vietnamese': len(set(result['excel_file'] for result in results)),
             'total_vietnamese_locations': len(results),
             'results': results,
