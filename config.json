@@ -1,11 +1,11 @@
 {
   "version": "1.23.0",
-  "last_updated": "2025-11-14T14:44:31.949348",
+  "last_updated": "2025-11-14T15:46:52.519622",
   "scan": {
     "recursive": true,
     "enable_parallel": true,
     "max_workers": 4,
-    "chunk_size": 20000,
+    "chunk_size": 15000,
     "auto_open_result": false
   },
   "cache": {

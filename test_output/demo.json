@@ -1,0 +1,14 @@
+{
+  "metadata": {},
+  "data": [
+    {
+      "file": "test.xlsx",
+      "sheet": "Sheet1",
+      "row": 5,
+      "content": "Xin chào",
+      "language": "越南文"
+    }
+  ],
+  "export_time": "2025-11-14T15:46:53.534056",
+  "total_records": 1
+}

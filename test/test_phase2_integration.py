@@ -1,370 +1,363 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Phase 2优化功能集成示例
-演示如何使用配置管理、任务控制、进度跟踪、结果过滤和多格式输出
-"""
-
-import sys
-from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from core.config_manager import ConfigManager, GameToolsConfig
-from core.task_controller import TaskController, controllable
-from core.progress_tracker import ProgressTracker
-from core.result_filter import ResultFilter, QuickSearch, FilterOperator
-from core.output_formats import ResultExporter, OutputFormat
-from core.vietnamese_excel_processor import VietnameseExcelProcessor
-
-
-# ========== 示例1：配置管理 ==========
-
-def demo_config_management():
-    """演示配置管理功能"""
-    print("=" * 60)
-    print("示例1：配置管理")
-    print("=" * 60)
-    
-    # 获取配置管理器（单例）
-    config = ConfigManager()
-    
-    # 读取配置
-    print(f"\n当前缓存配置: 启用={config.get('cache.enabled')}, "
-          f"最大内存={config.get('cache.max_memory_mb')}MB")
-    
-    # 修改配置
-    config.set('cache.max_memory_mb', 1000)
-    config.set('scan.chunk_size', 20000)
-    print(f"修改后: 最大内存={config.get('cache.max_memory_mb')}MB, "
-          f"分块大小={config.get('scan.chunk_size')}")
-    
-    # 保存配置
-    config.save_config()
-    print("配置已保存到文件")
-    
-    # 导出配置
-    export_path = project_root / "config_export.json"
-    config.export_config(str(export_path))
-    print(f"配置已导出到: {export_path}")
-
-
-# ========== 示例2：任务控制 ==========
-
-@controllable
-def long_running_task(total_items: int, controller: TaskController = None):
-    """可控制的长时间任务"""
-    import time
-    
-    for i in range(total_items):
-        # 检查是否应该暂停/取消
-        if controller:
-            controller.check_point()
-        
-        # 模拟处理
-        time.sleep(0.1)
-        print(f"处理进度: {i+1}/{total_items}")
-        
-        # 在中间位置暂停一次演示
-        if i == total_items // 2:
-            print("\n[自动暂停演示]")
-            if controller:
-                controller.pause()
-                time.sleep(2)  # 暂停2秒
-                controller.resume()
-                print("[已恢复]\n")
-    
-    return f"完成处理 {total_items} 个项目"
-
-
-def demo_task_control():
-    """演示任务控制功能"""
-    print("\n" + "=" * 60)
-    print("示例2：任务控制（暂停/恢复/取消）")
-    print("=" * 60)
-    
-    # 创建任务控制器
-    controller = TaskController()
-    
-    # 启动任务
-    print("\n启动任务...")
-    task = controller.start(long_running_task, 10)
-    
-    # 等待任务完成
-    result = task.wait()
-    print(f"\n任务结果: {result}")
-    print(f"最终状态: {controller.get_status()}")
-
-
-# ========== 示例3：进度跟踪 ==========
-
-def demo_progress_tracking():
-    """演示进度跟踪功能"""
-    print("\n" + "=" * 60)
-    print("示例3：进度跟踪（含子步骤）")
-    print("=" * 60)
-    
-    import time
-    
-    # 创建进度跟踪器
-    tracker = ProgressTracker(total=100, desc="处理文件")
-    
-    # 启用子步骤
-    tracker.enable_substeps(True)
-    
-    # 模拟主任务进度
-    for i in range(10):
-        # 主步骤
-        tracker.update(i * 10)
-        
-        # 子步骤
-        tracker.start_substeps(5, f"处理文件 {i+1}")
-        for j in range(5):
-            time.sleep(0.1)
-            tracker.update_substep(j + 1, f"子任务 {j+1}")
-        
-        time.sleep(0.1)
-    
-    tracker.close()
-    print(f"\n任务完成！统计信息: {tracker.get_stats()}")
-
-
-# ========== 示例4：结果过滤 ==========
-
-def demo_result_filtering():
-    """演示结果过滤功能"""
-    print("\n" + "=" * 60)
-    print("示例4：结果过滤和搜索")
-    print("=" * 60)
-    
-    # 创建示例数据
-    sample_data = [
-        {'file': 'config1.xlsx', 'sheet': 'Sheet1', 'language': '越南文', 'row': 10},
-        {'file': 'config2.xlsx', 'sheet': 'Sheet1', 'language': '中文', 'row': 20},
-        {'file': 'data1.xlsx', 'sheet': 'Data', 'language': '越南文', 'row': 5},
-        {'file': 'data2.xlsx', 'sheet': 'Data', 'language': '中越混合', 'row': 15},
-        {'file': 'test.xlsx', 'sheet': 'Test', 'language': '越南文', 'row': 25},
-    ]
-    
-    # 创建过滤器
-    filter_obj = ResultFilter()
-    
-    # 添加过滤条件：只要越南文
-    filter_obj.add_filter('language', FilterOperator.EQUALS, '越南文')
-    
-    # 应用过滤
-    filtered = filter_obj.apply(sample_data)
-    print(f"\n过滤后（只要越南文）: {len(filtered)} 条记录")
-    for item in filtered:
-        print(f"  - {item['file']}, 行 {item['row']}")
-    
-    # 快速搜索
-    print("\n快速搜索 'data' 关键字:")
-    search_results = QuickSearch.search(sample_data, 'data', ['file'])
-    for item in search_results:
-        print(f"  - {item['file']}")
-
-
-# ========== 示例5：多格式输出 ==========
-
-def demo_output_formats():
-    """演示多格式输出功能"""
-    print("\n" + "=" * 60)
-    print("示例5：多格式输出（Excel、CSV、JSON、HTML、Markdown）")
-    print("=" * 60)
-    
-    # 示例数据
-    sample_data = [
-        {
-            'excel_file': 'test.xlsx',
-            'sheet_name': 'Sheet1',
-            'row': 5,
-            'col': 3,
-            'column_name': 'Description',
-            'content': 'Xin chào',
-            'language_type': '越南文',
-            'position': 'C5'
-        },
-        {
-            'excel_file': 'test.xlsx',
-            'sheet_name': 'Sheet1',
-            'row': 10,
-            'col': 3,
-            'column_name': 'Description',
-            'content': '你好 và Xin chào',
-            'language_type': '中越混合',
-            'position': 'C10'
-        }
-    ]
-    
-    # 创建导出器
-    exporter = ResultExporter()
-    
-    # 输出目录
-    output_dir = project_root / "test_output"
-    output_dir.mkdir(exist_ok=True)
-    
-    # 元数据
-    metadata = {
-        'title': '越南文检测结果',
-        'scan_time': '2024-01-15 10:30:00',
-        'total_files': 1,
-        'total_issues': len(sample_data)
-    }
-    
-    # 导出为不同格式
-    formats = [
-        (OutputFormat.EXCEL, 'result.xlsx'),
-        (OutputFormat.CSV, 'result.csv'),
-        (OutputFormat.JSON, 'result.json'),
-        (OutputFormat.HTML, 'result.html'),
-        (OutputFormat.MARKDOWN, 'result.md'),
-        (OutputFormat.TEXT, 'result.txt'),
-    ]
-    
-    print("\n导出文件:")
-    for format_type, filename in formats:
-        output_path = output_dir / filename
-        success = exporter.export(
-            sample_data, 
-            str(output_path), 
-            format_type=format_type,
-            metadata=metadata,
-            title='越南文检测结果'
-        )
-        if success:
-            print(f"  ✓ {filename}")
-        else:
-            print(f"  ✗ {filename} (失败)")
-    
-    print(f"\n所有文件已导出到: {output_dir}")
-
-
-# ========== 示例6：完整工作流 ==========
-
-def demo_complete_workflow():
-    """演示完整工作流程"""
-    print("\n" + "=" * 60)
-    print("示例6：完整工作流（配置→扫描→过滤→导出）")
-    print("=" * 60)
-    
-    # 1. 加载配置
-    config = ConfigManager()
-    print(f"\n1. 配置加载: 并行={config.get('scan.enable_parallel')}, "
-          f"工作进程={config.get('scan.max_workers')}")
-    
-    # 2. 创建处理器
-    processor = VietnameseExcelProcessor(
-        max_workers=config.get('scan.max_workers'),
-        enable_parallel=config.get('scan.enable_parallel'),
-        chunk_size=config.get('scan.chunk_size')
-    )
-    print(f"2. 处理器创建完成")
-    
-    # 3. 模拟扫描（这里不实际扫描，使用示例数据）
-    print("3. 扫描文件... (使用示例数据)")
-    sample_results = [
-        {
-            'excel_file': 'config.xlsx',
-            'sheet_name': 'Config',
-            'row': 5,
-            'col': 2,
-            'column_name': 'Name',
-            'content': 'Tên người dùng',
-            'language_type': '越南文',
-            'position': 'B5'
-        },
-        {
-            'excel_file': 'data.xlsx',
-            'sheet_name': 'Data',
-            'row': 10,
-            'col': 3,
-            'column_name': 'Description',
-            'content': '说明 và giải thích',
-            'language_type': '中越混合',
-            'position': 'C10'
-        },
-        {
-            'excel_file': 'items.xlsx',
-            'sheet_name': 'Items',
-            'row': 15,
-            'col': 1,
-            'column_name': 'ID',
-            'content': 'Item_001',
-            'language_type': '其他',
-            'position': 'A15'
-        }
-    ]
-    print(f"   扫描完成: 共 {len(sample_results)} 条记录")
-    
-    # 4. 过滤结果
-    print("4. 过滤结果...")
-    filter_obj = ResultFilter()
-    filter_obj.add_filter('language_type', FilterOperator.CONTAINS, '越南')
-    filtered_results = filter_obj.apply(sample_results)
-    print(f"   过滤后: {len(filtered_results)} 条越南文相关记录")
-    
-    # 5. 导出结果
-    print("5. 导出结果...")
-    output_dir = project_root / "workflow_output"
-    output_dir.mkdir(exist_ok=True)
-    
-    exporter = ResultExporter()
-    
-    # 导出为Excel和HTML
-    excel_path = output_dir / "vietnamese_results.xlsx"
-    html_path = output_dir / "vietnamese_results.html"
-    
-    metadata = {
-        'scan_directory': 'test_files/',
-        'total_scanned': 3,
-        'total_found': len(filtered_results)
-    }
-    
-    exporter.export(filtered_results, str(excel_path), metadata=metadata)
-    exporter.export(filtered_results, str(html_path), metadata=metadata, 
-                   title='越南文检测报告')
-    
-    print(f"   ✓ Excel: {excel_path}")
-    print(f"   ✓ HTML: {html_path}")
-    
-    print("\n✓ 工作流程完成！")
-
-
-# ========== 主函数 ==========
-
-def main():
-    """运行所有示例"""
-    print("\n" + "=" * 60)
-    print("Phase 2 优化功能演示")
-    print("=" * 60)
-    print("\n包含以下模块:")
-    print("  1. 配置管理 (config_manager.py)")
-    print("  2. 任务控制 (task_controller.py)")
-    print("  3. 进度跟踪 (progress_tracker.py)")
-    print("  4. 结果过滤 (result_filter.py)")
-    print("  5. 输出格式 (output_formats.py)")
-    
-    try:
-        # 运行各个示例
-        demo_config_management()
-        demo_task_control()
-        demo_progress_tracking()
-        demo_result_filtering()
-        demo_output_formats()
-        demo_complete_workflow()
-        
-        print("\n" + "=" * 60)
-        print("所有示例运行完成！")
-        print("=" * 60)
-        
-    except Exception as e:
-        print(f"\n错误: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    main()
+﻿[OK]#[OK]![OK]/[OK]u[OK]s[OK]r[OK]/[OK]b[OK]i[OK]n[OK]/[OK]e[OK]n[OK]v[OK] [OK]p[OK]y[OK]t[OK]h[OK]o[OK]n[OK]3[OK]
+[OK]#[OK] [OK]-[OK]*[OK]-[OK] [OK]c[OK]o[OK]d[OK]i[OK]n[OK]g[OK]:[OK] [OK]u[OK]t[OK]f[OK]-[OK]8[OK] [OK]-[OK]*[OK]-[OK]
+[OK]"[OK]"[OK]"[OK]
+[OK]P[OK]h[OK]a[OK]s[OK]e[OK] [OK]2[OK]优[OK]化[OK]功[OK]能[OK]集[OK]成[OK]示[OK]例[OK]
+[OK]演[OK]示[OK]如[OK]何[OK]使[OK]用[OK]配[OK]置[OK]管[OK]理[OK]、[OK]任[OK]务[OK]控[OK]制[OK]、[OK]进[OK]度[OK]跟[OK]踪[OK]、[OK]结[OK]果[OK]过[OK]滤[OK]和[OK]多[OK]格[OK]式[OK]输[OK]出[OK]
+[OK]"[OK]"[OK]"[OK]
+[OK]
+[OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]s[OK]y[OK]s[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]p[OK]a[OK]t[OK]h[OK]l[OK]i[OK]b[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]P[OK]a[OK]t[OK]h[OK]
+[OK]
+[OK]#[OK] [OK]添[OK]加[OK]项[OK]目[OK]根[OK]目[OK]录[OK]到[OK]路[OK]径[OK]
+[OK]p[OK]r[OK]o[OK]j[OK]e[OK]c[OK]t[OK]_[OK]r[OK]o[OK]o[OK]t[OK] [OK]=[OK] [OK]P[OK]a[OK]t[OK]h[OK]([OK]_[OK]_[OK]f[OK]i[OK]l[OK]e[OK]_[OK]_[OK])[OK].[OK]p[OK]a[OK]r[OK]e[OK]n[OK]t[OK].[OK]p[OK]a[OK]r[OK]e[OK]n[OK]t[OK]
+[OK]s[OK]y[OK]s[OK].[OK]p[OK]a[OK]t[OK]h[OK].[OK]i[OK]n[OK]s[OK]e[OK]r[OK]t[OK]([OK]0[OK],[OK] [OK]s[OK]t[OK]r[OK]([OK]p[OK]r[OK]o[OK]j[OK]e[OK]c[OK]t[OK]_[OK]r[OK]o[OK]o[OK]t[OK])[OK])[OK]
+[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]_[OK]m[OK]a[OK]n[OK]a[OK]g[OK]e[OK]r[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]C[OK]o[OK]n[OK]f[OK]i[OK]g[OK]M[OK]a[OK]n[OK]a[OK]g[OK]e[OK]r[OK],[OK] [OK]G[OK]a[OK]m[OK]e[OK]T[OK]o[OK]o[OK]l[OK]s[OK]C[OK]o[OK]n[OK]f[OK]i[OK]g[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]t[OK]a[OK]s[OK]k[OK]_[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]T[OK]a[OK]s[OK]k[OK]C[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK],[OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]a[OK]b[OK]l[OK]e[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]p[OK]r[OK]o[OK]g[OK]r[OK]e[OK]s[OK]s[OK]_[OK]t[OK]r[OK]a[OK]c[OK]k[OK]e[OK]r[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]P[OK]r[OK]o[OK]g[OK]r[OK]e[OK]s[OK]s[OK]T[OK]r[OK]a[OK]c[OK]k[OK]e[OK]r[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]_[OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]R[OK]e[OK]s[OK]u[OK]l[OK]t[OK]F[OK]i[OK]l[OK]t[OK]e[OK]r[OK],[OK] [OK]Q[OK]u[OK]i[OK]c[OK]k[OK]S[OK]e[OK]a[OK]r[OK]c[OK]h[OK],[OK] [OK]F[OK]i[OK]l[OK]t[OK]e[OK]r[OK]O[OK]p[OK]e[OK]r[OK]a[OK]t[OK]o[OK]r[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]s[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]R[OK]e[OK]s[OK]u[OK]l[OK]t[OK]E[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK],[OK] [OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK]
+[OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]v[OK]i[OK]e[OK]t[OK]n[OK]a[OK]m[OK]e[OK]s[OK]e[OK]_[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]p[OK]r[OK]o[OK]c[OK]e[OK]s[OK]s[OK]o[OK]r[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]V[OK]i[OK]e[OK]t[OK]n[OK]a[OK]m[OK]e[OK]s[OK]e[OK]E[OK]x[OK]c[OK]e[OK]l[OK]P[OK]r[OK]o[OK]c[OK]e[OK]s[OK]s[OK]o[OK]r[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]示[OK]例[OK]1[OK]：[OK]配[OK]置[OK]管[OK]理[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]_[OK]m[OK]a[OK]n[OK]a[OK]g[OK]e[OK]m[OK]e[OK]n[OK]t[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]演[OK]示[OK]配[OK]置[OK]管[OK]理[OK]功[OK]能[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]示[OK]例[OK]1[OK]：[OK]配[OK]置[OK]管[OK]理[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]获[OK]取[OK]配[OK]置[OK]管[OK]理[OK]器[OK]（[OK]单[OK]例[OK]）[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK] [OK]=[OK] [OK]C[OK]o[OK]n[OK]f[OK]i[OK]g[OK]M[OK]a[OK]n[OK]a[OK]g[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]读[OK]取[OK]配[OK]置[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]\[OK]n[OK]当[OK]前[OK]缓[OK]存[OK]配[OK]置[OK]:[OK] [OK]启[OK]用[OK]=[OK]{[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]c[OK]a[OK]c[OK]h[OK]e[OK].[OK]e[OK]n[OK]a[OK]b[OK]l[OK]e[OK]d[OK]'[OK])[OK]}[OK],[OK] [OK]"[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]f[OK]"[OK]最[OK]大[OK]内[OK]存[OK]=[OK]{[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]c[OK]a[OK]c[OK]h[OK]e[OK].[OK]m[OK]a[OK]x[OK]_[OK]m[OK]e[OK]m[OK]o[OK]r[OK]y[OK]_[OK]m[OK]b[OK]'[OK])[OK]}[OK]M[OK]B[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]修[OK]改[OK]配[OK]置[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]s[OK]e[OK]t[OK]([OK]'[OK]c[OK]a[OK]c[OK]h[OK]e[OK].[OK]m[OK]a[OK]x[OK]_[OK]m[OK]e[OK]m[OK]o[OK]r[OK]y[OK]_[OK]m[OK]b[OK]'[OK],[OK] [OK]1[OK]0[OK]0[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]s[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]c[OK]h[OK]u[OK]n[OK]k[OK]_[OK]s[OK]i[OK]z[OK]e[OK]'[OK],[OK] [OK]2[OK]0[OK]0[OK]0[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]修[OK]改[OK]后[OK]:[OK] [OK]最[OK]大[OK]内[OK]存[OK]=[OK]{[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]c[OK]a[OK]c[OK]h[OK]e[OK].[OK]m[OK]a[OK]x[OK]_[OK]m[OK]e[OK]m[OK]o[OK]r[OK]y[OK]_[OK]m[OK]b[OK]'[OK])[OK]}[OK]M[OK]B[OK],[OK] [OK]"[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]f[OK]"[OK]分[OK]块[OK]大[OK]小[OK]=[OK]{[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]c[OK]h[OK]u[OK]n[OK]k[OK]_[OK]s[OK]i[OK]z[OK]e[OK]'[OK])[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]保[OK]存[OK]配[OK]置[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]s[OK]a[OK]v[OK]e[OK]_[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]配[OK]置[OK]已[OK]保[OK]存[OK]到[OK]文[OK]件[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]导[OK]出[OK]配[OK]置[OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]_[OK]p[OK]a[OK]t[OK]h[OK] [OK]=[OK] [OK]p[OK]r[OK]o[OK]j[OK]e[OK]c[OK]t[OK]_[OK]r[OK]o[OK]o[OK]t[OK] [OK]/[OK] [OK]"[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]_[OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK].[OK]j[OK]s[OK]o[OK]n[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]_[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]([OK]s[OK]t[OK]r[OK]([OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]_[OK]p[OK]a[OK]t[OK]h[OK])[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]配[OK]置[OK]已[OK]导[OK]出[OK]到[OK]:[OK] [OK]{[OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]_[OK]p[OK]a[OK]t[OK]h[OK]}[OK]"[OK])[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]示[OK]例[OK]2[OK]：[OK]任[OK]务[OK]控[OK]制[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]@[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]a[OK]b[OK]l[OK]e[OK]
+[OK]d[OK]e[OK]f[OK] [OK]l[OK]o[OK]n[OK]g[OK]_[OK]r[OK]u[OK]n[OK]n[OK]i[OK]n[OK]g[OK]_[OK]t[OK]a[OK]s[OK]k[OK]([OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]i[OK]t[OK]e[OK]m[OK]s[OK]:[OK] [OK]i[OK]n[OK]t[OK],[OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK]:[OK] [OK]T[OK]a[OK]s[OK]k[OK]C[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK] [OK]=[OK] [OK]N[OK]o[OK]n[OK]e[OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]可[OK]控[OK]制[OK]的[OK]长[OK]时[OK]间[OK]任[OK]务[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]t[OK]i[OK]m[OK]e[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK] [OK]i[OK] [OK]i[OK]n[OK] [OK]r[OK]a[OK]n[OK]g[OK]e[OK]([OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]i[OK]t[OK]e[OK]m[OK]s[OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]#[OK] [OK]检[OK]查[OK]是[OK]否[OK]应[OK]该[OK]暂[OK]停[OK]/[OK]取[OK]消[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]i[OK]f[OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK].[OK]c[OK]h[OK]e[OK]c[OK]k[OK]_[OK]p[OK]o[OK]i[OK]n[OK]t[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]#[OK] [OK]模[OK]拟[OK]处[OK]理[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]i[OK]m[OK]e[OK].[OK]s[OK]l[OK]e[OK]e[OK]p[OK]([OK]0[OK].[OK]1[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]处[OK]理[OK]进[OK]度[OK]:[OK] [OK]{[OK]i[OK]+[OK]1[OK]}[OK]/[OK]{[OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]i[OK]t[OK]e[OK]m[OK]s[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]#[OK] [OK]在[OK]中[OK]间[OK]位[OK]置[OK]暂[OK]停[OK]一[OK]次[OK]演[OK]示[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]i[OK]f[OK] [OK]i[OK] [OK]=[OK]=[OK] [OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]i[OK]t[OK]e[OK]m[OK]s[OK] [OK]/[OK]/[OK] [OK]2[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK][[OK]自[OK]动[OK]暂[OK]停[OK]演[OK]示[OK]][OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]i[OK]f[OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK].[OK]p[OK]a[OK]u[OK]s[OK]e[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]i[OK]m[OK]e[OK].[OK]s[OK]l[OK]e[OK]e[OK]p[OK]([OK]2[OK])[OK] [OK] [OK]#[OK] [OK]暂[OK]停[OK]2[OK]秒[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK].[OK]r[OK]e[OK]s[OK]u[OK]m[OK]e[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK][[OK]已[OK]恢[OK]复[OK]][OK]\[OK]n[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]r[OK]e[OK]t[OK]u[OK]r[OK]n[OK] [OK]f[OK]"[OK]完[OK]成[OK]处[OK]理[OK] [OK]{[OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]i[OK]t[OK]e[OK]m[OK]s[OK]}[OK] [OK]个[OK]项[OK]目[OK]"[OK]
+[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]t[OK]a[OK]s[OK]k[OK]_[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]演[OK]示[OK]任[OK]务[OK]控[OK]制[OK]功[OK]能[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]示[OK]例[OK]2[OK]：[OK]任[OK]务[OK]控[OK]制[OK]（[OK]暂[OK]停[OK]/[OK]恢[OK]复[OK]/[OK]取[OK]消[OK]）[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]创[OK]建[OK]任[OK]务[OK]控[OK]制[OK]器[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK] [OK]=[OK] [OK]T[OK]a[OK]s[OK]k[OK]C[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]启[OK]动[OK]任[OK]务[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]启[OK]动[OK]任[OK]务[OK].[OK].[OK].[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]r[OK]o[OK]m[OK] [OK]c[OK]o[OK]r[OK]e[OK].[OK]t[OK]a[OK]s[OK]k[OK]_[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]C[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]a[OK]b[OK]l[OK]e[OK]T[OK]a[OK]s[OK]k[OK]
+[OK] [OK] [OK] [OK] [OK]t[OK]a[OK]s[OK]k[OK] [OK]=[OK] [OK]C[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]a[OK]b[OK]l[OK]e[OK]T[OK]a[OK]s[OK]k[OK]([OK]l[OK]o[OK]n[OK]g[OK]_[OK]r[OK]u[OK]n[OK]n[OK]i[OK]n[OK]g[OK]_[OK]t[OK]a[OK]s[OK]k[OK],[OK] [OK]1[OK]0[OK],[OK] [OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK]=[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]t[OK]a[OK]s[OK]k[OK].[OK]r[OK]u[OK]n[OK]_[OK]a[OK]s[OK]y[OK]n[OK]c[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]等[OK]待[OK]任[OK]务[OK]完[OK]成[OK]
+[OK] [OK] [OK] [OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]t[OK]i[OK]m[OK]e[OK]
+[OK] [OK] [OK] [OK] [OK]t[OK]i[OK]m[OK]e[OK].[OK]s[OK]l[OK]e[OK]e[OK]p[OK]([OK]2[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK] [OK]=[OK] [OK]t[OK]a[OK]s[OK]k[OK].[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]\[OK]n[OK]任[OK]务[OK]结[OK]果[OK]:[OK] [OK]{[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]最[OK]终[OK]状[OK]态[OK]:[OK] [OK]{[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK].[OK]g[OK]e[OK]t[OK]_[OK]s[OK]t[OK]a[OK]t[OK]u[OK]s[OK]([OK])[OK]}[OK]"[OK])[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]示[OK]例[OK]3[OK]：[OK]进[OK]度[OK]跟[OK]踪[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]p[OK]r[OK]o[OK]g[OK]r[OK]e[OK]s[OK]s[OK]_[OK]t[OK]r[OK]a[OK]c[OK]k[OK]i[OK]n[OK]g[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]演[OK]示[OK]进[OK]度[OK]跟[OK]踪[OK]功[OK]能[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]示[OK]例[OK]3[OK]：[OK]进[OK]度[OK]跟[OK]踪[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]t[OK]i[OK]m[OK]e[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]创[OK]建[OK]进[OK]度[OK]跟[OK]踪[OK]器[OK]
+[OK] [OK] [OK] [OK] [OK]t[OK]r[OK]a[OK]c[OK]k[OK]e[OK]r[OK] [OK]=[OK] [OK]P[OK]r[OK]o[OK]g[OK]r[OK]e[OK]s[OK]s[OK]T[OK]r[OK]a[OK]c[OK]k[OK]e[OK]r[OK]([OK]t[OK]o[OK]t[OK]a[OK]l[OK]=[OK]5[OK]0[OK],[OK] [OK]d[OK]e[OK]s[OK]c[OK]r[OK]i[OK]p[OK]t[OK]i[OK]o[OK]n[OK]=[OK]"[OK]处[OK]理[OK]文[OK]件[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]模[OK]拟[OK]文[OK]件[OK]处[OK]理[OK]进[OK]度[OK].[OK].[OK].[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]模[OK]拟[OK]任[OK]务[OK]进[OK]度[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK] [OK]i[OK] [OK]i[OK]n[OK] [OK]r[OK]a[OK]n[OK]g[OK]e[OK]([OK]5[OK]0[OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]i[OK]m[OK]e[OK].[OK]s[OK]l[OK]e[OK]e[OK]p[OK]([OK]0[OK].[OK]0[OK]5[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]r[OK]a[OK]c[OK]k[OK]e[OK]r[OK].[OK]u[OK]p[OK]d[OK]a[OK]t[OK]e[OK]([OK]i[OK] [OK]+[OK] [OK]1[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]✓[OK] [OK]进[OK]度[OK]跟[OK]踪[OK]完[OK]成[OK]！[OK]"[OK])[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]示[OK]例[OK]4[OK]：[OK]结[OK]果[OK]过[OK]滤[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]_[OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]i[OK]n[OK]g[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]演[OK]示[OK]结[OK]果[OK]过[OK]滤[OK]功[OK]能[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]示[OK]例[OK]4[OK]：[OK]结[OK]果[OK]过[OK]滤[OK]和[OK]搜[OK]索[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]创[OK]建[OK]示[OK]例[OK]数[OK]据[OK]
+[OK] [OK] [OK] [OK] [OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]d[OK]a[OK]t[OK]a[OK] [OK]=[OK] [OK][[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]1[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]'[OK]:[OK] [OK]'[OK]S[OK]h[OK]e[OK]e[OK]t[OK]1[OK]'[OK],[OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]'[OK]:[OK] [OK]'[OK]越[OK]南[OK]文[OK]'[OK],[OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]1[OK]0[OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]2[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]'[OK]:[OK] [OK]'[OK]S[OK]h[OK]e[OK]e[OK]t[OK]1[OK]'[OK],[OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]'[OK]:[OK] [OK]'[OK]中[OK]文[OK]'[OK],[OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]2[OK]0[OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]d[OK]a[OK]t[OK]a[OK]1[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]'[OK]:[OK] [OK]'[OK]D[OK]a[OK]t[OK]a[OK]'[OK],[OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]'[OK]:[OK] [OK]'[OK]越[OK]南[OK]文[OK]'[OK],[OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]5[OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]d[OK]a[OK]t[OK]a[OK]2[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]'[OK]:[OK] [OK]'[OK]D[OK]a[OK]t[OK]a[OK]'[OK],[OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]'[OK]:[OK] [OK]'[OK]中[OK]越[OK]混[OK]合[OK]'[OK],[OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]1[OK]5[OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]t[OK]e[OK]s[OK]t[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]'[OK]:[OK] [OK]'[OK]T[OK]e[OK]s[OK]t[OK]'[OK],[OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]'[OK]:[OK] [OK]'[OK]越[OK]南[OK]文[OK]'[OK],[OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]2[OK]5[OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK]][OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]创[OK]建[OK]过[OK]滤[OK]器[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]_[OK]o[OK]b[OK]j[OK] [OK]=[OK] [OK]R[OK]e[OK]s[OK]u[OK]l[OK]t[OK]F[OK]i[OK]l[OK]t[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]添[OK]加[OK]过[OK]滤[OK]条[OK]件[OK]：[OK]只[OK]要[OK]越[OK]南[OK]文[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]_[OK]o[OK]b[OK]j[OK].[OK]a[OK]d[OK]d[OK]_[OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]([OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]'[OK],[OK] [OK]F[OK]i[OK]l[OK]t[OK]e[OK]r[OK]O[OK]p[OK]e[OK]r[OK]a[OK]t[OK]o[OK]r[OK].[OK]E[OK]Q[OK]U[OK]A[OK]L[OK]S[OK],[OK] [OK]'[OK]越[OK]南[OK]文[OK]'[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]应[OK]用[OK]过[OK]滤[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK] [OK]=[OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]_[OK]o[OK]b[OK]j[OK].[OK]a[OK]p[OK]p[OK]l[OK]y[OK]([OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]d[OK]a[OK]t[OK]a[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]\[OK]n[OK]过[OK]滤[OK]后[OK]（[OK]只[OK]要[OK]越[OK]南[OK]文[OK]）[OK]:[OK] [OK]{[OK]l[OK]e[OK]n[OK]([OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK])[OK]}[OK] [OK]条[OK]记[OK]录[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK] [OK]i[OK]t[OK]e[OK]m[OK] [OK]i[OK]n[OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK]-[OK] [OK]{[OK]i[OK]t[OK]e[OK]m[OK][[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]][OK]}[OK],[OK] [OK]行[OK] [OK]{[OK]i[OK]t[OK]e[OK]m[OK][[OK]'[OK]r[OK]o[OK]w[OK]'[OK]][OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]快[OK]速[OK]搜[OK]索[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]快[OK]速[OK]搜[OK]索[OK] [OK]'[OK]d[OK]a[OK]t[OK]a[OK]'[OK] [OK]关[OK]键[OK]字[OK]:[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]s[OK]e[OK]a[OK]r[OK]c[OK]h[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK] [OK]=[OK] [OK]Q[OK]u[OK]i[OK]c[OK]k[OK]S[OK]e[OK]a[OK]r[OK]c[OK]h[OK].[OK]s[OK]e[OK]a[OK]r[OK]c[OK]h[OK]([OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]d[OK]a[OK]t[OK]a[OK],[OK] [OK]'[OK]d[OK]a[OK]t[OK]a[OK]'[OK],[OK] [OK][[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]][OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK] [OK]i[OK]t[OK]e[OK]m[OK] [OK]i[OK]n[OK] [OK]s[OK]e[OK]a[OK]r[OK]c[OK]h[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK]-[OK] [OK]{[OK]i[OK]t[OK]e[OK]m[OK][[OK]'[OK]f[OK]i[OK]l[OK]e[OK]'[OK]][OK]}[OK]"[OK])[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]示[OK]例[OK]5[OK]：[OK]多[OK]格[OK]式[OK]输[OK]出[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]s[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]演[OK]示[OK]多[OK]格[OK]式[OK]输[OK]出[OK]功[OK]能[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]示[OK]例[OK]5[OK]：[OK]多[OK]格[OK]式[OK]输[OK]出[OK]（[OK]E[OK]x[OK]c[OK]e[OK]l[OK]、[OK]C[OK]S[OK]V[OK]、[OK]J[OK]S[OK]O[OK]N[OK]、[OK]H[OK]T[OK]M[OK]L[OK]、[OK]M[OK]a[OK]r[OK]k[OK]d[OK]o[OK]w[OK]n[OK]）[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]示[OK]例[OK]数[OK]据[OK]
+[OK] [OK] [OK] [OK] [OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]d[OK]a[OK]t[OK]a[OK] [OK]=[OK] [OK][[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]t[OK]e[OK]s[OK]t[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]S[OK]h[OK]e[OK]e[OK]t[OK]1[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]5[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]'[OK]:[OK] [OK]3[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]u[OK]m[OK]n[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]D[OK]e[OK]s[OK]c[OK]r[OK]i[OK]p[OK]t[OK]i[OK]o[OK]n[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]n[OK]t[OK]e[OK]n[OK]t[OK]'[OK]:[OK] [OK]'[OK]X[OK]i[OK]n[OK] [OK]c[OK]h[OK]à[OK]o[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]_[OK]t[OK]y[OK]p[OK]e[OK]'[OK]:[OK] [OK]'[OK]越[OK]南[OK]文[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]p[OK]o[OK]s[OK]i[OK]t[OK]i[OK]o[OK]n[OK]'[OK]:[OK] [OK]'[OK]C[OK]5[OK]'[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]t[OK]e[OK]s[OK]t[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]S[OK]h[OK]e[OK]e[OK]t[OK]1[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]1[OK]0[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]'[OK]:[OK] [OK]3[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]u[OK]m[OK]n[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]D[OK]e[OK]s[OK]c[OK]r[OK]i[OK]p[OK]t[OK]i[OK]o[OK]n[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]n[OK]t[OK]e[OK]n[OK]t[OK]'[OK]:[OK] [OK]'[OK]你[OK]好[OK] [OK]v[OK]à[OK] [OK]X[OK]i[OK]n[OK] [OK]c[OK]h[OK]à[OK]o[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]_[OK]t[OK]y[OK]p[OK]e[OK]'[OK]:[OK] [OK]'[OK]中[OK]越[OK]混[OK]合[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]p[OK]o[OK]s[OK]i[OK]t[OK]i[OK]o[OK]n[OK]'[OK]:[OK] [OK]'[OK]C[OK]1[OK]0[OK]'[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]}[OK]
+[OK] [OK] [OK] [OK] [OK]][OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]创[OK]建[OK]导[OK]出[OK]器[OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK] [OK]=[OK] [OK]R[OK]e[OK]s[OK]u[OK]l[OK]t[OK]E[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]输[OK]出[OK]目[OK]录[OK]
+[OK] [OK] [OK] [OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK] [OK]=[OK] [OK]p[OK]r[OK]o[OK]j[OK]e[OK]c[OK]t[OK]_[OK]r[OK]o[OK]o[OK]t[OK] [OK]/[OK] [OK]"[OK]t[OK]e[OK]s[OK]t[OK]_[OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK].[OK]m[OK]k[OK]d[OK]i[OK]r[OK]([OK]e[OK]x[OK]i[OK]s[OK]t[OK]_[OK]o[OK]k[OK]=[OK]T[OK]r[OK]u[OK]e[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]元[OK]数[OK]据[OK]
+[OK] [OK] [OK] [OK] [OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK] [OK]=[OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]t[OK]i[OK]t[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]越[OK]南[OK]文[OK]检[OK]测[OK]结[OK]果[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]c[OK]a[OK]n[OK]_[OK]t[OK]i[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]2[OK]0[OK]2[OK]4[OK]-[OK]0[OK]1[OK]-[OK]1[OK]5[OK] [OK]1[OK]0[OK]:[OK]3[OK]0[OK]:[OK]0[OK]0[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]f[OK]i[OK]l[OK]e[OK]s[OK]'[OK]:[OK] [OK]1[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]i[OK]s[OK]s[OK]u[OK]e[OK]s[OK]'[OK]:[OK] [OK]l[OK]e[OK]n[OK]([OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]d[OK]a[OK]t[OK]a[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]}[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]导[OK]出[OK]为[OK]不[OK]同[OK]格[OK]式[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]s[OK] [OK]=[OK] [OK][[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]([OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK].[OK]E[OK]X[OK]C[OK]E[OK]L[OK],[OK] [OK]'[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]([OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK].[OK]C[OK]S[OK]V[OK],[OK] [OK]'[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK].[OK]c[OK]s[OK]v[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]([OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK].[OK]J[OK]S[OK]O[OK]N[OK],[OK] [OK]'[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK].[OK]j[OK]s[OK]o[OK]n[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]([OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK].[OK]H[OK]T[OK]M[OK]L[OK],[OK] [OK]'[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK].[OK]h[OK]t[OK]m[OK]l[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]([OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK].[OK]M[OK]A[OK]R[OK]K[OK]D[OK]O[OK]W[OK]N[OK],[OK] [OK]'[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK].[OK]m[OK]d[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]([OK]O[OK]u[OK]t[OK]p[OK]u[OK]t[OK]F[OK]o[OK]r[OK]m[OK]a[OK]t[OK].[OK]T[OK]E[OK]X[OK]T[OK],[OK] [OK]'[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK].[OK]t[OK]x[OK]t[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK]][OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]导[OK]出[OK]文[OK]件[OK]:[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK] [OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]_[OK]t[OK]y[OK]p[OK]e[OK],[OK] [OK]f[OK]i[OK]l[OK]e[OK]n[OK]a[OK]m[OK]e[OK] [OK]i[OK]n[OK] [OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]s[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]p[OK]a[OK]t[OK]h[OK] [OK]=[OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK] [OK]/[OK] [OK]f[OK]i[OK]l[OK]e[OK]n[OK]a[OK]m[OK]e[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]s[OK]u[OK]c[OK]c[OK]e[OK]s[OK]s[OK] [OK]=[OK] [OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK].[OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]([OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]d[OK]a[OK]t[OK]a[OK],[OK] [OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]s[OK]t[OK]r[OK]([OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]p[OK]a[OK]t[OK]h[OK])[OK],[OK] [OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]_[OK]t[OK]y[OK]p[OK]e[OK]=[OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]_[OK]t[OK]y[OK]p[OK]e[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK]=[OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]i[OK]t[OK]l[OK]e[OK]=[OK]'[OK]越[OK]南[OK]文[OK]检[OK]测[OK]结[OK]果[OK]'[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]i[OK]f[OK] [OK]s[OK]u[OK]c[OK]c[OK]e[OK]s[OK]s[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK]✓[OK] [OK]{[OK]f[OK]i[OK]l[OK]e[OK]n[OK]a[OK]m[OK]e[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]e[OK]l[OK]s[OK]e[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK]✗[OK] [OK]{[OK]f[OK]i[OK]l[OK]e[OK]n[OK]a[OK]m[OK]e[OK]}[OK] [OK]([OK]失[OK]败[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]\[OK]n[OK]所[OK]有[OK]文[OK]件[OK]已[OK]导[OK]出[OK]到[OK]:[OK] [OK]{[OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK]}[OK]"[OK])[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]示[OK]例[OK]6[OK]：[OK]完[OK]整[OK]工[OK]作[OK]流[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]c[OK]o[OK]m[OK]p[OK]l[OK]e[OK]t[OK]e[OK]_[OK]w[OK]o[OK]r[OK]k[OK]f[OK]l[OK]o[OK]w[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]演[OK]示[OK]完[OK]整[OK]工[OK]作[OK]流[OK]程[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]示[OK]例[OK]6[OK]：[OK]完[OK]整[OK]工[OK]作[OK]流[OK]（[OK]配[OK]置[OK]→[OK]扫[OK]描[OK]→[OK]过[OK]滤[OK]→[OK]导[OK]出[OK]）[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]1[OK].[OK] [OK]加[OK]载[OK]配[OK]置[OK]
+[OK] [OK] [OK] [OK] [OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK] [OK]=[OK] [OK]C[OK]o[OK]n[OK]f[OK]i[OK]g[OK]M[OK]a[OK]n[OK]a[OK]g[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]\[OK]n[OK]1[OK].[OK] [OK]配[OK]置[OK]加[OK]载[OK]:[OK] [OK]并[OK]行[OK]=[OK]{[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]e[OK]n[OK]a[OK]b[OK]l[OK]e[OK]_[OK]p[OK]a[OK]r[OK]a[OK]l[OK]l[OK]e[OK]l[OK]'[OK])[OK]}[OK],[OK] [OK]"[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]f[OK]"[OK]工[OK]作[OK]进[OK]程[OK]=[OK]{[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]m[OK]a[OK]x[OK]_[OK]w[OK]o[OK]r[OK]k[OK]e[OK]r[OK]s[OK]'[OK])[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]2[OK].[OK] [OK]创[OK]建[OK]处[OK]理[OK]器[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]o[OK]c[OK]e[OK]s[OK]s[OK]o[OK]r[OK] [OK]=[OK] [OK]V[OK]i[OK]e[OK]t[OK]n[OK]a[OK]m[OK]e[OK]s[OK]e[OK]E[OK]x[OK]c[OK]e[OK]l[OK]P[OK]r[OK]o[OK]c[OK]e[OK]s[OK]s[OK]o[OK]r[OK]([OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]m[OK]a[OK]x[OK]_[OK]w[OK]o[OK]r[OK]k[OK]e[OK]r[OK]s[OK]=[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]m[OK]a[OK]x[OK]_[OK]w[OK]o[OK]r[OK]k[OK]e[OK]r[OK]s[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]e[OK]n[OK]a[OK]b[OK]l[OK]e[OK]_[OK]p[OK]a[OK]r[OK]a[OK]l[OK]l[OK]e[OK]l[OK]=[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]e[OK]n[OK]a[OK]b[OK]l[OK]e[OK]_[OK]p[OK]a[OK]r[OK]a[OK]l[OK]l[OK]e[OK]l[OK]'[OK])[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]c[OK]h[OK]u[OK]n[OK]k[OK]_[OK]s[OK]i[OK]z[OK]e[OK]=[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]g[OK]e[OK]t[OK]([OK]'[OK]s[OK]c[OK]a[OK]n[OK].[OK]c[OK]h[OK]u[OK]n[OK]k[OK]_[OK]s[OK]i[OK]z[OK]e[OK]'[OK])[OK]
+[OK] [OK] [OK] [OK] [OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]2[OK].[OK] [OK]处[OK]理[OK]器[OK]创[OK]建[OK]完[OK]成[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]3[OK].[OK] [OK]模[OK]拟[OK]扫[OK]描[OK]（[OK]这[OK]里[OK]不[OK]实[OK]际[OK]扫[OK]描[OK]，[OK]使[OK]用[OK]示[OK]例[OK]数[OK]据[OK]）[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]3[OK].[OK] [OK]扫[OK]描[OK]文[OK]件[OK].[OK].[OK].[OK] [OK]([OK]使[OK]用[OK]示[OK]例[OK]数[OK]据[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK] [OK]=[OK] [OK][[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]C[OK]o[OK]n[OK]f[OK]i[OK]g[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]5[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]'[OK]:[OK] [OK]2[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]u[OK]m[OK]n[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]N[OK]a[OK]m[OK]e[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]n[OK]t[OK]e[OK]n[OK]t[OK]'[OK]:[OK] [OK]'[OK]T[OK]ê[OK]n[OK] [OK]n[OK]g[OK]ư[OK]ờ[OK]i[OK] [OK]d[OK]ù[OK]n[OK]g[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]_[OK]t[OK]y[OK]p[OK]e[OK]'[OK]:[OK] [OK]'[OK]越[OK]南[OK]文[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]p[OK]o[OK]s[OK]i[OK]t[OK]i[OK]o[OK]n[OK]'[OK]:[OK] [OK]'[OK]B[OK]5[OK]'[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]d[OK]a[OK]t[OK]a[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]D[OK]a[OK]t[OK]a[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]1[OK]0[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]'[OK]:[OK] [OK]3[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]u[OK]m[OK]n[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]D[OK]e[OK]s[OK]c[OK]r[OK]i[OK]p[OK]t[OK]i[OK]o[OK]n[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]n[OK]t[OK]e[OK]n[OK]t[OK]'[OK]:[OK] [OK]'[OK]说[OK]明[OK] [OK]v[OK]à[OK] [OK]g[OK]i[OK]ả[OK]i[OK] [OK]t[OK]h[OK]í[OK]c[OK]h[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]_[OK]t[OK]y[OK]p[OK]e[OK]'[OK]:[OK] [OK]'[OK]中[OK]越[OK]混[OK]合[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]p[OK]o[OK]s[OK]i[OK]t[OK]i[OK]o[OK]n[OK]'[OK]:[OK] [OK]'[OK]C[OK]1[OK]0[OK]'[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]}[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]f[OK]i[OK]l[OK]e[OK]'[OK]:[OK] [OK]'[OK]i[OK]t[OK]e[OK]m[OK]s[OK].[OK]x[OK]l[OK]s[OK]x[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]h[OK]e[OK]e[OK]t[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]I[OK]t[OK]e[OK]m[OK]s[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]r[OK]o[OK]w[OK]'[OK]:[OK] [OK]1[OK]5[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]'[OK]:[OK] [OK]1[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]l[OK]u[OK]m[OK]n[OK]_[OK]n[OK]a[OK]m[OK]e[OK]'[OK]:[OK] [OK]'[OK]I[OK]D[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]c[OK]o[OK]n[OK]t[OK]e[OK]n[OK]t[OK]'[OK]:[OK] [OK]'[OK]I[OK]t[OK]e[OK]m[OK]_[OK]0[OK]0[OK]1[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]_[OK]t[OK]y[OK]p[OK]e[OK]'[OK]:[OK] [OK]'[OK]其[OK]他[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]p[OK]o[OK]s[OK]i[OK]t[OK]i[OK]o[OK]n[OK]'[OK]:[OK] [OK]'[OK]A[OK]1[OK]5[OK]'[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]}[OK]
+[OK] [OK] [OK] [OK] [OK]][OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK] [OK]扫[OK]描[OK]完[OK]成[OK]:[OK] [OK]共[OK] [OK]{[OK]l[OK]e[OK]n[OK]([OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK])[OK]}[OK] [OK]条[OK]记[OK]录[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]4[OK].[OK] [OK]过[OK]滤[OK]结[OK]果[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]4[OK].[OK] [OK]过[OK]滤[OK]结[OK]果[OK].[OK].[OK].[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]_[OK]o[OK]b[OK]j[OK] [OK]=[OK] [OK]R[OK]e[OK]s[OK]u[OK]l[OK]t[OK]F[OK]i[OK]l[OK]t[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]_[OK]o[OK]b[OK]j[OK].[OK]a[OK]d[OK]d[OK]_[OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]([OK]'[OK]l[OK]a[OK]n[OK]g[OK]u[OK]a[OK]g[OK]e[OK]_[OK]t[OK]y[OK]p[OK]e[OK]'[OK],[OK] [OK]F[OK]i[OK]l[OK]t[OK]e[OK]r[OK]O[OK]p[OK]e[OK]r[OK]a[OK]t[OK]o[OK]r[OK].[OK]C[OK]O[OK]N[OK]T[OK]A[OK]I[OK]N[OK]S[OK],[OK] [OK]'[OK]越[OK]南[OK]'[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK] [OK]=[OK] [OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]_[OK]o[OK]b[OK]j[OK].[OK]a[OK]p[OK]p[OK]l[OK]y[OK]([OK]s[OK]a[OK]m[OK]p[OK]l[OK]e[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK] [OK]过[OK]滤[OK]后[OK]:[OK] [OK]{[OK]l[OK]e[OK]n[OK]([OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK])[OK]}[OK] [OK]条[OK]越[OK]南[OK]文[OK]相[OK]关[OK]记[OK]录[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]5[OK].[OK] [OK]导[OK]出[OK]结[OK]果[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]5[OK].[OK] [OK]导[OK]出[OK]结[OK]果[OK].[OK].[OK].[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK] [OK]=[OK] [OK]p[OK]r[OK]o[OK]j[OK]e[OK]c[OK]t[OK]_[OK]r[OK]o[OK]o[OK]t[OK] [OK]/[OK] [OK]"[OK]w[OK]o[OK]r[OK]k[OK]f[OK]l[OK]o[OK]w[OK]_[OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK].[OK]m[OK]k[OK]d[OK]i[OK]r[OK]([OK]e[OK]x[OK]i[OK]s[OK]t[OK]_[OK]o[OK]k[OK]=[OK]T[OK]r[OK]u[OK]e[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK] [OK]=[OK] [OK]R[OK]e[OK]s[OK]u[OK]l[OK]t[OK]E[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]#[OK] [OK]导[OK]出[OK]为[OK]E[OK]x[OK]c[OK]e[OK]l[OK]和[OK]H[OK]T[OK]M[OK]L[OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]p[OK]a[OK]t[OK]h[OK] [OK]=[OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK] [OK]/[OK] [OK]"[OK]v[OK]i[OK]e[OK]t[OK]n[OK]a[OK]m[OK]e[OK]s[OK]e[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK].[OK]x[OK]l[OK]s[OK]x[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]h[OK]t[OK]m[OK]l[OK]_[OK]p[OK]a[OK]t[OK]h[OK] [OK]=[OK] [OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]d[OK]i[OK]r[OK] [OK]/[OK] [OK]"[OK]v[OK]i[OK]e[OK]t[OK]n[OK]a[OK]m[OK]e[OK]s[OK]e[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK].[OK]h[OK]t[OK]m[OK]l[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK] [OK]=[OK] [OK]{[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]s[OK]c[OK]a[OK]n[OK]_[OK]d[OK]i[OK]r[OK]e[OK]c[OK]t[OK]o[OK]r[OK]y[OK]'[OK]:[OK] [OK]'[OK]t[OK]e[OK]s[OK]t[OK]_[OK]f[OK]i[OK]l[OK]e[OK]s[OK]/[OK]'[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]s[OK]c[OK]a[OK]n[OK]n[OK]e[OK]d[OK]'[OK]:[OK] [OK]3[OK],[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]'[OK]t[OK]o[OK]t[OK]a[OK]l[OK]_[OK]f[OK]o[OK]u[OK]n[OK]d[OK]'[OK]:[OK] [OK]l[OK]e[OK]n[OK]([OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]}[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK].[OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]([OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK],[OK] [OK]s[OK]t[OK]r[OK]([OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]p[OK]a[OK]t[OK]h[OK])[OK],[OK] [OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK]=[OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]e[OK]r[OK].[OK]e[OK]x[OK]p[OK]o[OK]r[OK]t[OK]([OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]e[OK]d[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]s[OK],[OK] [OK]s[OK]t[OK]r[OK]([OK]h[OK]t[OK]m[OK]l[OK]_[OK]p[OK]a[OK]t[OK]h[OK])[OK],[OK] [OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK]=[OK]m[OK]e[OK]t[OK]a[OK]d[OK]a[OK]t[OK]a[OK],[OK] [OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]i[OK]t[OK]l[OK]e[OK]=[OK]'[OK]越[OK]南[OK]文[OK]检[OK]测[OK]报[OK]告[OK]'[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK] [OK]✓[OK] [OK]E[OK]x[OK]c[OK]e[OK]l[OK]:[OK] [OK]{[OK]e[OK]x[OK]c[OK]e[OK]l[OK]_[OK]p[OK]a[OK]t[OK]h[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK] [OK] [OK] [OK]✓[OK] [OK]H[OK]T[OK]M[OK]L[OK]:[OK] [OK]{[OK]h[OK]t[OK]m[OK]l[OK]_[OK]p[OK]a[OK]t[OK]h[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]✓[OK] [OK]工[OK]作[OK]流[OK]程[OK]完[OK]成[OK]！[OK]"[OK])[OK]
+[OK]
+[OK]
+[OK]#[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK] [OK]主[OK]函[OK]数[OK] [OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]=[OK]
+[OK]
+[OK]d[OK]e[OK]f[OK] [OK]m[OK]a[OK]i[OK]n[OK]([OK])[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]"[OK]"[OK]"[OK]运[OK]行[OK]所[OK]有[OK]示[OK]例[OK]"[OK]"[OK]"[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]P[OK]h[OK]a[OK]s[OK]e[OK] [OK]2[OK] [OK]优[OK]化[OK]功[OK]能[OK]演[OK]示[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]包[OK]含[OK]以[OK]下[OK]模[OK]块[OK]:[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK] [OK] [OK]1[OK].[OK] [OK]配[OK]置[OK]管[OK]理[OK] [OK]([OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]_[OK]m[OK]a[OK]n[OK]a[OK]g[OK]e[OK]r[OK].[OK]p[OK]y[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK] [OK] [OK]2[OK].[OK] [OK]任[OK]务[OK]控[OK]制[OK] [OK]([OK]t[OK]a[OK]s[OK]k[OK]_[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]l[OK]e[OK]r[OK].[OK]p[OK]y[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK] [OK] [OK]3[OK].[OK] [OK]进[OK]度[OK]跟[OK]踪[OK] [OK]([OK]p[OK]r[OK]o[OK]g[OK]r[OK]e[OK]s[OK]s[OK]_[OK]t[OK]r[OK]a[OK]c[OK]k[OK]e[OK]r[OK].[OK]p[OK]y[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK] [OK] [OK]4[OK].[OK] [OK]结[OK]果[OK]过[OK]滤[OK] [OK]([OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]_[OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK].[OK]p[OK]y[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK] [OK] [OK]5[OK].[OK] [OK]输[OK]出[OK]格[OK]式[OK] [OK]([OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]s[OK].[OK]p[OK]y[OK])[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]t[OK]r[OK]y[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]#[OK] [OK]运[OK]行[OK]各[OK]个[OK]示[OK]例[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]c[OK]o[OK]n[OK]f[OK]i[OK]g[OK]_[OK]m[OK]a[OK]n[OK]a[OK]g[OK]e[OK]m[OK]e[OK]n[OK]t[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]t[OK]a[OK]s[OK]k[OK]_[OK]c[OK]o[OK]n[OK]t[OK]r[OK]o[OK]l[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]p[OK]r[OK]o[OK]g[OK]r[OK]e[OK]s[OK]s[OK]_[OK]t[OK]r[OK]a[OK]c[OK]k[OK]i[OK]n[OK]g[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]r[OK]e[OK]s[OK]u[OK]l[OK]t[OK]_[OK]f[OK]i[OK]l[OK]t[OK]e[OK]r[OK]i[OK]n[OK]g[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]o[OK]u[OK]t[OK]p[OK]u[OK]t[OK]_[OK]f[OK]o[OK]r[OK]m[OK]a[OK]t[OK]s[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]d[OK]e[OK]m[OK]o[OK]_[OK]c[OK]o[OK]m[OK]p[OK]l[OK]e[OK]t[OK]e[OK]_[OK]w[OK]o[OK]r[OK]k[OK]f[OK]l[OK]o[OK]w[OK]([OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]\[OK]n[OK]"[OK] [OK]+[OK] [OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]所[OK]有[OK]示[OK]例[OK]运[OK]行[OK]完[OK]成[OK]！[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]"[OK]=[OK]"[OK] [OK]*[OK] [OK]6[OK]0[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]
+[OK] [OK] [OK] [OK] [OK]e[OK]x[OK]c[OK]e[OK]p[OK]t[OK] [OK]E[OK]x[OK]c[OK]e[OK]p[OK]t[OK]i[OK]o[OK]n[OK] [OK]a[OK]s[OK] [OK]e[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]p[OK]r[OK]i[OK]n[OK]t[OK]([OK]f[OK]"[OK]\[OK]n[OK]错[OK]误[OK]:[OK] [OK]{[OK]e[OK]}[OK]"[OK])[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]i[OK]m[OK]p[OK]o[OK]r[OK]t[OK] [OK]t[OK]r[OK]a[OK]c[OK]e[OK]b[OK]a[OK]c[OK]k[OK]
+[OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK] [OK]t[OK]r[OK]a[OK]c[OK]e[OK]b[OK]a[OK]c[OK]k[OK].[OK]p[OK]r[OK]i[OK]n[OK]t[OK]_[OK]e[OK]x[OK]c[OK]([OK])[OK]
+[OK]
+[OK]
+[OK]i[OK]f[OK] [OK]_[OK]_[OK]n[OK]a[OK]m[OK]e[OK]_[OK]_[OK] [OK]=[OK]=[OK] [OK]"[OK]_[OK]_[OK]m[OK]a[OK]i[OK]n[OK]_[OK]_[OK]"[OK]:[OK]
+[OK] [OK] [OK] [OK] [OK]m[OK]a[OK]i[OK]n[OK]([OK])[OK]
