@@ -5,14 +5,26 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.24.0"
-__version_info__ = (1, 24, 0)
-__build_date__ = "2025-01-15"
+__version__ = "1.25.0"
+__version_info__ = (1, 25, 0)
+__build_date__ = "2025-11-19"
 __author__ = "gametools开发团队"
-__description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、翻译提取、缓存优化等功能（支持并行处理、大文件优化、任务控制和多格式输出）"
+__description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、翻译提取、表字段导出等功能（支持JSON格式输出，英文文件名，GUI集成）"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.25.0": {
+        "date": "2025-11-19",
+        "changes": [
+            "📊 表字段导出工具v2.0：扫描Excel文件提取字段信息",
+            "🎯 JSON格式输出：标准化数据结构，方便其他工具读取",
+            "🌐 英文文件名：field_extraction_result.json/csv/xlsx",
+            "📋 复制JSON：GUI中一键复制JSON结果到剪贴板",
+            "🖥️ GUI增强：独立GUI和统一GUI都支持JSON预览和复制",
+            "🔧 API改进：process_directory返回完整结果数据",
+            "📚 完整文档：v2.0更新说明和快速指南"
+        ]
+    },
     "1.24.0": {
         "date": "2025-01-15",
         "changes": [
