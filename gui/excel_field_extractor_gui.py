@@ -114,7 +114,7 @@ class ExcelFieldExtractorGUI:
         options_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
         
         # 递归扫描选项
-        self.recursive_var = tk.BooleanVar(value=True)
+        self.recursive_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(options_frame, 
                        text="递归扫描子目录",
                        variable=self.recursive_var).grid(row=0, column=0, sticky=tk.W, padx=5)

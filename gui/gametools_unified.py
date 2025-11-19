@@ -197,7 +197,7 @@ class GameToolsUnified:
         options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
         # 递归扫描选项
-        self.vp_recursive_var = tk.BooleanVar(value=True)
+        self.vp_recursive_var = tk.BooleanVar(value=False)
         self.vp_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
                                                  variable=self.vp_recursive_var)
         self.vp_recursive_check.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
@@ -624,7 +624,7 @@ class GameToolsUnified:
         options_frame.columnconfigure(1, weight=1)
         
         # 递归扫描选项
-        self.extractor_recursive_var = tk.BooleanVar(value=True)
+        self.extractor_recursive_var = tk.BooleanVar(value=False)
         self.extractor_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
                                                          variable=self.extractor_recursive_var)
         self.extractor_recursive_check.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 5))
@@ -751,7 +751,7 @@ class GameToolsUnified:
         options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
         # 递归扫描选项
-        self.field_recursive_var = tk.BooleanVar(value=True)
+        self.field_recursive_var = tk.BooleanVar(value=False)
         self.field_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
                                                     variable=self.field_recursive_var)
         self.field_recursive_check.grid(row=0, column=0, sticky=tk.W, pady=(0, 8))
