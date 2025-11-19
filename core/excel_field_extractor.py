@@ -73,9 +73,41 @@ class ExcelFieldExtractor:
         # 检查是否包含中文、越南文或泰文字符
         return True
     
+    def find_column_range_between_markers(self, sheet, marker: str = "c_classic_battle") -> Tuple[int, int]:
+        """
+        查找两个标记之间的列范围（不包含标记本身）
+        
+        Args:
+            sheet: openpyxl工作表对象
+            marker: 要查找的标记文本（默认为 "c_classic_battle"）
+            
+        Returns:
+            Tuple[int, int]: (起始列号, 结束列号)，如果未找到返回 (1, sheet.max_column)
+        """
+        marker_columns = []
+        
+        # 在第5行查找标记（字段名行）
+        field_row = 5
+        if sheet.max_row >= field_row:
+            for cell in sheet[field_row]:
+                if cell.value and marker in str(cell.value):
+                    marker_columns.append(cell.column)
+        
+        # 如果找到至少两个标记，返回它们之间的范围（不包含标记列本身）
+        if len(marker_columns) >= 2:
+            start_col = marker_columns[0] + 1  # 第一个标记的下一列
+            end_col = marker_columns[1] - 1    # 第二个标记的上一列
+            # 确保范围有效
+            if start_col <= end_col:
+                return (start_col, end_col)
+        
+        # 如果没有找到两个标记，返回整个表格范围
+        return (1, sheet.max_column)
+    
     def extract_fields_from_excel(self, file_path: Path) -> List[Dict]:
         """
         从Excel文件中提取包含文本内容的列的字段信息
+        仅扫描两个 c_classic_battle 标记之间的列范围
         
         Args:
             file_path: Excel文件路径
@@ -93,6 +125,9 @@ class ExcelFieldExtractor:
                 try:
                     sheet = wb[sheet_name]
                     
+                    # 查找两个 c_classic_battle 之间的列范围
+                    start_col, end_col = self.find_column_range_between_markers(sheet)
+                    
                     # 检测包含本地化文本内容的列
                     text_columns = set()
                     
@@ -101,7 +136,9 @@ class ExcelFieldExtractor:
                     data_start_row = 6  # 第6行开始是数据
                     
                     if sheet.max_row >= data_start_row:
-                        for row in sheet.iter_rows(min_row=data_start_row, max_row=sheet.max_row):
+                        # 只扫描指定列范围内的单元格
+                        for row in sheet.iter_rows(min_row=data_start_row, max_row=sheet.max_row, 
+                                                   min_col=start_col, max_col=end_col):
                             for cell in row:
                                 if cell.value is not None and self.contains_text(cell.value):
                                     text_columns.add(cell.column)
