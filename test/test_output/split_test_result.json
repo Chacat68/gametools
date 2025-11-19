@@ -1,0 +1,19 @@
+{
+  "empty_tables": [
+    {
+      "table_name": "no_text.xlsx",
+      "sheet_name": "配置表"
+    }
+  ],
+  "tables_with_text": [
+    {
+      "table_name": "has_text.xlsx",
+      "sheet_name": "关卡配置",
+      "fields_with_examples": [
+        "列2,",
+        "列3,"
+      ],
+      "field_count": 2
+    }
+  ]
+}

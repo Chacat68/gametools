@@ -153,6 +153,12 @@ class ExcelFieldExtractorGUI:
                                      command=self.copy_json_result)
         self.copy_button.pack(side=tk.LEFT, padx=5)
         
+        self.error_log_button = ttk.Button(button_frame,
+                                          text="查看错误日志",
+                                          style='Action.TButton',
+                                          command=self.show_error_logs)
+        self.error_log_button.pack(side=tk.LEFT, padx=5)
+        
         ttk.Button(button_frame, 
                   text="清空日志",
                   style='Action.TButton',
@@ -203,6 +209,86 @@ class ExcelFieldExtractorGUI:
         self.log_text.delete(1.0, tk.END)
         self.last_results = None
         self.copy_button.config(state='disabled')
+        # 清除提取器的日志
+        self.extractor.clear_logs()
+    
+    def show_error_logs(self):
+        """显示错误和警告日志"""
+        logs = self.extractor.get_all_logs()
+        errors = logs['errors']
+        warnings = logs['warnings']
+        
+        if not errors and not warnings:
+            messagebox.showinfo("日志信息", "没有错误或警告日志")
+            return
+        
+        # 创建新窗口显示日志
+        log_window = tk.Toplevel(self.root)
+        log_window.title("错误与警告日志")
+        log_window.geometry("900x600")
+        
+        # 创建笔记本（标签页）
+        notebook = ttk.Notebook(log_window)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # 错误日志标签页
+        error_frame = ttk.Frame(notebook)
+        notebook.add(error_frame, text=f"错误日志 ({len(errors)})")
+        
+        error_text = scrolledtext.ScrolledText(error_frame, 
+                                               wrap=tk.WORD,
+                                               font=('Consolas', 9))
+        error_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        if errors:
+            for i, error in enumerate(errors, 1):
+                error_text.insert(tk.END, f"{i}. {error}\n\n")
+        else:
+            error_text.insert(tk.END, "无错误日志")
+        
+        error_text.config(state='disabled')
+        
+        # 警告日志标签页
+        warning_frame = ttk.Frame(notebook)
+        notebook.add(warning_frame, text=f"警告日志 ({len(warnings)})")
+        
+        warning_text = scrolledtext.ScrolledText(warning_frame,
+                                                 wrap=tk.WORD,
+                                                 font=('Consolas', 9))
+        warning_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        if warnings:
+            for i, warning in enumerate(warnings, 1):
+                warning_text.insert(tk.END, f"{i}. {warning}\n\n")
+        else:
+            warning_text.insert(tk.END, "无警告日志")
+        
+        warning_text.config(state='disabled')
+        
+        # 底部按钮
+        button_frame = ttk.Frame(log_window)
+        button_frame.pack(fill=tk.X, padx=10, pady=10)
+        
+        # 保存日志按钮
+        def save_logs():
+            from tkinter import filedialog
+            file_path = filedialog.asksaveasfilename(
+                title="保存日志",
+                defaultextension=".txt",
+                filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")]
+            )
+            if file_path:
+                if self.extractor.save_logs_to_file(Path(file_path)):
+                    messagebox.showinfo("成功", f"日志已保存到:\n{file_path}")
+        
+        ttk.Button(button_frame, text="保存日志", command=save_logs).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="关闭", command=log_window.destroy).pack(side=tk.RIGHT, padx=5)
+        
+        # 统计信息
+        stats_label = ttk.Label(button_frame, 
+                               text=f"总计: {len(errors)} 个错误, {len(warnings)} 个警告",
+                               foreground='#7f8c8d')
+        stats_label.pack(side=tk.LEFT, padx=20)
     
     def copy_json_result(self):
         """复制JSON结果到剪贴板"""
@@ -216,7 +302,7 @@ class ExcelFieldExtractorGUI:
             json_data = [{
                 "table_name": r['excel_file'],
                 "sheet_name": r['sheet_name'],
-                "fields": r['fields'],
+                "fields_with_examples": r.get('fields_with_examples', []),
                 "field_count": r['field_count']
             } for r in self.last_results]
             
@@ -319,7 +405,7 @@ class ExcelFieldExtractorGUI:
                 json_str = json.dumps([{
                     "table_name": r['excel_file'],
                     "sheet_name": r['sheet_name'],
-                    "fields": r['fields'],
+                    "fields_with_examples": r.get('fields_with_examples', []),
                     "field_count": r['field_count']
                 } for r in self.last_results], ensure_ascii=False, indent=2)
                 self.log(json_str)

@@ -28,6 +28,11 @@ class ExcelFieldExtractor:
         # 越南文：\u00C0-\u1EF9 (包含带音标的拉丁字母)
         # 泰文：\u0E00-\u0E7F
         self.text_pattern = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\u00C0-\u1EF9\u0E00-\u0E7F]')
+        # 错误日志列表
+        self.error_logs = []
+        self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
+        # 无文本内容的表格列表
+        self.empty_tables = []  # 存储没有检测到文本内容的表格
     
     def is_excel_file(self, file_path: Path) -> bool:
         """
@@ -104,18 +109,22 @@ class ExcelFieldExtractor:
         # 如果没有找到两个标记，返回整个表格范围
         return (1, sheet.max_column)
     
-    def extract_fields_from_excel(self, file_path: Path) -> List[Dict]:
+    def extract_fields_from_excel(self, file_path) -> List[Dict]:
         """
         从Excel文件中提取包含文本内容的列的字段信息
         仅扫描两个 c_classic_battle 标记之间的列范围
         
         Args:
-            file_path: Excel文件路径
+            file_path: Excel文件路径（可以是字符串或Path对象）
             
         Returns:
             List[Dict]: 每个工作表的字段信息列表
         """
         results = []
+        
+        # 确保file_path是Path对象
+        if isinstance(file_path, str):
+            file_path = Path(file_path)
         
         try:
             # 使用openpyxl读取，以便精确访问物理行
@@ -144,7 +153,12 @@ class ExcelFieldExtractor:
                                     text_columns.add(cell.column)
                     
                     if not text_columns:
-                        # 如果没有找到包含本地化文本的列，跳过这个工作表
+                        # 如果没有找到包含本地化文本的列，记录到空表列表
+                        self.empty_tables.append({
+                            'excel_file': file_path.name,
+                            'sheet_name': sheet_name,
+                            'file_path': str(file_path)
+                        })
                         continue
                     
                     # 从第5行提取字段名，从第6行提取示例数据
@@ -164,8 +178,31 @@ class ExcelFieldExtractor:
                             if sheet.max_row >= example_row:
                                 example_cell = sheet.cell(row=example_row, column=col_num)
                                 example_value = str(example_cell.value) if example_cell.value is not None else ""
+                                
+                                # 检查示例数据是否为空
+                                if not example_value or example_value.strip() == "":
+                                    warning_msg = (
+                                        f"⚠️ 示例数据为空 | "
+                                        f"文件: {file_path.name} | "
+                                        f"工作表: {sheet_name} | "
+                                        f"字段: {field_name} | "
+                                        f"位置: 第6行,第{col_num}列({get_column_letter(col_num)}6)"
+                                    )
+                                    self.extraction_warnings.append(warning_msg)
+                                    print(warning_msg)
+                                
                                 field_with_example = f"{field_name},{example_value}"
                             else:
+                                # 表格行数不足6行
+                                warning_msg = (
+                                    f"⚠️ 表格行数不足 | "
+                                    f"文件: {file_path.name} | "
+                                    f"工作表: {sheet_name} | "
+                                    f"字段: {field_name} | "
+                                    f"当前行数: {sheet.max_row} (需要至少6行)"
+                                )
+                                self.extraction_warnings.append(warning_msg)
+                                print(warning_msg)
                                 field_with_example = f"{field_name},"
                             
                             field_with_examples.append(field_with_example)
@@ -186,12 +223,16 @@ class ExcelFieldExtractor:
                         })
                 
                 except Exception as e:
-                    print(f"读取工作表 '{sheet_name}' 时出错: {e}")
+                    error_msg = f"❌ 读取工作表失败 | 文件: {file_path.name} | 工作表: {sheet_name} | 错误: {str(e)}"
+                    self.error_logs.append(error_msg)
+                    print(error_msg)
             
             wb.close()
         
         except Exception as e:
-            print(f"读取文件 '{file_path}' 时出错: {e}")
+            error_msg = f"❌ 读取文件失败 | 文件: {file_path} | 错误: {str(e)}"
+            self.error_logs.append(error_msg)
+            print(error_msg)
         
         return results
     
@@ -236,14 +277,25 @@ class ExcelFieldExtractor:
             output_file: 输出文件路径
         """
         try:
-            # 构建JSON结构
-            json_output = []
+            # 构建JSON结构，分为两部分
+            json_output = {
+                "empty_tables": [],  # 无文本内容的表格（放在前面）
+                "tables_with_text": []  # 有文本内容的表格
+            }
+            
+            # 添加无文本内容的表格
+            for empty_table in self.empty_tables:
+                json_output["empty_tables"].append({
+                    "table_name": empty_table['excel_file'],
+                    "sheet_name": empty_table['sheet_name']
+                })
+            
+            # 添加有文本内容的表格
             for result in results:
-                json_output.append({
+                json_output["tables_with_text"].append({
                     "table_name": result['excel_file'],
                     "sheet_name": result['sheet_name'],
-                    "fields": result['fields'],
-                    "fields_with_examples": result.get('fields_with_examples', []),  # 新增：带示例的字段
+                    "fields_with_examples": result.get('fields_with_examples', []),
                     "field_count": result['field_count']
                 })
             
@@ -252,9 +304,13 @@ class ExcelFieldExtractor:
                 json.dump(json_output, f, ensure_ascii=False, indent=2)
             
             print(f"结果已导出到: {output_file}")
+            print(f"  - 无文本表格数: {len(json_output['empty_tables'])}")
+            print(f"  - 有文本表格数: {len(json_output['tables_with_text'])}")
+            return output_file
         
         except Exception as e:
             print(f"导出到JSON时出错: {e}")
+            return None
     
     def export_to_csv(self, results: List[Dict], output_file: Path):
         """
@@ -267,25 +323,34 @@ class ExcelFieldExtractor:
         """
         try:
             with open(output_file, 'w', encoding='utf-8-sig') as f:
+                # 第一部分：写入无文本内容的表格
+                f.write("=== 无文本内容的表格 ===\n")
+                for empty_table in self.empty_tables:
+                    table_name = f"{empty_table['excel_file']}#{empty_table['sheet_name']}"
+                    f.write(f"{table_name}\n")
+                
+                # 分隔符
+                f.write("\n=== 有文本内容的表格 ===\n")
+                
+                # 第二部分：写入有文本内容的表格
                 for result in results:
                     table_name = f"{result['excel_file']}#{result['sheet_name']}"
                     # 使用带示例的字段列表
-                    fields_with_examples = result.get('fields_with_examples', result['fields'])
+                    fields_with_examples = result.get('fields_with_examples', result.get('fields', []))
                     if isinstance(fields_with_examples, list) and len(fields_with_examples) > 0:
-                        # 如果有示例数据，使用它
-                        if ',' in str(fields_with_examples[0]):
-                            fields_str = ','.join(fields_with_examples)
-                        else:
-                            # 否则使用普通字段
-                            fields_str = ','.join(result['fields'])
+                        fields_str = ','.join(fields_with_examples)
                     else:
-                        fields_str = ','.join(result['fields'])
+                        fields_str = ''
                     f.write(f"{table_name},{fields_str}\n")
             
             print(f"结果已导出到: {output_file}")
+            print(f"  - 无文本表格数: {len(self.empty_tables)}")
+            print(f"  - 有文本表格数: {len(results)}")
+            return output_file
         
         except Exception as e:
             print(f"导出到CSV时出错: {e}")
+            return None
     
     def export_to_excel(self, results: List[Dict], output_file: Path):
         """
@@ -301,8 +366,10 @@ class ExcelFieldExtractor:
             ws.title = "字段导出结果"
             
             # 设置样式
-            header_font = Font(bold=True, size=11)
+            header_font = Font(bold=True, size=11, color='FFFFFF')
             header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+            section_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+            empty_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
             header_alignment = Alignment(horizontal="center", vertical="center")
             
             border = Border(
@@ -312,49 +379,96 @@ class ExcelFieldExtractor:
                 bottom=Side(style='thin')
             )
             
-            # 写入表头
-            ws['A1'] = '表名'
-            ws['B1'] = '工作表'
-            ws['C1'] = '字段数量'
-            ws['D1'] = '字段列表'
-            ws['E1'] = '字段+示例'
+            current_row = 1
             
-            for col in ['A', 'B', 'C', 'D', 'E']:
-                cell = ws[f'{col}1']
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = header_alignment
-                cell.border = border
+            # 第一部分：无文本内容的表格
+            if self.empty_tables:
+                # 分类标题
+                ws.merge_cells(f'A{current_row}:B{current_row}')
+                section_cell = ws[f'A{current_row}']
+                section_cell.value = '=== 无文本内容的表格 ==='
+                section_cell.font = Font(bold=True, size=12)
+                section_cell.fill = section_fill
+                section_cell.alignment = header_alignment
+                current_row += 1
+                
+                # 表头
+                ws[f'A{current_row}'] = '表名'
+                ws[f'B{current_row}'] = '工作表'
+                for col in ['A', 'B']:
+                    cell = ws[f'{col}{current_row}']
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                    cell.border = border
+                current_row += 1
+                
+                # 数据
+                for empty_table in self.empty_tables:
+                    ws[f'A{current_row}'] = empty_table['excel_file']
+                    ws[f'B{current_row}'] = empty_table['sheet_name']
+                    for col in ['A', 'B']:
+                        ws[f'{col}{current_row}'].border = border
+                        ws[f'{col}{current_row}'].fill = empty_fill
+                    current_row += 1
+                
+                current_row += 1  # 空行分隔
+            
+            # 第二部分：有文本内容的表格
+            if results:
+                # 分类标题
+                ws.merge_cells(f'A{current_row}:D{current_row}')
+                section_cell = ws[f'A{current_row}']
+                section_cell.value = '=== 有文本内容的表格 ==='
+                section_cell.font = Font(bold=True, size=12)
+                section_cell.fill = section_fill
+                section_cell.alignment = header_alignment
+                current_row += 1
+                
+                # 表头
+                ws[f'A{current_row}'] = '表名'
+                ws[f'B{current_row}'] = '工作表'
+                ws[f'C{current_row}'] = '字段数量'
+                ws[f'D{current_row}'] = '字段+示例'
+                
+                for col in ['A', 'B', 'C', 'D']:
+                    cell = ws[f'{col}{current_row}']
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                    cell.border = border
+                current_row += 1
+                
+                # 数据
+                for result in results:
+                    ws[f'A{current_row}'] = result['excel_file']
+                    ws[f'B{current_row}'] = result['sheet_name']
+                    ws[f'C{current_row}'] = result['field_count']
+                    # 字段+示例列
+                    fields_with_examples = result.get('fields_with_examples', [])
+                    ws[f'D{current_row}'] = ', '.join(fields_with_examples) if fields_with_examples else ''
+                    
+                    # 设置边框
+                    for col in ['A', 'B', 'C', 'D']:
+                        ws[f'{col}{current_row}'].border = border
+                    
+                    # 居中对齐
+                    ws[f'C{current_row}'].alignment = Alignment(horizontal="center")
+                    current_row += 1
             
             # 设置列宽
             ws.column_dimensions['A'].width = 30
             ws.column_dimensions['B'].width = 20
             ws.column_dimensions['C'].width = 12
-            ws.column_dimensions['D'].width = 60
-            ws.column_dimensions['E'].width = 80
-            
-            # 写入数据
-            for idx, result in enumerate(results, start=2):
-                ws[f'A{idx}'] = result['excel_file']
-                ws[f'B{idx}'] = result['sheet_name']
-                ws[f'C{idx}'] = result['field_count']
-                ws[f'D{idx}'] = ', '.join(result['fields'])
-                # 新增：字段+示例列
-                fields_with_examples = result.get('fields_with_examples', [])
-                ws[f'E{idx}'] = ', '.join(fields_with_examples) if fields_with_examples else ''
-                
-                # 设置边框
-                for col in ['A', 'B', 'C', 'D', 'E']:
-                    ws[f'{col}{idx}'].border = border
-                
-                # 居中对齐
-                ws[f'C{idx}'].alignment = Alignment(horizontal="center")
+            ws.column_dimensions['D'].width = 100
             
             wb.save(output_file)
             print(f"结果已导出到: {output_file}")
+            return output_file
         
         except Exception as e:
             print(f"导出到Excel时出错: {e}")
+            return None
     
     def process_directory(self, 
                          directory_path: str, 
@@ -424,7 +538,89 @@ class ExcelFieldExtractor:
         print(f"总工作表数: {total_sheets}")
         print(f"总字段数: {total_fields}")
         
+        # 显示日志统计
+        if self.error_logs:
+            print(f"错误日志数: {len(self.error_logs)}")
+        if self.extraction_warnings:
+            print(f"警告日志数: {len(self.extraction_warnings)}")
+        
         return stats
+    
+    def get_error_logs(self) -> List[str]:
+        """
+        获取所有错误日志
+        
+        Returns:
+            List[str]: 错误日志列表
+        """
+        return self.error_logs.copy()
+    
+    def get_warning_logs(self) -> List[str]:
+        """
+        获取所有警告日志（提取失败警告）
+        
+        Returns:
+            List[str]: 警告日志列表
+        """
+        return self.extraction_warnings.copy()
+    
+    def get_all_logs(self) -> Dict[str, List[str]]:
+        """
+        获取所有日志（错误+警告）
+        
+        Returns:
+            Dict: 包含errors和warnings的字典
+        """
+        return {
+            'errors': self.error_logs.copy(),
+            'warnings': self.extraction_warnings.copy()
+        }
+    
+    def clear_logs(self):
+        """清除所有日志"""
+        self.error_logs.clear()
+        self.extraction_warnings.clear()
+    
+    def save_logs_to_file(self, output_file: Path):
+        """
+        保存日志到文件
+        
+        Args:
+            output_file: 输出文件路径
+        """
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write("="*70 + "\n")
+                f.write("Excel字段提取 - 错误与警告日志\n")
+                f.write("="*70 + "\n\n")
+                
+                if self.error_logs:
+                    f.write(f"【错误日志】 共 {len(self.error_logs)} 条\n")
+                    f.write("-"*70 + "\n")
+                    for i, log in enumerate(self.error_logs, 1):
+                        f.write(f"{i}. {log}\n")
+                    f.write("\n")
+                else:
+                    f.write("【错误日志】 无错误\n\n")
+                
+                if self.extraction_warnings:
+                    f.write(f"【警告日志】 共 {len(self.extraction_warnings)} 条\n")
+                    f.write("-"*70 + "\n")
+                    for i, log in enumerate(self.extraction_warnings, 1):
+                        f.write(f"{i}. {log}\n")
+                    f.write("\n")
+                else:
+                    f.write("【警告日志】 无警告\n\n")
+                
+                f.write("="*70 + "\n")
+                f.write(f"总计: {len(self.error_logs)} 个错误, {len(self.extraction_warnings)} 个警告\n")
+            
+            print(f"日志已保存到: {output_file}")
+            return True
+        
+        except Exception as e:
+            print(f"保存日志文件失败: {e}")
+            return False
 
 
 if __name__ == "__main__":
