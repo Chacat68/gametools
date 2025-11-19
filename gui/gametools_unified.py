@@ -24,6 +24,7 @@ from core.localization_checker import LocalizationChecker
 from core.excel_vietnamese_scanner import ExcelVietnameseScanner
 from core.vietnamese_excel_processor import VietnameseExcelProcessor
 from core.cross_project_translator import CrossProjectTranslator
+from core.excel_field_extractor import ExcelFieldExtractor
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from tools.excel_text_extractor import ExcelTextExtractor
@@ -59,6 +60,7 @@ class GameToolsUnified:
         self.json_detector = JSONErrorDetector()
         self.excel_processor = ExcelDataProcessor()
         self.text_extractor = ExcelTextExtractor()
+        self.field_extractor = ExcelFieldExtractor()
         
         # 扫描状态
         self.is_scanning = False
@@ -69,8 +71,12 @@ class GameToolsUnified:
             'cross_project_translator': '',
             'json_detector': '',
             'excel_processor': '',
-            'text_extractor': ''
+            'text_extractor': '',
+            'field_extractor': ''
         }
+        
+        # 字段提取结果数据
+        self.field_extraction_results = None
     
     def setup_styles(self):
         """设置界面样式"""
@@ -122,6 +128,7 @@ class GameToolsUnified:
         self.create_json_detector_tab()
         self.create_excel_data_processor_tab()
         self.create_excel_text_extractor_tab()
+        self.create_field_extractor_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -683,6 +690,127 @@ class GameToolsUnified:
                                                        command=lambda: self.show_results_dialog('text_extractor'))
         self.extractor_view_results_button.pack(side=tk.LEFT)
     
+    def create_field_extractor_tab(self):
+        """创建表字段导出页签"""
+        # 字段导出器框架
+        field_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(field_frame, text="表字段导出")
+        
+        # 配置网格
+        field_frame.columnconfigure(0, weight=1)
+        field_frame.rowconfigure(3, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(field_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="表字段导出工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, 
+                              text="扫描Excel文件，检测包含文本内容的列，从物理行第5行提取字段名", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(field_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 目录选择区域
+        dir_frame = ttk.LabelFrame(control_frame, text="扫描设置", padding="12")
+        dir_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        dir_frame.columnconfigure(1, weight=1)
+        
+        # 扫描目录
+        ttk.Label(dir_frame, text="扫描目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.field_scan_dir_var = tk.StringVar()
+        self.field_scan_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_scan_dir_var, 
+                                             font=("Microsoft YaHei", 9))
+        self.field_scan_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.field_scan_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                                  command=self.browse_field_scan_directory)
+        self.field_scan_browse_button.grid(row=0, column=2, pady=(0, 8))
+        
+        # 输出文件夹
+        ttk.Label(dir_frame, text="输出目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        self.field_output_dir_var = tk.StringVar()
+        self.field_output_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_output_dir_var, 
+                                               font=("Microsoft YaHei", 9))
+        self.field_output_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        self.field_output_browse_button = ttk.Button(dir_frame, text="选择输出目录", 
+                                                    command=self.browse_field_output_directory)
+        self.field_output_browse_button.grid(row=1, column=2)
+        
+        # 选项设置区域
+        options_frame = ttk.LabelFrame(control_frame, text="处理选项", padding="12")
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # 递归扫描选项
+        self.field_recursive_var = tk.BooleanVar(value=True)
+        self.field_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
+                                                    variable=self.field_recursive_var)
+        self.field_recursive_check.grid(row=0, column=0, sticky=tk.W, pady=(0, 8))
+        
+        # 输出格式选择
+        format_frame = ttk.Frame(options_frame)
+        format_frame.grid(row=1, column=0, sticky=tk.W)
+        
+        ttk.Label(format_frame, text="输出格式:").pack(side=tk.LEFT, padx=(0, 10))
+        self.field_output_format_var = tk.StringVar(value="json")
+        ttk.Radiobutton(format_frame, text="JSON格式", 
+                       variable=self.field_output_format_var, 
+                       value="json").pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Radiobutton(format_frame, text="CSV格式", 
+                       variable=self.field_output_format_var, 
+                       value="csv").pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Radiobutton(format_frame, text="Excel格式", 
+                       variable=self.field_output_format_var, 
+                       value="excel").pack(side=tk.LEFT)
+        
+        # 说明信息
+        info_label = ttk.Label(options_frame, 
+                              text="💡 输出标准JSON格式，方便其他工具读取", 
+                              style='Info.TLabel', foreground='blue')
+        info_label.grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(field_frame)
+        button_frame.grid(row=2, column=0, pady=(0, 15))
+        
+        self.field_extract_button = ttk.Button(button_frame, text="📊 开始提取", 
+                                              command=self.start_field_extraction, 
+                                              style='Accent.TButton')
+        self.field_extract_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.field_copy_button = ttk.Button(button_frame, text="📋 复制JSON", 
+                                           command=self.copy_field_json_result)
+        self.field_copy_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.field_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                            command=self.clear_field_results)
+        self.field_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.field_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
+                                                   command=lambda: self.show_results_dialog('field_extractor'))
+        self.field_view_results_button.pack(side=tk.LEFT)
+        
+        # 结果显示区域
+        results_frame = ttk.LabelFrame(field_frame, text="提取结果", padding="10")
+        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        results_frame.columnconfigure(0, weight=1)
+        results_frame.rowconfigure(0, weight=1)
+        
+        # 结果文本框
+        self.field_results_text = scrolledtext.ScrolledText(results_frame, 
+                                                           wrap=tk.WORD,
+                                                           font=("Consolas", 9))
+        self.field_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
     def create_about_tab(self):
         """创建关于页签"""
         about_frame = ttk.Frame(self.notebook, padding="20")
@@ -729,6 +857,9 @@ class GameToolsUnified:
 
 📄 翻译提取工具
    批量提取Excel文件中的文本内容
+
+📋 表字段导出工具
+   扫描Excel文件，提取包含文本的列的字段信息
 
 📋 版本信息
    当前版本: v{get_version()}
@@ -1881,6 +2012,163 @@ class GameToolsUnified:
                 messagebox.showinfo("成功", f"结果已导出到:\n{file_path}")
             else:
                 messagebox.showerror("错误", "导出失败")
+    
+    # ==================== 表字段导出相关方法 ====================
+    
+    def browse_field_scan_directory(self):
+        """浏览字段提取扫描目录"""
+        dir_path = filedialog.askdirectory(title="选择扫描目录")
+        if dir_path:
+            self.field_scan_dir_var.set(dir_path)
+            # 如果输出目录为空，自动设置为扫描目录
+            if not self.field_output_dir_var.get():
+                self.field_output_dir_var.set(dir_path)
+    
+    def browse_field_output_directory(self):
+        """浏览字段提取输出目录"""
+        dir_path = filedialog.askdirectory(title="选择输出目录")
+        if dir_path:
+            self.field_output_dir_var.set(dir_path)
+    
+    def start_field_extraction(self):
+        """开始字段提取"""
+        scan_dir = self.field_scan_dir_var.get().strip()
+        output_dir = self.field_output_dir_var.get().strip()
+        
+        # 验证输入
+        if not scan_dir:
+            messagebox.showerror("错误", "请选择扫描目录")
+            return
+        
+        if not os.path.exists(scan_dir):
+            messagebox.showerror("错误", "扫描目录不存在")
+            return
+        
+        if not output_dir:
+            output_dir = scan_dir
+            self.field_output_dir_var.set(output_dir)
+        
+        # 在新线程中执行提取
+        self.field_extract_button.config(state="disabled")
+        self.status_var.set("正在提取表字段...")
+        
+        thread = threading.Thread(target=self._field_extraction_thread, 
+                                 args=(scan_dir, output_dir))
+        thread.daemon = True
+        thread.start()
+    
+    def _field_extraction_thread(self, scan_dir, output_dir):
+        """字段提取线程"""
+        try:
+            # 清空结果显示
+            self.root.after(0, lambda: self.field_results_text.delete(1.0, tk.END))
+            self.root.after(0, lambda: self._log_field_result("=" * 60))
+            self.root.after(0, lambda: self._log_field_result("开始提取表字段信息..."))
+            self.root.after(0, lambda: self._log_field_result("=" * 60))
+            self.root.after(0, lambda: self._log_field_result(f"扫描目录: {scan_dir}"))
+            self.root.after(0, lambda: self._log_field_result(f"输出目录: {output_dir}"))
+            self.root.after(0, lambda: self._log_field_result(f"输出格式: {self.field_output_format_var.get().upper()}"))
+            self.root.after(0, lambda: self._log_field_result(f"递归扫描: {'是' if self.field_recursive_var.get() else '否'}"))
+            self.root.after(0, lambda: self._log_field_result(""))
+            
+            # 执行提取
+            stats = self.field_extractor.process_directory(
+                directory_path=scan_dir,
+                output_folder=output_dir,
+                output_format=self.field_output_format_var.get(),
+                recursive=self.field_recursive_var.get()
+            )
+            
+            # 保存输出文件路径和结果数据
+            self.results_storage['field_extractor'] = stats.get('output_file', '')
+            self.field_extraction_results = stats.get('results', [])
+            
+            # 显示统计信息
+            self.root.after(0, lambda: self._log_field_result(""))
+            self.root.after(0, lambda: self._log_field_result("=" * 60))
+            self.root.after(0, lambda: self._log_field_result("提取完成!"))
+            self.root.after(0, lambda: self._log_field_result("=" * 60))
+            self.root.after(0, lambda: self._log_field_result(f"扫描文件数: {stats['total_files']}"))
+            self.root.after(0, lambda: self._log_field_result(f"工作表数: {stats['total_sheets']}"))
+            self.root.after(0, lambda: self._log_field_result(f"提取字段数: {stats['total_fields']}"))
+            self.root.after(0, lambda: self._log_field_result(f"输出文件: {stats['output_file']}"))
+            self.root.after(0, lambda: self._log_field_result(""))
+            
+            # 如果是JSON格式，显示JSON预览
+            if self.field_output_format_var.get() == 'json' and self.field_extraction_results:
+                self.root.after(0, lambda: self._log_field_result("JSON结果预览:"))
+                self.root.after(0, lambda: self._log_field_result("-" * 60))
+                import json
+                json_data = [{
+                    "table_name": r['excel_file'],
+                    "sheet_name": r['sheet_name'],
+                    "fields": r['fields'],
+                    "field_count": r['field_count']
+                } for r in self.field_extraction_results]
+                json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
+                self.root.after(0, lambda: self._log_field_result(json_str))
+                self.root.after(0, lambda: self._log_field_result("-" * 60))
+                self.root.after(0, lambda: self._log_field_result(""))
+            
+            # 显示完成消息
+            self.root.after(0, lambda: self.status_var.set("字段提取完成"))
+            self.root.after(0, lambda: messagebox.showinfo(
+                "完成",
+                f"字段提取完成!\n\n"
+                f"扫描文件数: {stats['total_files']}\n"
+                f"工作表数: {stats['total_sheets']}\n"
+                f"提取字段数: {stats['total_fields']}\n\n"
+                f"结果已保存到:\n{stats['output_file']}"
+            ))
+            
+        except Exception as e:
+            import traceback
+            error_msg = traceback.format_exc()
+            self.root.after(0, lambda: self._log_field_result(f"\n错误: {str(e)}"))
+            self.root.after(0, lambda: self._log_field_result(error_msg))
+            self.root.after(0, lambda: self.status_var.set("字段提取失败"))
+            self.root.after(0, lambda: messagebox.showerror("错误", f"处理失败:\n{str(e)}"))
+        
+        finally:
+            self.root.after(0, lambda: self.field_extract_button.config(state="normal"))
+    
+    def _log_field_result(self, message):
+        """记录字段提取结果"""
+        self.field_results_text.insert(tk.END, message + "\n")
+        self.field_results_text.see(tk.END)
+    
+    def clear_field_results(self):
+        """清空字段提取结果"""
+        self.field_results_text.delete(1.0, tk.END)
+        self.results_storage['field_extractor'] = ''
+        self.field_extraction_results = None
+    
+    def copy_field_json_result(self):
+        """复制字段提取的JSON结果到剪贴板"""
+        if not self.field_extraction_results:
+            messagebox.showwarning("警告", "没有可复制的结果，请先执行字段提取")
+            return
+        
+        try:
+            import json
+            # 构建JSON数据
+            json_data = [{
+                "table_name": r['excel_file'],
+                "sheet_name": r['sheet_name'],
+                "fields": r['fields'],
+                "field_count": r['field_count']
+            } for r in self.field_extraction_results]
+            
+            json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
+            
+            # 复制到剪贴板
+            self.root.clipboard_clear()
+            self.root.clipboard_append(json_str)
+            self.root.update()
+            
+            messagebox.showinfo("成功", f"JSON结果已复制到剪贴板\n共 {len(json_data)} 条记录")
+        except Exception as e:
+            messagebox.showerror("错误", f"复制失败:\n{str(e)}")
 
 
 def main():

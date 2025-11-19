@@ -1,0 +1,70 @@
+[
+  {
+    "table_name": "多工作表测试.xlsx",
+    "sheet_name": "角色表",
+    "fields": [
+      "角色ID",
+      "角色名",
+      "等级",
+      "职业"
+    ],
+    "field_count": 4
+  },
+  {
+    "table_name": "多工作表测试.xlsx",
+    "sheet_name": "技能表",
+    "fields": [
+      "技能ID",
+      "技能名称",
+      "消耗MP",
+      "冷却时间"
+    ],
+    "field_count": 4
+  },
+  {
+    "table_name": "多工作表测试.xlsx",
+    "sheet_name": "装备表",
+    "fields": [
+      "装备ID",
+      "装备名称",
+      "品质",
+      "部位"
+    ],
+    "field_count": 4
+  },
+  {
+    "table_name": "测试表1.xlsx",
+    "sheet_name": "测试表1",
+    "fields": [
+      "ID",
+      "名称",
+      "描述",
+      "数值",
+      "类型"
+    ],
+    "field_count": 5
+  },
+  {
+    "table_name": "混合类型表.xlsx",
+    "sheet_name": "混合类型表",
+    "fields": [
+      "编号",
+      "名称",
+      "数量",
+      "价格",
+      "备注"
+    ],
+    "field_count": 5
+  },
+  {
+    "table_name": "越南文测试表.xlsx",
+    "sheet_name": "Bảng thử nghiệm",
+    "fields": [
+      "ID",
+      "Tên",
+      "Mô tả",
+      "Giá trị"
+    ],
+    "field_count": 4
+  }
+]
