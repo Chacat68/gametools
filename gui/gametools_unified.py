@@ -864,27 +864,49 @@ class GameToolsUnified:
                                                 command=self.browse_trt_json_file)
         self.trt_json_browse_button.grid(row=0, column=2, pady=(0, 8))
         
-        # Excel文件目录
-        ttk.Label(file_frame, text="Excel目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_excel_dir_var = tk.StringVar()
-        self.trt_excel_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_excel_dir_var, 
-                                            font=("Microsoft YaHei", 9))
-        self.trt_excel_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        # 越南文目录（默认，无后缀）
+        ttk.Label(file_frame, text="越南文目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_vn_dir_var = tk.StringVar()
+        self.trt_vn_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_vn_dir_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.trt_vn_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.trt_excel_browse_button = ttk.Button(file_frame, text="浏览目录", 
-                                                 command=self.browse_trt_excel_directory)
-        self.trt_excel_browse_button.grid(row=1, column=2, pady=(0, 8))
+        self.trt_vn_browse_button = ttk.Button(file_frame, text="浏览目录", 
+                                              command=self.browse_trt_vn_directory)
+        self.trt_vn_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        # 中文目录（_zh后缀）
+        ttk.Label(file_frame, text="中文目录:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_zh_dir_var = tk.StringVar()
+        self.trt_zh_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_zh_dir_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.trt_zh_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_zh_browse_button = ttk.Button(file_frame, text="浏览目录", 
+                                              command=self.browse_trt_zh_directory)
+        self.trt_zh_browse_button.grid(row=2, column=2, pady=(0, 8))
+        
+        # 泰文目录（_th后缀）
+        ttk.Label(file_frame, text="泰文目录:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_th_dir_var = tk.StringVar()
+        self.trt_th_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_th_dir_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.trt_th_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_th_browse_button = ttk.Button(file_frame, text="浏览目录", 
+                                              command=self.browse_trt_th_directory)
+        self.trt_th_browse_button.grid(row=3, column=2, pady=(0, 8))
         
         # 输出文件
-        ttk.Label(file_frame, text="输出文件:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(file_frame, text="输出文件:").grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
         self.trt_output_var = tk.StringVar()
         self.trt_output_entry = ttk.Entry(file_frame, textvariable=self.trt_output_var, 
                                          font=("Microsoft YaHei", 9))
-        self.trt_output_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.trt_output_entry.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         
         self.trt_output_browse_button = ttk.Button(file_frame, text="选择保存位置", 
                                                   command=self.browse_trt_output_file)
-        self.trt_output_browse_button.grid(row=2, column=2)
+        self.trt_output_browse_button.grid(row=4, column=2)
         
         # 说明信息区域
         info_frame = ttk.LabelFrame(control_frame, text="功能说明", padding="12")
@@ -892,8 +914,9 @@ class GameToolsUnified:
         
         info_text = """✓ 跳过 no_text_tables 中的表格
 ✓ 处理 text_tables，只导出前端、后端、前后端字段（忽略策划字段）
+✓ 多语言目录：越南文（无后缀）、中文（_zh）、泰文（_th）
 ✓ 生成翻译总表，每个表格文件对应一个工作表标签
-✓ 列格式：字段名 | 字段类型 | ID | 行号 | 中文内容 | 越南文 | 泰文 | 语言类型"""
+✓ 列格式：字段名 | 字段类型 | Excel位置 | 中文内容 | 越南文 | 泰文"""
         
         info_label = ttk.Label(info_frame, text=info_text, 
                               font=("Microsoft YaHei", 9), 
@@ -2372,11 +2395,23 @@ class GameToolsUnified:
         if file_path:
             self.trt_json_var.set(file_path)
     
-    def browse_trt_excel_directory(self):
-        """浏览Excel文件目录"""
-        dir_path = filedialog.askdirectory(title="选择Excel文件目录")
+    def browse_trt_vn_directory(self):
+        """浏览越南文文件目录"""
+        dir_path = filedialog.askdirectory(title="选择越南文Excel文件目录")
         if dir_path:
-            self.trt_excel_dir_var.set(dir_path)
+            self.trt_vn_dir_var.set(dir_path)
+    
+    def browse_trt_zh_directory(self):
+        """浏览中文文件目录"""
+        dir_path = filedialog.askdirectory(title="选择中文Excel文件目录（_zh后缀）")
+        if dir_path:
+            self.trt_zh_dir_var.set(dir_path)
+    
+    def browse_trt_th_directory(self):
+        """浏览泰文文件目录"""
+        dir_path = filedialog.askdirectory(title="选择泰文Excel文件目录（_th后缀）")
+        if dir_path:
+            self.trt_th_dir_var.set(dir_path)
     
     def browse_trt_output_file(self):
         """浏览输出文件位置"""
@@ -2391,7 +2426,9 @@ class GameToolsUnified:
     def start_table_range_translation(self):
         """开始多语言翻译提取"""
         json_path = self.trt_json_var.get().strip()
-        excel_dir = self.trt_excel_dir_var.get().strip()
+        vn_dir = self.trt_vn_dir_var.get().strip()
+        zh_dir = self.trt_zh_dir_var.get().strip()
+        th_dir = self.trt_th_dir_var.get().strip()
         output_file = self.trt_output_var.get().strip()
         
         # 验证输入
@@ -2399,8 +2436,8 @@ class GameToolsUnified:
             messagebox.showerror("错误", "请选择JSON配置文件")
             return
         
-        if not excel_dir:
-            messagebox.showerror("错误", "请选择Excel文件目录")
+        if not vn_dir and not zh_dir and not th_dir:
+            messagebox.showerror("错误", "请至少选择一个语言目录")
             return
         
         if not output_file:
@@ -2411,20 +2448,38 @@ class GameToolsUnified:
             messagebox.showerror("错误", "JSON配置文件不存在")
             return
         
-        if not os.path.exists(excel_dir):
-            messagebox.showerror("错误", "Excel目录不存在")
+        # 验证目录存在性
+        if vn_dir and not os.path.exists(vn_dir):
+            messagebox.showerror("错误", "越南文目录不存在")
             return
+        
+        if zh_dir and not os.path.exists(zh_dir):
+            messagebox.showerror("错误", "中文目录不存在")
+            return
+        
+        if th_dir and not os.path.exists(th_dir):
+            messagebox.showerror("错误", "泰文目录不存在")
+            return
+        
+        # 构建语言目录字典
+        lang_dirs = {}
+        if vn_dir:
+            lang_dirs['vn'] = vn_dir
+        if zh_dir:
+            lang_dirs['zh'] = zh_dir
+        if th_dir:
+            lang_dirs['th'] = th_dir
         
         # 在新线程中执行提取
         self.trt_process_button.config(state="disabled")
         self.status_var.set("正在提取翻译内容...")
         
         thread = threading.Thread(target=self._table_range_translation_thread, 
-                                 args=(json_path, excel_dir, output_file))
+                                 args=(json_path, lang_dirs, output_file))
         thread.daemon = True
         thread.start()
     
-    def _table_range_translation_thread(self, json_path, excel_dir, output_file):
+    def _table_range_translation_thread(self, json_path, lang_dirs, output_file):
         """多语言翻译提取线程"""
         try:
             # 清空结果
@@ -2434,21 +2489,26 @@ class GameToolsUnified:
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 "=" * 70 + "\n"))
             self.root.after(0, lambda: self.append_result('table_range_translator', 
-                "开始表范围翻译提取...\n"))
+                "开始多语言翻译提取...\n"))
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 "=" * 70 + "\n"))
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 f"JSON配置: {json_path}\n"))
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                f"Excel目录: {excel_dir}\n"))
+            
+            # 显示各语言目录
+            for lang, dir_path in lang_dirs.items():
+                lang_name = {'vn': '越南文', 'zh': '中文', 'th': '泰文'}.get(lang, lang)
+                self.root.after(0, lambda ln=lang_name, dp=dir_path: 
+                    self.append_result('table_range_translator', f"{ln}目录: {dp}\n"))
+            
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 f"输出文件: {output_file}\n"))
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 "\n"))
             
             # 处理数据
-            results = self.table_range_translator.process_with_json_config(
-                json_path, excel_dir)
+            results = self.table_range_translator.process_with_json_config_multi_lang(
+                json_path, lang_dirs)
             
             if results:
                 self.root.after(0, lambda: self.append_result('table_range_translator', 
@@ -2458,7 +2518,7 @@ class GameToolsUnified:
                 self.root.after(0, lambda: self.append_result('table_range_translator', 
                     "正在生成翻译总表...\n"))
                 
-                success = self.table_range_translator.generate_translation_master_table(
+                success = self.table_range_translator.generate_translation_master_table_multi_lang(
                     output_file)
                 
                 if success:

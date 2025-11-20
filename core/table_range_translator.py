@@ -442,6 +442,246 @@ class TableRangeTranslator:
             logger.error(f"生成翻译总表失败: {e}")
             return False
     
+    def process_with_json_config_multi_lang(self, json_path: str, lang_dirs: Dict[str, str]) -> List[Dict]:
+        """
+        根据JSON配置和多语言目录处理Excel文件
+        
+        Args:
+            json_path: JSON配置文件路径
+            lang_dirs: 语言目录字典 {'vn': 'path', 'zh': 'path', 'th': 'path'}
+            
+        Returns:
+            List[Dict]: 所有提取的数据（包含多语言内容）
+        """
+        try:
+            # 加载JSON配置
+            config = self.load_json_config(json_path)
+            if not config:
+                return []
+            
+            # 获取text_tables列表
+            text_tables = config.get('text_tables', [])
+            self.processing_stats['total_tables'] = len(text_tables)
+            
+            logger.info(f"开始处理 {len(text_tables)} 个包含文本的表格")
+            logger.info(f"语言目录: {list(lang_dirs.keys())}")
+            
+            all_data = []
+            
+            # 处理每个表格
+            for table_info in text_tables:
+                table_name = table_info.get('table_name', '')
+                sheet_name = table_info.get('sheet_name', '')
+                fields_with_examples = table_info.get('fields_with_examples', [])
+                
+                # 解析字段信息，过滤出需要导出的字段
+                exportable_fields = []
+                for field_str in fields_with_examples:
+                    field_name, field_type = self.parse_field_with_type(field_str)
+                    if self.is_exportable_field(field_type):
+                        exportable_fields.append((field_name, field_type))
+                    else:
+                        self.processing_stats['skipped_fields'] += 1
+                
+                if not exportable_fields:
+                    logger.info(f"表格 {table_name} 没有需要导出的字段，跳过")
+                    continue
+                
+                self.processing_stats['exported_fields'] += len(exportable_fields)
+                
+                # 从各语言目录读取数据
+                table_data_by_lang = {}
+                for lang, lang_dir in lang_dirs.items():
+                    excel_path = os.path.join(lang_dir, table_name)
+                    
+                    if not os.path.exists(excel_path):
+                        logger.warning(f"{lang} 文件不存在: {excel_path}")
+                        continue
+                    
+                    # 读取Excel
+                    try:
+                        df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
+                        if len(df) < 7:
+                            logger.warning(f"{lang} 表格 {table_name} 数据行不足")
+                            continue
+                        table_data_by_lang[lang] = df
+                    except Exception as e:
+                        logger.error(f"读取 {lang} 文件失败 {excel_path}: {e}")
+                        continue
+                
+                if not table_data_by_lang:
+                    logger.warning(f"表格 {table_name} 在所有语言目录中都不存在")
+                    self.processing_stats['skipped_tables'] += 1
+                    continue
+                
+                # 提取并合并数据
+                for field_name, field_type in exportable_fields:
+                    # 从第一个可用的语言版本中找列索引
+                    first_lang = list(table_data_by_lang.keys())[0]
+                    first_df = table_data_by_lang[first_lang]
+                    col_idx = self.find_column_index_by_name(first_df, field_name)
+                    
+                    if col_idx is None:
+                        logger.warning(f"未找到字段: {field_name}")
+                        continue
+                    
+                    # Excel列字母
+                    excel_col = self.column_index_to_letter(col_idx)
+                    
+                    # 从第7行开始提取数据
+                    for row_idx in range(6, len(first_df)):
+                        # 收集各语言的内容
+                        lang_contents = {}
+                        has_content = False
+                        
+                        for lang, df in table_data_by_lang.items():
+                            if row_idx < len(df):
+                                cell_value = df.iloc[row_idx, col_idx]
+                                if pd.notna(cell_value) and str(cell_value).strip():
+                                    lang_contents[lang] = str(cell_value).strip()
+                                    has_content = True
+                        
+                        if not has_content:
+                            continue
+                        
+                        # Excel行号（从1开始）
+                        excel_row = row_idx + 1
+                        excel_position = f"{excel_col}{excel_row}"
+                        
+                        # 创建数据行
+                        row_data = {
+                            'table_name': table_name,
+                            'sheet_name': sheet_name,
+                            'field_name': field_name,
+                            'field_type': field_type,
+                            'excel_position': excel_position,
+                            'chinese': lang_contents.get('zh', ''),
+                            'vietnamese': lang_contents.get('vn', ''),
+                            'thai': lang_contents.get('th', '')
+                        }
+                        
+                        all_data.append(row_data)
+                        self.processing_stats['total_rows'] += 1
+                
+                self.processing_stats['processed_tables'] += 1
+            
+            self.translation_results = all_data
+            logger.info(f"处理完成，共提取 {len(all_data)} 条数据")
+            
+            return all_data
+        
+        except Exception as e:
+            logger.error(f"处理失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
+    def generate_translation_master_table_multi_lang(self, output_path: str) -> bool:
+        """
+        生成多语言翻译总表（基于多语言目录提取的数据）
+        每个表格文件对应一个工作表标签
+        列格式: 字段名 | 字段类型 | Excel位置 | 中文内容 | 越南文 | 泰文
+        
+        Args:
+            output_path: 输出Excel文件路径
+            
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            if not self.translation_results:
+                logger.warning("没有数据可导出")
+                return False
+            
+            logger.info(f"开始生成翻译总表: {output_path}")
+            
+            # 按表格名称分组
+            tables_data = {}
+            for row in self.translation_results:
+                table_name = row['table_name']
+                if table_name not in tables_data:
+                    tables_data[table_name] = []
+                tables_data[table_name].append(row)
+            
+            # 创建Excel工作簿
+            wb = Workbook()
+            
+            # 删除默认工作表
+            if 'Sheet' in wb.sheetnames:
+                wb.remove(wb['Sheet'])
+            
+            # 为每个表格创建一个工作表
+            for table_name, rows in tables_data.items():
+                # 工作表名称（去除扩展名）
+                sheet_name = Path(table_name).stem
+                # Excel工作表名称限制31字符
+                if len(sheet_name) > 31:
+                    sheet_name = sheet_name[:28] + '...'
+                
+                ws = wb.create_sheet(title=sheet_name)
+                
+                # 设置表头
+                headers = ['字段名', '字段类型', 'Excel位置', '中文内容', '越南文', '泰文']
+                ws.append(headers)
+                
+                # 设置表头样式
+                header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+                header_font = Font(bold=True, color='FFFFFF', size=11)
+                header_alignment = Alignment(horizontal='center', vertical='center')
+                
+                for col_idx, header in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col_idx)
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = header_alignment
+                
+                # 写入数据行
+                for row_data in rows:
+                    ws.append([
+                        row_data.get('field_name', ''),
+                        row_data.get('field_type', ''),
+                        row_data.get('excel_position', ''),
+                        row_data.get('chinese', ''),
+                        row_data.get('vietnamese', ''),
+                        row_data.get('thai', '')
+                    ])
+                
+                # 设置列宽
+                column_widths = [20, 12, 12, 40, 40, 40]
+                for col_idx, width in enumerate(column_widths, 1):
+                    ws.column_dimensions[get_column_letter(col_idx)].width = width
+                
+                # 冻结首行
+                ws.freeze_panes = 'A2'
+                
+                # 添加边框
+                thin_border = Border(
+                    left=Side(style='thin'),
+                    right=Side(style='thin'),
+                    top=Side(style='thin'),
+                    bottom=Side(style='thin')
+                )
+                
+                for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+                    for cell in row:
+                        cell.border = thin_border
+                        if cell.row > 1:  # 数据行
+                            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            
+            # 保存工作簿
+            wb.save(output_path)
+            logger.info(f"翻译总表已生成: {output_path}")
+            logger.info(f"  - 工作表数量: {len(tables_data)}")
+            logger.info(f"  - 总数据行数: {len(self.translation_results)}")
+            
+            return True
+        
+        except Exception as e:
+            logger.error(f"生成翻译总表失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
     def get_processing_report(self) -> str:
         """
         获取处理报告
