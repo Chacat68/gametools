@@ -31,8 +31,6 @@ class ExcelFieldExtractor:
         # 错误日志列表
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
-        # 无文本内容的表格列表
-        self.empty_tables = []  # 存储没有检测到文本内容的表格
     
     def is_excel_file(self, file_path: Path) -> bool:
         """
@@ -109,22 +107,18 @@ class ExcelFieldExtractor:
         # 如果没有找到两个标记，返回整个表格范围
         return (1, sheet.max_column)
     
-    def extract_fields_from_excel(self, file_path) -> List[Dict]:
+    def extract_fields_from_excel(self, file_path: Path) -> List[Dict]:
         """
         从Excel文件中提取包含文本内容的列的字段信息
         仅扫描两个 c_classic_battle 标记之间的列范围
         
         Args:
-            file_path: Excel文件路径（可以是字符串或Path对象）
+            file_path: Excel文件路径
             
         Returns:
             List[Dict]: 每个工作表的字段信息列表
         """
         results = []
-        
-        # 确保file_path是Path对象
-        if isinstance(file_path, str):
-            file_path = Path(file_path)
         
         try:
             # 使用openpyxl读取，以便精确访问物理行
@@ -153,11 +147,15 @@ class ExcelFieldExtractor:
                                     text_columns.add(cell.column)
                     
                     if not text_columns:
-                        # 如果没有找到包含本地化文本的列，记录到空表列表
-                        self.empty_tables.append({
+                        # 未检测到本地化文本列：仍然加入结果，标记 has_text=False，字段为空
+                        results.append({
                             'excel_file': file_path.name,
                             'sheet_name': sheet_name,
-                            'file_path': str(file_path)
+                            'fields': [],
+                            'fields_with_examples': [],
+                            'field_count': 0,
+                            'text_columns': [],
+                            'has_text': False
                         })
                         continue
                     
@@ -219,7 +217,8 @@ class ExcelFieldExtractor:
                             'fields': fields,
                             'fields_with_examples': field_with_examples,  # 新增：带示例的字段列表
                             'field_count': len(fields),
-                            'text_columns': sorted(text_columns)
+                            'text_columns': sorted(text_columns),
+                            'has_text': True
                         })
                 
                 except Exception as e:
@@ -271,28 +270,33 @@ class ExcelFieldExtractor:
     def export_to_json(self, results: List[Dict], output_file: Path):
         """
         导出结果到JSON文件
+        分为两部分：1) 无文本内容的表格（只显示表名）；2) 有文本内容的表格（显示完整字段结构）
         
         Args:
-            results: 字段信息列表
+            results: 字段信息列表（已按 has_text 排序）
             output_file: 输出文件路径
         """
         try:
-            # 构建JSON结构，分为两部分
+            # 构建JSON结构
+            # 分组：无文本表与有文本表
+            no_text_results = [r for r in results if not r.get('has_text', True)]
+            text_results = [r for r in results if r.get('has_text', True)]
+            
             json_output = {
-                "empty_tables": [],  # 无文本内容的表格（放在前面）
-                "tables_with_text": []  # 有文本内容的表格
+                "no_text_tables": [],
+                "text_tables": []
             }
             
-            # 添加无文本内容的表格
-            for empty_table in self.empty_tables:
-                json_output["empty_tables"].append({
-                    "table_name": empty_table['excel_file'],
-                    "sheet_name": empty_table['sheet_name']
+            # 无文本表：只包含表名信息
+            for result in no_text_results:
+                json_output["no_text_tables"].append({
+                    "table_name": result['excel_file'],
+                    "sheet_name": result['sheet_name']
                 })
             
-            # 添加有文本内容的表格
-            for result in results:
-                json_output["tables_with_text"].append({
+            # 有文本表：包含完整字段结构
+            for result in text_results:
+                json_output["text_tables"].append({
                     "table_name": result['excel_file'],
                     "sheet_name": result['sheet_name'],
                     "fields_with_examples": result.get('fields_with_examples', []),
@@ -304,53 +308,57 @@ class ExcelFieldExtractor:
                 json.dump(json_output, f, ensure_ascii=False, indent=2)
             
             print(f"结果已导出到: {output_file}")
-            print(f"  - 无文本表格数: {len(json_output['empty_tables'])}")
-            print(f"  - 有文本表格数: {len(json_output['tables_with_text'])}")
-            return output_file
+            print(f"  - 无文本表格: {len(no_text_results)} 个")
+            print(f"  - 有文本表格: {len(text_results)} 个")
         
         except Exception as e:
             print(f"导出到JSON时出错: {e}")
-            return None
     
     def export_to_csv(self, results: List[Dict], output_file: Path):
         """
         导出结果到CSV文件
+        分为两部分：1) 无文本内容的表格（只显示表名）；2) 有文本内容的表格（显示完整字段结构）
         格式：表名,字段1,字段2,...
         
         Args:
-            results: 字段信息列表
+            results: 字段信息列表（已按 has_text 排序）
             output_file: 输出文件路径
         """
         try:
+            # 分组：无文本表与有文本表
+            no_text_results = [r for r in results if not r.get('has_text', True)]
+            text_results = [r for r in results if r.get('has_text', True)]
+            
             with open(output_file, 'w', encoding='utf-8-sig') as f:
-                # 第一部分：写入无文本内容的表格
-                f.write("=== 无文本内容的表格 ===\n")
-                for empty_table in self.empty_tables:
-                    table_name = f"{empty_table['excel_file']}#{empty_table['sheet_name']}"
-                    f.write(f"{table_name}\n")
+                # 写入无文本表部分
+                if no_text_results:
+                    f.write("# 无文本内容的表格\n")
+                    for result in no_text_results:
+                        table_name = f"{result['excel_file']}#{result['sheet_name']}"
+                        f.write(f"{table_name}\n")
+                    f.write("\n")
                 
-                # 分隔符
-                f.write("\n=== 有文本内容的表格 ===\n")
-                
-                # 第二部分：写入有文本内容的表格
-                for result in results:
-                    table_name = f"{result['excel_file']}#{result['sheet_name']}"
-                    # 使用带示例的字段列表
-                    fields_with_examples = result.get('fields_with_examples', result.get('fields', []))
-                    if isinstance(fields_with_examples, list) and len(fields_with_examples) > 0:
-                        fields_str = ','.join(fields_with_examples)
-                    else:
-                        fields_str = ''
-                    f.write(f"{table_name},{fields_str}\n")
+                # 写入有文本表部分
+                if text_results:
+                    f.write("# 包含文本内容的表格\n")
+                    for result in text_results:
+                        table_name = f"{result['excel_file']}#{result['sheet_name']}"
+                        fields_with_examples = result.get('fields_with_examples', result['fields'])
+                        if isinstance(fields_with_examples, list) and len(fields_with_examples) > 0:
+                            if ',' in str(fields_with_examples[0]):
+                                fields_str = ','.join(fields_with_examples)
+                            else:
+                                fields_str = ','.join(result['fields'])
+                        else:
+                            fields_str = ','.join(result['fields'])
+                        f.write(f"{table_name},{fields_str}\n")
             
             print(f"结果已导出到: {output_file}")
-            print(f"  - 无文本表格数: {len(self.empty_tables)}")
-            print(f"  - 有文本表格数: {len(results)}")
-            return output_file
+            print(f"  - 无文本表格: {len(no_text_results)} 个")
+            print(f"  - 有文本表格: {len(text_results)} 个")
         
         except Exception as e:
             print(f"导出到CSV时出错: {e}")
-            return None
     
     def export_to_excel(self, results: List[Dict], output_file: Path):
         """
@@ -366,10 +374,8 @@ class ExcelFieldExtractor:
             ws.title = "字段导出结果"
             
             # 设置样式
-            header_font = Font(bold=True, size=11, color='FFFFFF')
+            header_font = Font(bold=True, size=11)
             header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-            section_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
-            empty_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
             header_alignment = Alignment(horizontal="center", vertical="center")
             
             border = Border(
@@ -379,82 +385,18 @@ class ExcelFieldExtractor:
                 bottom=Side(style='thin')
             )
             
-            current_row = 1
+            # 写入表头
+            ws['A1'] = '表名'
+            ws['B1'] = '工作表'
+            ws['C1'] = '字段数量'
+            ws['D1'] = '字段+示例'
             
-            # 第一部分：无文本内容的表格
-            if self.empty_tables:
-                # 分类标题
-                ws.merge_cells(f'A{current_row}:B{current_row}')
-                section_cell = ws[f'A{current_row}']
-                section_cell.value = '=== 无文本内容的表格 ==='
-                section_cell.font = Font(bold=True, size=12)
-                section_cell.fill = section_fill
-                section_cell.alignment = header_alignment
-                current_row += 1
-                
-                # 表头
-                ws[f'A{current_row}'] = '表名'
-                ws[f'B{current_row}'] = '工作表'
-                for col in ['A', 'B']:
-                    cell = ws[f'{col}{current_row}']
-                    cell.font = header_font
-                    cell.fill = header_fill
-                    cell.alignment = header_alignment
-                    cell.border = border
-                current_row += 1
-                
-                # 数据
-                for empty_table in self.empty_tables:
-                    ws[f'A{current_row}'] = empty_table['excel_file']
-                    ws[f'B{current_row}'] = empty_table['sheet_name']
-                    for col in ['A', 'B']:
-                        ws[f'{col}{current_row}'].border = border
-                        ws[f'{col}{current_row}'].fill = empty_fill
-                    current_row += 1
-                
-                current_row += 1  # 空行分隔
-            
-            # 第二部分：有文本内容的表格
-            if results:
-                # 分类标题
-                ws.merge_cells(f'A{current_row}:D{current_row}')
-                section_cell = ws[f'A{current_row}']
-                section_cell.value = '=== 有文本内容的表格 ==='
-                section_cell.font = Font(bold=True, size=12)
-                section_cell.fill = section_fill
-                section_cell.alignment = header_alignment
-                current_row += 1
-                
-                # 表头
-                ws[f'A{current_row}'] = '表名'
-                ws[f'B{current_row}'] = '工作表'
-                ws[f'C{current_row}'] = '字段数量'
-                ws[f'D{current_row}'] = '字段+示例'
-                
-                for col in ['A', 'B', 'C', 'D']:
-                    cell = ws[f'{col}{current_row}']
-                    cell.font = header_font
-                    cell.fill = header_fill
-                    cell.alignment = header_alignment
-                    cell.border = border
-                current_row += 1
-                
-                # 数据
-                for result in results:
-                    ws[f'A{current_row}'] = result['excel_file']
-                    ws[f'B{current_row}'] = result['sheet_name']
-                    ws[f'C{current_row}'] = result['field_count']
-                    # 字段+示例列
-                    fields_with_examples = result.get('fields_with_examples', [])
-                    ws[f'D{current_row}'] = ', '.join(fields_with_examples) if fields_with_examples else ''
-                    
-                    # 设置边框
-                    for col in ['A', 'B', 'C', 'D']:
-                        ws[f'{col}{current_row}'].border = border
-                    
-                    # 居中对齐
-                    ws[f'C{current_row}'].alignment = Alignment(horizontal="center")
-                    current_row += 1
+            for col in ['A', 'B', 'C', 'D']:
+                cell = ws[f'{col}1']
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = border
             
             # 设置列宽
             ws.column_dimensions['A'].width = 30
@@ -462,13 +404,64 @@ class ExcelFieldExtractor:
             ws.column_dimensions['C'].width = 12
             ws.column_dimensions['D'].width = 100
             
+            # 分组：无文本表与有文本表
+            no_text_results = [r for r in results if not r.get('has_text', True)]
+            text_results = [r for r in results if r.get('has_text', True)]
+
+            current_row = 2
+            # 写入无文本表部分（只显示表名）
+            if no_text_results:
+                # 添加分组标题
+                ws[f'A{current_row}'] = '无文本内容的表格'
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
+                title_cell = ws[f'A{current_row}']
+                title_cell.font = Font(bold=True, size=12, color="FFFFFF")
+                title_cell.fill = PatternFill(start_color="E74C3C", end_color="E74C3C", fill_type="solid")
+                title_cell.alignment = Alignment(horizontal="center", vertical="center")
+                current_row += 1
+                
+                for result in no_text_results:
+                    ws[f'A{current_row}'] = result['excel_file']
+                    ws[f'B{current_row}'] = result['sheet_name']
+                    ws[f'C{current_row}'] = 0
+                    ws[f'D{current_row}'] = ''
+                    for col in ['A', 'B', 'C', 'D']:
+                        ws[f'{col}{current_row}'].border = border
+                    ws[f'C{current_row}'].alignment = Alignment(horizontal="center")
+                    current_row += 1
+                
+                # 空行作为分隔
+                current_row += 1
+
+            # 写入有文本表部分（显示完整字段结构）
+            if text_results:
+                # 添加分组标题
+                ws[f'A{current_row}'] = '包含文本内容的表格'
+                ws.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
+                title_cell = ws[f'A{current_row}']
+                title_cell.font = Font(bold=True, size=12, color="FFFFFF")
+                title_cell.fill = PatternFill(start_color="27AE60", end_color="27AE60", fill_type="solid")
+                title_cell.alignment = Alignment(horizontal="center", vertical="center")
+                current_row += 1
+                
+                for result in text_results:
+                    ws[f'A{current_row}'] = result['excel_file']
+                    ws[f'B{current_row}'] = result['sheet_name']
+                    ws[f'C{current_row}'] = result['field_count']
+                    fields_with_examples = result.get('fields_with_examples', [])
+                    ws[f'D{current_row}'] = ', '.join(fields_with_examples) if fields_with_examples else ''
+                    for col in ['A', 'B', 'C', 'D']:
+                        ws[f'{col}{current_row}'].border = border
+                    ws[f'C{current_row}'].alignment = Alignment(horizontal="center")
+                    current_row += 1
+            
             wb.save(output_file)
             print(f"结果已导出到: {output_file}")
-            return output_file
+            print(f"  - 无文本表格: {len(no_text_results)} 个")
+            print(f"  - 有文本表格: {len(text_results)} 个")
         
         except Exception as e:
             print(f"导出到Excel时出错: {e}")
-            return None
     
     def process_directory(self, 
                          directory_path: str, 
@@ -499,6 +492,9 @@ class ExcelFieldExtractor:
         # 扫描目录
         print(f"开始扫描目录: {directory}")
         results = self.scan_directory(directory, recursive=recursive)
+
+        # 重新排序：无文本表优先，其次按文件名与工作表名
+        results.sort(key=lambda r: (0 if not r.get('has_text', True) else 1, r['excel_file'], r['sheet_name']))
         
         if not results:
             print("未找到包含文本内容的Excel表格")

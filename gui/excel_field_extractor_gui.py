@@ -298,12 +298,13 @@ class ExcelFieldExtractorGUI:
         
         try:
             import json
-            # 构建JSON数据
+            # 构建JSON数据（增加 has_text 字段）并保持当前排序（无文本优先）
             json_data = [{
                 "table_name": r['excel_file'],
                 "sheet_name": r['sheet_name'],
                 "fields_with_examples": r.get('fields_with_examples', []),
-                "field_count": r['field_count']
+                "field_count": r['field_count'],
+                "has_text": r.get('has_text', True)
             } for r in self.last_results]
             
             json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
@@ -398,18 +399,40 @@ class ExcelFieldExtractorGUI:
             self.log("")
             
             # 如果是JSON格式，显示JSON内容
-            if self.output_format.get() == 'json' and self.last_results:
-                self.log("JSON结果预览:")
+            if self.last_results:
+                # 分组显示：无文本表与包含文本表
+                no_text = [r for r in self.last_results if not r.get('has_text', True)]
+                has_text = [r for r in self.last_results if r.get('has_text', True)]
+                self.log("结果分组预览:")
                 self.log("-" * 60)
-                import json
-                json_str = json.dumps([{
-                    "table_name": r['excel_file'],
-                    "sheet_name": r['sheet_name'],
-                    "fields_with_examples": r.get('fields_with_examples', []),
-                    "field_count": r['field_count']
-                } for r in self.last_results], ensure_ascii=False, indent=2)
-                self.log(json_str)
+                if no_text:
+                    self.log("【无文本表（仅表名）】")
+                    for r in no_text:
+                        self.log(f"- {r['excel_file']}#{r['sheet_name']}")
+                    self.log("")
+                if has_text:
+                    self.log("【包含文本的表（字段+示例）】")
+                    for r in has_text:
+                        fields_preview = ', '.join(r.get('fields_with_examples', []))
+                        if len(fields_preview) > 120:
+                            fields_preview = fields_preview[:117] + '...'
+                        self.log(f"- {r['excel_file']}#{r['sheet_name']} | 字段数: {r['field_count']} | {fields_preview}")
                 self.log("-" * 60)
+                # JSON预览（仅在选择JSON格式时显示详细结构）
+                if self.output_format.get() == 'json':
+                    import json
+                    json_str = json.dumps([
+                        {
+                            "table_name": r['excel_file'],
+                            "sheet_name": r['sheet_name'],
+                            "fields_with_examples": r.get('fields_with_examples', []),
+                            "field_count": r['field_count'],
+                            "has_text": r.get('has_text', True)
+                        } for r in self.last_results
+                    ], ensure_ascii=False, indent=2)
+                    self.log("JSON结构预览:")
+                    self.log(json_str)
+                    self.log("-" * 60)
                 # 启用复制按钮
                 self.root.after(0, lambda: self.copy_button.config(state='normal'))
             

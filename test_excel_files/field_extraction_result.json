@@ -52,5 +52,10 @@
       ],
       "field_count": 2
     }
-  ]
+  ],
+  "summary": {
+    "no_text_table_count": 3,
+    "text_table_count": 4,
+    "total_fields": 10
+  }
 }
