@@ -820,7 +820,7 @@ class GameToolsUnified:
         self.field_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_table_range_translator_tab(self):
-        """创建表范围翻译提取页签"""
+        """创建多语言翻译提取页签"""
         # 表范围翻译提取器框架
         trt_frame = ttk.Frame(self.notebook, padding="15")
         self.notebook.add(trt_frame, text="表范围翻译提取")
@@ -834,7 +834,7 @@ class GameToolsUnified:
         header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
         header_frame.columnconfigure(0, weight=1)
         
-        title_label = ttk.Label(header_frame, text="表范围翻译提取工具", 
+        title_label = ttk.Label(header_frame, text="多语言翻译提取工具", 
                                style='Heading.TLabel')
         title_label.grid(row=0, column=0, pady=(0, 5))
         
@@ -1068,7 +1068,7 @@ class GameToolsUnified:
             'excel_processor': 'Excel数据处理结果',
             'text_extractor': '翻译提取结果',
             'field_extractor': '表字段导出结果',
-            'table_range_translator': '表范围翻译提取结果'
+            'table_range_translator': '多语言翻译提取结果'
         }
         
         # 标题
@@ -2361,7 +2361,7 @@ class GameToolsUnified:
         except Exception as e:
             messagebox.showerror("错误", f"复制失败:\n{str(e)}")
     
-    # ==================== 表范围翻译提取相关方法 ====================
+    # ==================== 多语言翻译提取相关方法 ====================
     
     def browse_trt_json_file(self):
         """浏览JSON配置文件"""
@@ -2389,7 +2389,7 @@ class GameToolsUnified:
             self.trt_output_var.set(file_path)
     
     def start_table_range_translation(self):
-        """开始表范围翻译提取"""
+        """开始多语言翻译提取"""
         json_path = self.trt_json_var.get().strip()
         excel_dir = self.trt_excel_dir_var.get().strip()
         output_file = self.trt_output_var.get().strip()
@@ -2425,7 +2425,7 @@ class GameToolsUnified:
         thread.start()
     
     def _table_range_translation_thread(self, json_path, excel_dir, output_file):
-        """表范围翻译提取线程"""
+        """多语言翻译提取线程"""
         try:
             # 清空结果
             self.root.after(0, self.clear_trt_results)
@@ -2472,7 +2472,7 @@ class GameToolsUnified:
                     
                     # 显示成功消息
                     stats = self.table_range_translator.processing_stats
-                    msg = (f"表范围翻译提取完成！\n\n"
+                    msg = (f"多语言翻译提取完成！\n\n"
                           f"处理表格: {stats['processed_tables']}/{stats['total_tables']}\n"
                           f"导出字段: {stats['exported_fields']} 个\n"
                           f"提取数据: {stats['total_rows']} 行\n\n"

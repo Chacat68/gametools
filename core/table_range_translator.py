@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-表范围翻译提取器
+多语言翻译提取器
 根据字段导出的JSON配置文件，智能提取多语言翻译内容
 只提取前端、后端、前后端的字段，忽略策划字段
 生成多语言翻译总表，支持中文、越南文、泰文
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class TableRangeTranslator:
-    """表范围翻译提取器"""
+    """多语言翻译提取器"""
     
     def __init__(self):
         """初始化翻译提取器"""
@@ -451,7 +451,7 @@ class TableRangeTranslator:
         """
         report_lines = [
             "=" * 70,
-            "表范围翻译提取处理报告",
+            "多语言翻译提取处理报告",
             "=" * 70,
             f"总表格数: {self.processing_stats['total_tables']}",
             f"已处理: {self.processing_stats['processed_tables']}",
@@ -479,7 +479,7 @@ def main():
     """命令行测试"""
     import argparse
     
-    parser = argparse.ArgumentParser(description="表范围翻译提取器")
+    parser = argparse.ArgumentParser(description="多语言翻译提取器")
     parser.add_argument("json_config", help="JSON配置文件路径")
     parser.add_argument("excel_directory", help="Excel文件目录")
     parser.add_argument("--output", default="翻译总表.xlsx", help="输出文件路径")

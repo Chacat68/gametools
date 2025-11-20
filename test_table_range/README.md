@@ -1,4 +1,4 @@
-# 表范围翻译提取器测试文件
+# 多语言翻译提取器测试文件
 
 ## 测试文件说明
 
@@ -34,7 +34,7 @@ python core/table_range_translator.py field_config.json test_table_range --outpu
 
 ### GUI测试
 1. 启动GUI: `python gui/gametools_unified.py`
-2. 选择"表范围翻译提取"页签
+2. 选择"多语言翻译提取"页签
 3. 选择JSON配置: test_table_range/field_config.json
 4. 选择Excel目录: test_table_range/
 5. 选择输出文件: 翻译总表.xlsx

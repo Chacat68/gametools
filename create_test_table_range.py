@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-测试表范围翻译提取器
+测试多语言翻译提取器
 创建测试用的Excel和JSON文件
 """
 
@@ -213,7 +213,7 @@ def create_test_json_config(test_dir):
 def create_readme(test_dir):
     """创建测试说明文档"""
     
-    readme_content = """# 表范围翻译提取器测试文件
+    readme_content = """# 多语言翻译提取器测试文件
 
 ## 测试文件说明
 
@@ -249,7 +249,7 @@ python core/table_range_translator.py field_config.json test_table_range --outpu
 
 ### GUI测试
 1. 启动GUI: `python gui/gametools_unified.py`
-2. 选择"表范围翻译提取"页签
+2. 选择"多语言翻译提取"页签
 3. 选择JSON配置: test_table_range/field_config.json
 4. 选择Excel目录: test_table_range/
 5. 选择输出文件: 翻译总表.xlsx
@@ -291,7 +291,7 @@ python core/table_range_translator.py field_config.json test_table_range --outpu
 def main():
     """主函数"""
     print("=" * 60)
-    print("表范围翻译提取器 - 测试文件生成器")
+    print("多语言翻译提取器 - 测试文件生成器")
     print("=" * 60)
     print()
     
