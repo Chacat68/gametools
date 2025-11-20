@@ -1,6 +1,6 @@
 {
-  "version": "1.23.0",
-  "last_updated": "2025-11-14T15:46:52.519622",
+  "version": "1.27.0",
+  "last_updated": "2025-11-20T00:00:00.000000",
   "scan": {
     "recursive": true,
     "enable_parallel": true,

@@ -28,6 +28,8 @@ class ExcelFieldExtractor:
         # 越南文：\u00C0-\u1EF9 (包含带音标的拉丁字母)
         # 泰文：\u0E00-\u0E7F
         self.text_pattern = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\u00C0-\u1EF9\u0E00-\u0E7F]')
+        # 要过滤的字段名列表（这些字段通常包含代码、标识符或纯数字）
+        self.excluded_field_names = {'name', 'model', 'id', 'code', 'type'}
         # 错误日志列表
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
@@ -76,16 +78,16 @@ class ExcelFieldExtractor:
         # 检查是否包含中文、越南文或泰文字符
         return True
     
-    def find_column_range_between_markers(self, sheet, marker: str = "c_classic_battle") -> Tuple[int, int]:
+    def find_column_range_between_markers(self, sheet, marker: str = "c_"):
         """
         查找两个标记之间的列范围（不包含标记本身）
         
         Args:
             sheet: openpyxl工作表对象
-            marker: 要查找的标记文本（默认为 "c_classic_battle"）
+            marker: 要查找的标记文本（默认为 "c_"）
             
         Returns:
-            Tuple[int, int]: (起始列号, 结束列号)，如果未找到返回 (1, sheet.max_column)
+            Tuple[int, int] or None: (起始列号, 结束列号)，如果未找到2个标记返回 None
         """
         marker_columns = []
         
@@ -93,7 +95,7 @@ class ExcelFieldExtractor:
         field_row = 5
         if sheet.max_row >= field_row:
             for cell in sheet[field_row]:
-                if cell.value and marker in str(cell.value):
+                if cell.value and str(cell.value).startswith(marker):
                     marker_columns.append(cell.column)
         
         # 如果找到至少两个标记，返回它们之间的范围（不包含标记列本身）
@@ -104,13 +106,13 @@ class ExcelFieldExtractor:
             if start_col <= end_col:
                 return (start_col, end_col)
         
-        # 如果没有找到两个标记，返回整个表格范围
-        return (1, sheet.max_column)
+        # 如果没有找到两个标记，返回 None
+        return None
     
     def extract_fields_from_excel(self, file_path: Path) -> List[Dict]:
         """
         从Excel文件中提取包含文本内容的列的字段信息
-        仅扫描两个 c_classic_battle 标记之间的列范围
+        仅扫描两个 c_ 标记之间的列范围
         
         Args:
             file_path: Excel文件路径
@@ -128,8 +130,21 @@ class ExcelFieldExtractor:
                 try:
                     sheet = wb[sheet_name]
                     
-                    # 查找两个 c_classic_battle 之间的列范围
-                    start_col, end_col = self.find_column_range_between_markers(sheet)
+                    # 查找两个 c_ 之间的列范围
+                    column_range = self.find_column_range_between_markers(sheet)
+                    
+                    # 如果未找到两个标记，跳过该工作表
+                    if column_range is None:
+                        warning_msg = (
+                            f"⚠️ 未找到两个 c_ 标记，跳过工作表 | "
+                            f"文件: {file_path.name} | "
+                            f"工作表: {sheet_name}"
+                        )
+                        self.extraction_warnings.append(warning_msg)
+                        print(warning_msg)
+                        continue
+                    
+                    start_col, end_col = column_range
                     
                     # 检测包含本地化文本内容的列
                     text_columns = set()
@@ -170,6 +185,11 @@ class ExcelFieldExtractor:
                             # 提取字段名
                             field_cell = sheet.cell(row=field_row, column=col_num)
                             field_name = str(field_cell.value) if field_cell.value is not None else f"列{col_num}"
+                            
+                            # 过滤掉指定的字段名（通常包含代码、标识符或纯数字）
+                            if field_name.lower() in self.excluded_field_names:
+                                continue
+                            
                             fields.append(field_name)
                             
                             # 提取第6行的示例数据
