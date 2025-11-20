@@ -1,56 +1,32 @@
 {
-  "no_text_tables": [
-    {
-      "table_name": "多工作表测试.xlsx",
-      "sheet_name": "技能表"
-    },
-    {
-      "table_name": "多工作表测试.xlsx",
-      "sheet_name": "装备表"
-    },
-    {
-      "table_name": "多工作表测试.xlsx",
-      "sheet_name": "角色表"
-    }
-  ],
+  "no_text_tables": [],
   "text_tables": [
     {
-      "table_name": "field_extraction_result.xlsx",
-      "sheet_name": "字段导出结果",
+      "table_name": "test_field_filter.xlsx",
+      "sheet_name": "测试表",
       "fields_with_examples": [
-        "—— 包含文本的表格 ——,测试表1.xlsx",
-        "列2,测试表1",
-        "列4,名称,物品A, 描述,这是物品A的描述, 类型,装备"
+        "des_cn,张若",
+        "des_vcn,小龙女",
+        "des,Tiểu Long Nữ"
       ],
       "field_count": 3
     },
     {
-      "table_name": "测试表1.xlsx",
-      "sheet_name": "测试表1",
+      "table_name": "test_field_types.xlsx",
+      "sheet_name": "测试表",
       "fields_with_examples": [
-        "名称,物品A",
-        "描述,这是物品A的描述",
-        "类型,装备"
-      ],
-      "field_count": 3
-    },
-    {
-      "table_name": "混合类型表.xlsx",
-      "sheet_name": "混合类型表",
-      "fields_with_examples": [
-        "名称,商品1",
-        "备注,热销"
+        "des_cn,策划",
+        "des_vcn,前端"
       ],
       "field_count": 2
     },
     {
-      "table_name": "越南文测试表.xlsx",
-      "sheet_name": "Bảng thử nghiệm",
+      "table_name": "test_no_types.xlsx",
+      "sheet_name": "无类型表",
       "fields_with_examples": [
-        "Tên,Vật phẩm A",
-        "Mô tả,Đây là mô tả của vật phẩm A"
+        "desc,"
       ],
-      "field_count": 2
+      "field_count": 1
     }
   ]
 }

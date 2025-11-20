@@ -3,7 +3,8 @@
 """
 Excel表字段导出器
 扫描Excel文件，检测包含本地化文本内容（中文、越南文、泰文）的列，
-从第5行提取字段名。忽略纯数字、英文代码和配置项。
+从第5行提取字段名，从第6行提取字段类型（策划、前端、后端、前后端）。
+忽略纯数字、英文代码和配置项。
 """
 
 import os
@@ -149,9 +150,9 @@ class ExcelFieldExtractor:
                     # 检测包含本地化文本内容的列
                     text_columns = set()
                     
-                    # 只扫描数据行（从第6行开始），忽略表头和字段行
+                    # 只扫描数据行（从第7行开始），忽略表头和字段行
                     # 这样可以过滤掉ID、配置列等纯代码/数字列
-                    data_start_row = 6  # 第6行开始是数据
+                    data_start_row = 7  # 第7行开始是数据
                     
                     if sheet.max_row >= data_start_row:
                         # 只扫描指定列范围内的单元格
@@ -174,11 +175,11 @@ class ExcelFieldExtractor:
                         })
                         continue
                     
-                    # 从第5行提取字段名，从第6行提取示例数据
+                    # 从第5行提取字段名，从第6行提取字段类型
                     fields = []
-                    field_with_examples = []  # 新增：字段名+示例的组合列表
-                    field_row = 5  # 物理行第5行
-                    example_row = 6  # 物理行第6行（前端示例）
+                    field_with_types = []  # 字段名+字段类型的组合列表
+                    field_row = 5  # 物理行第5行（字段名）
+                    type_row = 6   # 物理行第6行（字段类型：策划、前端、后端、前后端）
                     
                     if sheet.max_row >= field_row:
                         for col_num in sorted(text_columns):
@@ -192,15 +193,15 @@ class ExcelFieldExtractor:
                             
                             fields.append(field_name)
                             
-                            # 提取第6行的示例数据
-                            if sheet.max_row >= example_row:
-                                example_cell = sheet.cell(row=example_row, column=col_num)
-                                example_value = str(example_cell.value) if example_cell.value is not None else ""
+                            # 提取第6行的字段类型
+                            if sheet.max_row >= type_row:
+                                type_cell = sheet.cell(row=type_row, column=col_num)
+                                field_type = str(type_cell.value) if type_cell.value is not None else ""
                                 
-                                # 检查示例数据是否为空
-                                if not example_value or example_value.strip() == "":
+                                # 检查字段类型是否为空
+                                if not field_type or field_type.strip() == "":
                                     warning_msg = (
-                                        f"⚠️ 示例数据为空 | "
+                                        f"⚠️ 字段类型为空 | "
                                         f"文件: {file_path.name} | "
                                         f"工作表: {sheet_name} | "
                                         f"字段: {field_name} | "
@@ -209,7 +210,7 @@ class ExcelFieldExtractor:
                                     self.extraction_warnings.append(warning_msg)
                                     print(warning_msg)
                                 
-                                field_with_example = f"{field_name},{example_value}"
+                                field_with_type = f"{field_name},{field_type}"
                             else:
                                 # 表格行数不足6行
                                 warning_msg = (
@@ -221,21 +222,21 @@ class ExcelFieldExtractor:
                                 )
                                 self.extraction_warnings.append(warning_msg)
                                 print(warning_msg)
-                                field_with_example = f"{field_name},"
+                                field_with_type = f"{field_name},"
                             
-                            field_with_examples.append(field_with_example)
+                            field_with_types.append(field_with_type)
                     else:
                         # 如果表格行数不足5行，使用列号
                         for col_num in sorted(text_columns):
                             fields.append(f"列{col_num}")
-                            field_with_examples.append(f"列{col_num},")
+                            field_with_types.append(f"列{col_num},")
                     
                     if fields:
                         results.append({
                             'excel_file': file_path.name,
                             'sheet_name': sheet_name,
                             'fields': fields,
-                            'fields_with_examples': field_with_examples,  # 新增：带示例的字段列表
+                            'fields_with_examples': field_with_types,  # 字段名+字段类型列表
                             'field_count': len(fields),
                             'text_columns': sorted(text_columns),
                             'has_text': True
@@ -290,7 +291,9 @@ class ExcelFieldExtractor:
     def export_to_json(self, results: List[Dict], output_file: Path):
         """
         导出结果到JSON文件
-        分为两部分：1) 无文本内容的表格（只显示表名）；2) 有文本内容的表格（显示完整字段结构）
+        分为两部分：
+        1) no_text_tables: 无文本内容的表格（只显示表名和工作表名）
+        2) text_tables: 包含文本内容的表格（显示字段名+字段类型）
         
         Args:
             results: 字段信息列表（已按 has_text 排序）
