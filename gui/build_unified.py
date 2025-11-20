@@ -111,6 +111,8 @@ a = Analysis(
         'tools.excel_text_extractor',
         'tools.excel_data_processor',
         'core.localization_checker',
+        'core.table_range_translator',
+        'core.excel_field_extractor',
     ],
     hookspath=[],
     hooksconfig={},
@@ -236,6 +238,7 @@ def create_portable_package():
       - JSON错误检测工具：检测JSON文件中的语法错误、结构错误、编码错误
       - Excel数据处理工具：根据A列内容对Excel数据进行分组和处理
       - 翻译提取：检测目录中的Excel文件并提取文本内容
+      - 表范围翻译：基于JSON配置提取Excel指定字段的翻译内容
    3. 按照界面提示操作
    4. 查看检测结果
 
@@ -244,6 +247,7 @@ def create_portable_package():
    - JSON错误检测工具：检测JSON文件中的语法错误、结构错误、编码错误
    - Excel数据处理工具：智能分组Excel数据，支持多文件输出
    - 翻译提取：批量提取Excel文件中的文本内容，智能文本识别
+   - 表范围翻译：智能字段过滤（前端/后端/前后端），多语言支持（中文/越南文/泰文），Excel位置精确定位
    - 图形化界面，操作简单直观
    - 多线程处理，界面响应流畅
    - 支持保存检测报告

@@ -25,6 +25,7 @@ from core.excel_vietnamese_scanner import ExcelVietnameseScanner
 from core.vietnamese_excel_processor import VietnameseExcelProcessor
 from core.cross_project_translator import CrossProjectTranslator
 from core.excel_field_extractor import ExcelFieldExtractor
+from core.table_range_translator import TableRangeTranslator
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from tools.excel_text_extractor import ExcelTextExtractor
@@ -61,6 +62,7 @@ class GameToolsUnified:
         self.excel_processor = ExcelDataProcessor()
         self.text_extractor = ExcelTextExtractor()
         self.field_extractor = ExcelFieldExtractor()
+        self.table_range_translator = TableRangeTranslator()
         
         # 扫描状态
         self.is_scanning = False
@@ -72,7 +74,8 @@ class GameToolsUnified:
             'json_detector': '',
             'excel_processor': '',
             'text_extractor': '',
-            'field_extractor': ''
+            'field_extractor': '',
+            'table_range_translator': ''
         }
         
         # 字段提取结果数据
@@ -129,6 +132,7 @@ class GameToolsUnified:
         self.create_excel_data_processor_tab()
         self.create_excel_text_extractor_tab()
         self.create_field_extractor_tab()
+        self.create_table_range_translator_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -815,6 +819,107 @@ class GameToolsUnified:
                                                            font=("Consolas", 9))
         self.field_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
+    def create_table_range_translator_tab(self):
+        """创建表范围翻译提取页签"""
+        # 表范围翻译提取器框架
+        trt_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(trt_frame, text="表范围翻译提取")
+        
+        # 配置网格
+        trt_frame.columnconfigure(0, weight=1)
+        trt_frame.rowconfigure(2, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(trt_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="表范围翻译提取工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, 
+                              text="根据字段导出的JSON配置，智能提取多语言翻译内容（只导出前端、后端、前后端字段）", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(trt_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件配置", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.columnconfigure(1, weight=1)
+        
+        # JSON配置文件
+        ttk.Label(file_frame, text="JSON配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_json_var = tk.StringVar()
+        self.trt_json_entry = ttk.Entry(file_frame, textvariable=self.trt_json_var, 
+                                       font=("Microsoft YaHei", 9))
+        self.trt_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_json_browse_button = ttk.Button(file_frame, text="浏览JSON", 
+                                                command=self.browse_trt_json_file)
+        self.trt_json_browse_button.grid(row=0, column=2, pady=(0, 8))
+        
+        # Excel文件目录
+        ttk.Label(file_frame, text="Excel目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_excel_dir_var = tk.StringVar()
+        self.trt_excel_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_excel_dir_var, 
+                                            font=("Microsoft YaHei", 9))
+        self.trt_excel_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_excel_browse_button = ttk.Button(file_frame, text="浏览目录", 
+                                                 command=self.browse_trt_excel_directory)
+        self.trt_excel_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        # 输出文件
+        ttk.Label(file_frame, text="输出文件:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10))
+        self.trt_output_var = tk.StringVar()
+        self.trt_output_entry = ttk.Entry(file_frame, textvariable=self.trt_output_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.trt_output_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        self.trt_output_browse_button = ttk.Button(file_frame, text="选择保存位置", 
+                                                  command=self.browse_trt_output_file)
+        self.trt_output_browse_button.grid(row=2, column=2)
+        
+        # 说明信息区域
+        info_frame = ttk.LabelFrame(control_frame, text="功能说明", padding="12")
+        info_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        info_text = """✓ 跳过 no_text_tables 中的表格
+✓ 处理 text_tables，只导出前端、后端、前后端字段（忽略策划字段）
+✓ 生成翻译总表，每个表格文件对应一个工作表标签
+✓ 列格式：字段名 | 字段类型 | ID | 行号 | 中文内容 | 越南文 | 泰文 | 语言类型"""
+        
+        info_label = ttk.Label(info_frame, text=info_text, 
+                              font=("Microsoft YaHei", 9), 
+                              justify=tk.LEFT, foreground='blue')
+        info_label.pack(anchor=tk.W)
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        
+        # 主要操作按钮
+        self.trt_process_button = ttk.Button(button_frame, text="🚀 开始提取", 
+                                            command=self.start_table_range_translation, 
+                                            style='Accent.TButton')
+        self.trt_process_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 辅助操作按钮
+        self.trt_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                          command=self.clear_trt_results)
+        self.trt_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 查看结果按钮
+        self.trt_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+                                                 command=lambda: self.show_results_dialog('table_range_translator'))
+        self.trt_view_results_button.pack(side=tk.LEFT)
+    
     def create_about_tab(self):
         """创建关于页签"""
         about_frame = ttk.Frame(self.notebook, padding="20")
@@ -961,7 +1066,9 @@ class GameToolsUnified:
             'cross_project_translator': '跨项目翻译对应结果',
             'json_detector': 'JSON错误检测结果',
             'excel_processor': 'Excel数据处理结果',
-            'text_extractor': '翻译提取结果'
+            'text_extractor': '翻译提取结果',
+            'field_extractor': '表字段导出结果',
+            'table_range_translator': '表范围翻译提取结果'
         }
         
         # 标题
@@ -2253,6 +2360,148 @@ class GameToolsUnified:
             messagebox.showinfo("成功", f"JSON结果已复制到剪贴板\n共 {len(json_data)} 条记录")
         except Exception as e:
             messagebox.showerror("错误", f"复制失败:\n{str(e)}")
+    
+    # ==================== 表范围翻译提取相关方法 ====================
+    
+    def browse_trt_json_file(self):
+        """浏览JSON配置文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择JSON配置文件",
+            filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.trt_json_var.set(file_path)
+    
+    def browse_trt_excel_directory(self):
+        """浏览Excel文件目录"""
+        dir_path = filedialog.askdirectory(title="选择Excel文件目录")
+        if dir_path:
+            self.trt_excel_dir_var.set(dir_path)
+    
+    def browse_trt_output_file(self):
+        """浏览输出文件位置"""
+        file_path = filedialog.asksaveasfilename(
+            title="保存翻译总表",
+            defaultextension=".xlsx",
+            filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.trt_output_var.set(file_path)
+    
+    def start_table_range_translation(self):
+        """开始表范围翻译提取"""
+        json_path = self.trt_json_var.get().strip()
+        excel_dir = self.trt_excel_dir_var.get().strip()
+        output_file = self.trt_output_var.get().strip()
+        
+        # 验证输入
+        if not json_path:
+            messagebox.showerror("错误", "请选择JSON配置文件")
+            return
+        
+        if not excel_dir:
+            messagebox.showerror("错误", "请选择Excel文件目录")
+            return
+        
+        if not output_file:
+            messagebox.showerror("错误", "请选择输出文件位置")
+            return
+        
+        if not os.path.exists(json_path):
+            messagebox.showerror("错误", "JSON配置文件不存在")
+            return
+        
+        if not os.path.exists(excel_dir):
+            messagebox.showerror("错误", "Excel目录不存在")
+            return
+        
+        # 在新线程中执行提取
+        self.trt_process_button.config(state="disabled")
+        self.status_var.set("正在提取翻译内容...")
+        
+        thread = threading.Thread(target=self._table_range_translation_thread, 
+                                 args=(json_path, excel_dir, output_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _table_range_translation_thread(self, json_path, excel_dir, output_file):
+        """表范围翻译提取线程"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_trt_results)
+            
+            # 开始处理
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                "开始表范围翻译提取...\n"))
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                f"JSON配置: {json_path}\n"))
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                f"Excel目录: {excel_dir}\n"))
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                f"输出文件: {output_file}\n"))
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                "\n"))
+            
+            # 处理数据
+            results = self.table_range_translator.process_with_json_config(
+                json_path, excel_dir)
+            
+            if results:
+                self.root.after(0, lambda: self.append_result('table_range_translator', 
+                    f"✓ 成功提取 {len(results)} 条数据\n\n"))
+                
+                # 生成翻译总表
+                self.root.after(0, lambda: self.append_result('table_range_translator', 
+                    "正在生成翻译总表...\n"))
+                
+                success = self.table_range_translator.generate_translation_master_table(
+                    output_file)
+                
+                if success:
+                    self.root.after(0, lambda: self.append_result('table_range_translator', 
+                        f"✓ 翻译总表已生成: {output_file}\n\n"))
+                    
+                    # 显示处理报告
+                    report = self.table_range_translator.get_processing_report()
+                    self.root.after(0, lambda: self.append_result('table_range_translator', 
+                        report + "\n"))
+                    
+                    # 显示成功消息
+                    stats = self.table_range_translator.processing_stats
+                    msg = (f"表范围翻译提取完成！\n\n"
+                          f"处理表格: {stats['processed_tables']}/{stats['total_tables']}\n"
+                          f"导出字段: {stats['exported_fields']} 个\n"
+                          f"提取数据: {stats['total_rows']} 行\n\n"
+                          f"翻译总表已生成:\n{output_file}")
+                    self.root.after(0, lambda: messagebox.showinfo("完成", msg))
+                else:
+                    self.root.after(0, lambda: self.append_result('table_range_translator', 
+                        "✗ 生成翻译总表失败\n"))
+                    self.root.after(0, lambda: messagebox.showerror("错误", "生成翻译总表失败"))
+            else:
+                self.root.after(0, lambda: self.append_result('table_range_translator', 
+                    "✗ 没有提取到数据\n"))
+                self.root.after(0, lambda: messagebox.showwarning("警告", 
+                    "没有提取到数据，请检查JSON配置和Excel文件"))
+        
+        except Exception as e:
+            error_msg = f"处理过程中发生错误: {str(e)}"
+            self.root.after(0, lambda: self.append_result('table_range_translator', 
+                f"\n✗ {error_msg}\n"))
+            self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
+        
+        finally:
+            # 恢复按钮状态
+            self.root.after(0, lambda: self.trt_process_button.config(state="normal"))
+            self.root.after(0, lambda: self.status_var.set("就绪"))
+    
+    def clear_trt_results(self):
+        """清空表范围翻译提取结果"""
+        self.clear_result('table_range_translator')
 
 
 def main():
