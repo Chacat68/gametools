@@ -442,17 +442,25 @@ class TableRangeTranslator:
             logger.error(f"生成翻译总表失败: {e}")
             return False
     
-    def process_with_json_config_multi_lang(self, json_path: str, lang_dirs: Dict[str, str]) -> List[Dict]:
+    def process_with_json_config_multi_lang(self, json_path: str, lang_dirs: Dict[str, str], 
+                                            progress_callback=None) -> List[Dict]:
         """
         根据JSON配置和多语言目录处理Excel文件
         
         Args:
             json_path: JSON配置文件路径
             lang_dirs: 语言目录字典 {'vn': 'path', 'zh': 'path', 'th': 'path'}
+            progress_callback: 进度回调函数，接收进度消息字符串
             
         Returns:
             List[Dict]: 所有提取的数据（包含多语言内容）
         """
+        def log_progress(msg):
+            """输出进度信息"""
+            logger.info(msg)
+            if progress_callback:
+                progress_callback(msg)
+        
         try:
             # 加载JSON配置
             config = self.load_json_config(json_path)
@@ -463,58 +471,82 @@ class TableRangeTranslator:
             text_tables = config.get('text_tables', [])
             self.processing_stats['total_tables'] = len(text_tables)
             
-            logger.info(f"开始处理 {len(text_tables)} 个包含文本的表格")
-            logger.info(f"语言目录: {list(lang_dirs.keys())}")
+            lang_names = {'vn': '越南文', 'zh': '中文', 'th': '泰文'}
+            lang_list = ', '.join([lang_names.get(k, k) for k in lang_dirs.keys()])
+            
+            log_progress(f"📊 开始处理 {len(text_tables)} 个表格")
+            log_progress(f"🌐 语言版本: {lang_list}")
+            log_progress("")
             
             all_data = []
             
             # 处理每个表格
-            for table_info in text_tables:
+            for idx, table_info in enumerate(text_tables, 1):
                 table_name = table_info.get('table_name', '')
                 sheet_name = table_info.get('sheet_name', '')
                 fields_with_examples = table_info.get('fields_with_examples', [])
                 
+                log_progress(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                log_progress(f"📋 [{idx}/{len(text_tables)}] 处理表格: {table_name}")
+                log_progress(f"   工作表: {sheet_name}")
+                
                 # 解析字段信息，过滤出需要导出的字段
                 exportable_fields = []
+                skipped_count = 0
                 for field_str in fields_with_examples:
                     field_name, field_type = self.parse_field_with_type(field_str)
                     if self.is_exportable_field(field_type):
                         exportable_fields.append((field_name, field_type))
                     else:
                         self.processing_stats['skipped_fields'] += 1
+                        skipped_count += 1
                 
                 if not exportable_fields:
-                    logger.info(f"表格 {table_name} 没有需要导出的字段，跳过")
+                    log_progress(f"   ⚠️  没有需要导出的字段，跳过")
+                    log_progress("")
                     continue
+                
+                log_progress(f"   ✓ 可导出字段: {len(exportable_fields)} 个")
+                if skipped_count > 0:
+                    log_progress(f"   • 跳过策划字段: {skipped_count} 个")
                 
                 self.processing_stats['exported_fields'] += len(exportable_fields)
                 
                 # 从各语言目录读取数据
+                log_progress("   ")
+                log_progress("   📁 读取语言版本文件:")
                 table_data_by_lang = {}
                 for lang, lang_dir in lang_dirs.items():
                     excel_path = os.path.join(lang_dir, table_name)
+                    lang_name = lang_names.get(lang, lang)
                     
                     if not os.path.exists(excel_path):
-                        logger.warning(f"{lang} 文件不存在: {excel_path}")
+                        log_progress(f"      ✗ {lang_name}: 文件不存在")
                         continue
                     
                     # 读取Excel
                     try:
                         df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
                         if len(df) < 7:
-                            logger.warning(f"{lang} 表格 {table_name} 数据行不足")
+                            log_progress(f"      ✗ {lang_name}: 数据行不足")
                             continue
                         table_data_by_lang[lang] = df
+                        log_progress(f"      ✓ {lang_name}: {len(df)-6} 行数据")
                     except Exception as e:
-                        logger.error(f"读取 {lang} 文件失败 {excel_path}: {e}")
+                        log_progress(f"      ✗ {lang_name}: 读取失败 - {e}")
                         continue
                 
                 if not table_data_by_lang:
-                    logger.warning(f"表格 {table_name} 在所有语言目录中都不存在")
+                    log_progress(f"   ⚠️  所有语言版本都不可用，跳过")
+                    log_progress("")
                     self.processing_stats['skipped_tables'] += 1
                     continue
                 
                 # 提取并合并数据
+                log_progress("   ")
+                log_progress(f"   🔍 提取字段数据:")
+                table_extracted_count = 0
+                
                 for field_name, field_type in exportable_fields:
                     # 从第一个可用的语言版本中找列索引
                     first_lang = list(table_data_by_lang.keys())[0]
@@ -522,7 +554,7 @@ class TableRangeTranslator:
                     col_idx = self.find_column_index_by_name(first_df, field_name)
                     
                     if col_idx is None:
-                        logger.warning(f"未找到字段: {field_name}")
+                        log_progress(f"      ⚠️  {field_name} ({field_type}): 未找到列")
                         continue
                     
                     # Excel列字母
@@ -562,11 +594,21 @@ class TableRangeTranslator:
                         
                         all_data.append(row_data)
                         self.processing_stats['total_rows'] += 1
+                        table_extracted_count += 1
+                
+                log_progress(f"      ✓ 共提取 {table_extracted_count} 条数据")
+                log_progress("")
                 
                 self.processing_stats['processed_tables'] += 1
             
             self.translation_results = all_data
-            logger.info(f"处理完成，共提取 {len(all_data)} 条数据")
+            
+            log_progress("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            log_progress(f"✅ 处理完成！")
+            log_progress(f"   • 处理表格: {self.processing_stats['processed_tables']}/{self.processing_stats['total_tables']}")
+            log_progress(f"   • 导出字段: {self.processing_stats['exported_fields']} 个")
+            log_progress(f"   • 提取数据: {len(all_data)} 条")
+            log_progress("")
             
             return all_data
         

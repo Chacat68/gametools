@@ -2506,9 +2506,14 @@ class GameToolsUnified:
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 "\n"))
             
+            # 定义进度回调函数
+            def progress_callback(msg):
+                """进度回调，将消息显示到界面"""
+                self.root.after(0, lambda m=msg: self.append_result('table_range_translator', m + "\n"))
+            
             # 处理数据
             results = self.table_range_translator.process_with_json_config_multi_lang(
-                json_path, lang_dirs)
+                json_path, lang_dirs, progress_callback=progress_callback)
             
             if results:
                 self.root.after(0, lambda: self.append_result('table_range_translator', 
