@@ -821,9 +821,9 @@ class GameToolsUnified:
     
     def create_table_range_translator_tab(self):
         """创建多语言翻译提取页签"""
-        # 表范围翻译提取器框架
+        # 多语言翻译提取器框架
         trt_frame = ttk.Frame(self.notebook, padding="15")
-        self.notebook.add(trt_frame, text="表范围翻译提取")
+        self.notebook.add(trt_frame, text="多语言翻译提取")
         
         # 配置网格
         trt_frame.columnconfigure(0, weight=1)
@@ -992,6 +992,9 @@ class GameToolsUnified:
 
 📋 表字段导出工具
    扫描Excel文件，提取包含文本的列的字段信息
+
+🌐 多语言翻译提取工具
+   根据字段导出的JSON配置，智能提取多语言翻译内容
 
 📋 版本信息
    当前版本: v{get_version()}
@@ -2565,7 +2568,7 @@ class GameToolsUnified:
             self.root.after(0, lambda: self.status_var.set("就绪"))
     
     def clear_trt_results(self):
-        """清空表范围翻译提取结果"""
+        """清空多语言翻译提取结果"""
         self.clear_result('table_range_translator')
 
 
