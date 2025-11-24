@@ -31,9 +31,34 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "✅ 构建成功!" -ForegroundColor Green
     Write-Host "=====================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "生成的文件位于:" -ForegroundColor Cyan
-    Write-Host "  src-tauri\target\release\gametools.exe" -ForegroundColor White
-    Write-Host "  src-tauri\target\release\bundle\" -ForegroundColor White
+    
+    Write-Host "正在复制文件到 dist 目录..." -ForegroundColor Yellow
+    $distPath = "..\dist"
+    if (-not (Test-Path $distPath)) {
+        New-Item -ItemType Directory -Force -Path $distPath | Out-Null
+    }
+    
+    # Copy executable
+    if (Test-Path "src-tauri\target\release\gametools.exe") {
+        Copy-Item "src-tauri\target\release\gametools.exe" -Destination $distPath -Force
+        Write-Host "  - 已复制 gametools.exe" -ForegroundColor Gray
+    }
+    
+    # Copy MSI
+    if (Test-Path "src-tauri\target\release\bundle\msi\*.msi") {
+        Copy-Item "src-tauri\target\release\bundle\msi\*.msi" -Destination $distPath -Force
+        Write-Host "  - 已复制 MSI 安装包" -ForegroundColor Gray
+    }
+    
+    # Copy NSIS
+    if (Test-Path "src-tauri\target\release\bundle\nsis\*.exe") {
+        Copy-Item "src-tauri\target\release\bundle\nsis\*.exe" -Destination $distPath -Force
+        Write-Host "  - 已复制 NSIS 安装包" -ForegroundColor Gray
+    }
+    
+    Write-Host ""
+    Write-Host "所有构建文件已输出到:" -ForegroundColor Cyan
+    Write-Host "  d:\dev\gametools\dist\" -ForegroundColor White
     Write-Host ""
 } else {
     Write-Host ""

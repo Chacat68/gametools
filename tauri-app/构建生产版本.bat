@@ -50,9 +50,31 @@ if %errorlevel% equ 0 (
     echo ✅ 构建成功!
     echo ====================================
     echo.
-    echo 生成的文件位于:
-    echo   src-tauri\target\release\gametools.exe
-    echo   src-tauri\target\release\bundle\
+    
+    echo 正在复制文件到 dist 目录...
+    if not exist "..\dist" mkdir "..\dist"
+    
+    REM 复制主程序
+    if exist "src-tauri\target\release\gametools.exe" (
+        copy "src-tauri\target\release\gametools.exe" "..\dist\" /Y >nul
+        echo   - 已复制 gametools.exe
+    )
+    
+    REM 复制 MSI 安装包
+    if exist "src-tauri\target\release\bundle\msi\*.msi" (
+        copy "src-tauri\target\release\bundle\msi\*.msi" "..\dist\" /Y >nul
+        echo   - 已复制 MSI 安装包
+    )
+    
+    REM 复制 NSIS 安装包
+    if exist "src-tauri\target\release\bundle\nsis\*.exe" (
+        copy "src-tauri\target\release\bundle\nsis\*.exe" "..\dist\" /Y >nul
+        echo   - 已复制 NSIS 安装包
+    )
+    
+    echo.
+    echo 所有构建文件已输出到:
+    echo   d:\dev\gametools\dist\
     echo.
 ) else (
     echo.

@@ -82,11 +82,11 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-构建完成后，可执行文件位于 `src-tauri/target/release/` 目录。
+构建完成后，所有安装包和可执行文件将自动复制到 `../dist/` 目录。
 
 ## 📦 安装包
 
-构建后的安装包位于 `src-tauri/target/release/bundle/` 目录：
+构建后的安装包位于 `../dist/` 目录：
 
 - **Windows**: `.msi` 或 `.exe` 文件
 - **macOS**: `.dmg` 或 `.app` 文件
