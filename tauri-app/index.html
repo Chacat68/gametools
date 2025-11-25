@@ -32,10 +32,6 @@
           <span class="nav-icon">📈</span>
           <span class="nav-text">Excel数据处理</span>
         </div>
-        <div class="nav-item" data-tab="text-extract">
-          <span class="nav-icon">📄</span>
-          <span class="nav-text">翻译提取工具</span>
-        </div>
         <div class="nav-item" data-tab="field-extract">
           <span class="nav-icon">📋</span>
           <span class="nav-text">表字段导出</span>
@@ -161,40 +157,6 @@
           </div>
         </div>
 
-        <!-- 翻译提取工具页签 -->
-        <div id="tab-text-extract" class="tab-content">
-          <div class="tab-header">
-            <h2>翻译提取工具</h2>
-            <p class="tab-description">批量提取Excel文件中的文本内容</p>
-          </div>
-
-          <div class="form-group">
-            <label>扫描目录：</label>
-            <div class="input-group">
-              <input type="text" id="text-directory" placeholder="选择要扫描的目录" />
-              <button class="btn btn-secondary" id="text-browse-dir">浏览</button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>输出文件：</label>
-            <div class="input-group">
-              <input type="text" id="text-output" placeholder="选择输出文件位置" />
-              <button class="btn btn-secondary" id="text-browse-output">浏览</button>
-            </div>
-          </div>
-
-          <div class="button-group">
-            <button class="btn btn-primary" id="text-start">开始提取</button>
-            <button class="btn btn-secondary" id="text-clear">清空结果</button>
-          </div>
-
-          <div class="result-area">
-            <h3>提取结果</h3>
-            <div id="text-result" class="result-box"></div>
-          </div>
-        </div>
-
         <!-- 表字段导出页签 -->
         <div id="tab-field-extract" class="tab-content">
           <div class="tab-header">
@@ -299,7 +261,6 @@
                 <li><strong>🔍 越南文检测导出：</strong>检测Excel和CSV文件中的越南文内容并导出详细结果</li>
                 <li><strong>📊 JSON格式检测工具：</strong>检测JSON文件中text字段的格式一致性</li>
                 <li><strong>📈 Excel数据处理工具：</strong>根据指定列对Excel数据进行分组和处理</li>
-                <li><strong>📄 翻译提取工具：</strong>批量提取Excel文件中的文本内容</li>
                 <li><strong>📋 表字段导出工具：</strong>扫描Excel文件，提取包含文本的列的字段信息</li>
                 <li><strong>🌐 多语言翻译提取工具：</strong>根据字段导出的JSON配置，智能提取多语言翻译内容</li>
               </ul>

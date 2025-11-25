@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeVietnameseTab();
   initializeJsonTab();
   initializeExcelTab();
-  initializeTextExtractTab();
   initializeFieldExtractTab();
   initializeTranslationTab();
 });
@@ -228,45 +227,6 @@ function initializeExcelTab() {
   // 清空结果
   document.getElementById('excel-clear').addEventListener('click', () => {
     clearResult('excel-result');
-  });
-}
-
-// ==================== 翻译提取页签 ====================
-function initializeTextExtractTab() {
-  // 浏览目录
-  document.getElementById('text-browse-dir').addEventListener('click', async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: '选择扫描目录'
-    });
-    if (selected) {
-      document.getElementById('text-directory').value = selected;
-    }
-  });
-
-  // 浏览输出文件
-  document.getElementById('text-browse-output').addEventListener('click', async () => {
-    const selected = await open({
-      filters: [{
-        name: 'Excel',
-        extensions: ['xlsx']
-      }],
-      title: '选择输出文件'
-    });
-    if (selected) {
-      document.getElementById('text-output').value = selected;
-    }
-  });
-
-  // 开始提取
-  document.getElementById('text-start').addEventListener('click', async () => {
-    alert('此功能需要在Python端实现相应的命令行接口');
-  });
-
-  // 清空结果
-  document.getElementById('text-clear').addEventListener('click', () => {
-    clearResult('text-result');
   });
 }
 
