@@ -26,6 +26,7 @@ from core.vietnamese_excel_processor import VietnameseExcelProcessor
 from core.cross_project_translator import CrossProjectTranslator
 from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator
+from core.excel_sheet_splitter import ExcelSheetSplitter
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_description, get_latest_changes
@@ -61,6 +62,7 @@ class GameToolsUnified:
         self.excel_processor = ExcelDataProcessor()
         self.field_extractor = ExcelFieldExtractor()
         self.table_range_translator = TableRangeTranslator()
+        self.sheet_splitter = ExcelSheetSplitter()
         
         # 扫描状态
         self.is_scanning = False
@@ -72,7 +74,8 @@ class GameToolsUnified:
             'json_detector': '',
             'excel_processor': '',
             'field_extractor': '',
-            'table_range_translator': ''
+            'table_range_translator': '',
+            'sheet_splitter': ''
         }
         
         # 字段提取结果数据
@@ -127,6 +130,7 @@ class GameToolsUnified:
         self.create_cross_project_translator_tab()
         self.create_json_detector_tab()
         self.create_excel_data_processor_tab()
+        self.create_sheet_splitter_tab()
         self.create_field_extractor_tab()
         self.create_table_range_translator_tab()
         self.create_about_tab()
@@ -532,6 +536,138 @@ class GameToolsUnified:
                                                    command=lambda: self.show_results_dialog('excel_processor'))
         self.excel_view_results_button.pack(side=tk.LEFT)
     
+    def create_sheet_splitter_tab(self):
+        """创建Excel分页拆分工具页签"""
+        # Excel分页拆分工具框架
+        splitter_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(splitter_frame, text="Excel分页拆分")
+        
+        # 配置网格
+        splitter_frame.columnconfigure(0, weight=1)
+        splitter_frame.rowconfigure(2, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(splitter_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="Excel分页拆分工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, text="根据第一列的文件名，将同一文件名的行数据拆分到新表格的对应分页中", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(splitter_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件选择", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.columnconfigure(1, weight=1)
+        
+        # 输入文件
+        ttk.Label(file_frame, text="输入文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.splitter_input_var = tk.StringVar()
+        self.splitter_input_entry = ttk.Entry(file_frame, textvariable=self.splitter_input_var, 
+                                             font=("Microsoft YaHei", 9))
+        self.splitter_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.splitter_input_browse_button = ttk.Button(file_frame, text="浏览文件", 
+                                                       command=self.browse_splitter_input_file)
+        self.splitter_input_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 工作表选择
+        ttk.Label(file_frame, text="工作表:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 5))
+        self.splitter_sheet_var = tk.StringVar()
+        self.splitter_sheet_combo = ttk.Combobox(file_frame, textvariable=self.splitter_sheet_var, 
+                                                 font=("Microsoft YaHei", 9), state="readonly")
+        self.splitter_sheet_combo.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(5, 5))
+        ttk.Label(file_frame, text="(留空读取第一个)", style='Info.TLabel').grid(row=1, column=2, sticky=tk.W, pady=(5, 5))
+        
+        # 输出设置
+        output_frame = ttk.LabelFrame(control_frame, text="输出设置", padding="12")
+        output_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        output_frame.columnconfigure(1, weight=1)
+        
+        # 输出文件
+        ttk.Label(output_frame, text="输出文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.splitter_output_var = tk.StringVar()
+        self.splitter_output_entry = ttk.Entry(output_frame, textvariable=self.splitter_output_var, 
+                                              font=("Microsoft YaHei", 9))
+        self.splitter_output_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        self.splitter_output_browse_button = ttk.Button(output_frame, text="保存为...", 
+                                                        command=self.browse_splitter_output_file)
+        self.splitter_output_browse_button.grid(row=0, column=2, pady=(0, 5))
+        
+        # 处理选项区域
+        options_frame = ttk.LabelFrame(control_frame, text="处理选项", padding="12")
+        options_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        options_frame.columnconfigure(1, weight=1)
+        
+        # 分组列设置
+        ttk.Label(options_frame, text="分组列:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        self.splitter_group_column_var = tk.StringVar()
+        self.splitter_group_column_entry = ttk.Entry(options_frame, textvariable=self.splitter_group_column_var, 
+                                                     width=20, font=("Microsoft YaHei", 9))
+        self.splitter_group_column_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
+        ttk.Label(options_frame, text="(留空使用第一列)", style='Info.TLabel').grid(row=0, column=2, sticky=tk.W)
+        
+        # 选项复选框
+        options_check_frame = ttk.Frame(options_frame)
+        options_check_frame.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        
+        # 提取文件名选项
+        self.splitter_extract_filename_var = tk.BooleanVar(value=True)
+        self.splitter_extract_filename_check = ttk.Checkbutton(options_check_frame, 
+                                                               text="从路径中提取文件名（去除路径和扩展名）", 
+                                                               variable=self.splitter_extract_filename_var)
+        self.splitter_extract_filename_check.pack(side=tk.LEFT, padx=(0, 20))
+        
+        # 包含汇总信息选项
+        self.splitter_include_summary_var = tk.BooleanVar(value=True)
+        self.splitter_include_summary_check = ttk.Checkbutton(options_check_frame, 
+                                                              text="包含汇总工作表", 
+                                                              variable=self.splitter_include_summary_var)
+        self.splitter_include_summary_check.pack(side=tk.LEFT, padx=(0, 20))
+        
+        # 移除第一列选项
+        self.splitter_remove_first_col_var = tk.BooleanVar(value=False)
+        self.splitter_remove_first_col_check = ttk.Checkbutton(options_check_frame, 
+                                                               text="输出时移除第一列", 
+                                                               variable=self.splitter_remove_first_col_var)
+        self.splitter_remove_first_col_check.pack(side=tk.LEFT)
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(control_frame)
+        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
+        
+        # 主要操作按钮
+        self.splitter_process_button = ttk.Button(button_frame, text="📄 开始拆分", 
+                                                  command=self.start_sheet_split, 
+                                                  style='Accent.TButton')
+        self.splitter_process_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 辅助操作按钮
+        self.splitter_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                                command=self.clear_splitter_results)
+        self.splitter_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 打开输出文件夹按钮
+        self.splitter_open_folder_button = ttk.Button(button_frame, text="📂 打开输出文件夹", 
+                                                      command=self.open_splitter_output_folder,
+                                                      state="disabled")
+        self.splitter_open_folder_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 查看结果按钮
+        self.splitter_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+                                                       command=lambda: self.show_results_dialog('sheet_splitter'))
+        self.splitter_view_results_button.pack(side=tk.LEFT)
+    
     def create_field_extractor_tab(self):
         """创建表字段导出页签"""
         # 字段导出器框架
@@ -825,8 +961,8 @@ class GameToolsUnified:
 📈 Excel数据处理工具
    根据指定列对Excel数据进行分组和处理
 
-📄 翻译提取工具
-   批量提取Excel文件中的文本内容
+📄 Excel分页拆分工具
+   根据第一列文件名将数据拆分到新表格的对应分页
 
 📋 表字段导出工具
    扫描Excel文件，提取包含文本的列的字段信息
@@ -1401,6 +1537,159 @@ class GameToolsUnified:
     def clear_excel_results(self):
         """清空Excel整合结果"""
         self.clear_result('excel_processor')
+    
+    # ==================== Excel分页拆分相关方法 ====================
+    
+    def browse_splitter_input_file(self):
+        """浏览分页拆分输入文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择输入Excel文件",
+            filetypes=[("Excel文件", "*.xlsx *.xls"), ("CSV文件", "*.csv"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.splitter_input_var.set(file_path)
+            # 自动设置输出文件名
+            if not self.splitter_output_var.get():
+                input_path = Path(file_path)
+                output_path = input_path.parent / f"{input_path.stem}_分页拆分.xlsx"
+                self.splitter_output_var.set(str(output_path))
+            # 加载工作表列表
+            self._load_splitter_sheet_names(file_path)
+    
+    def _load_splitter_sheet_names(self, file_path):
+        """加载Excel文件的工作表名称列表"""
+        try:
+            sheet_names = self.sheet_splitter.get_sheet_names(file_path)
+            self.splitter_sheet_combo['values'] = sheet_names
+            if sheet_names:
+                self.splitter_sheet_combo.set(sheet_names[0])
+        except Exception as e:
+            self.splitter_sheet_combo['values'] = []
+            self.splitter_sheet_combo.set('')
+    
+    def browse_splitter_output_file(self):
+        """浏览分页拆分输出文件"""
+        file_path = filedialog.asksaveasfilename(
+            title="保存拆分后的Excel文件",
+            defaultextension=".xlsx",
+            filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.splitter_output_var.set(file_path)
+    
+    def start_sheet_split(self):
+        """开始Excel分页拆分"""
+        input_file = self.splitter_input_var.get().strip()
+        output_file = self.splitter_output_var.get().strip()
+        
+        if not input_file:
+            messagebox.showerror("错误", "请选择输入文件")
+            return
+        
+        if not output_file:
+            messagebox.showerror("错误", "请设置输出文件")
+            return
+        
+        if not os.path.exists(input_file):
+            messagebox.showerror("错误", "输入文件不存在")
+            return
+        
+        # 在新线程中执行拆分
+        self.splitter_process_button.config(state="disabled")
+        self.splitter_open_folder_button.config(state="disabled")
+        self.status_var.set("正在拆分Excel数据...")
+        
+        thread = threading.Thread(target=self._sheet_split_process, 
+                                 args=(input_file, output_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _sheet_split_process(self, input_file, output_file):
+        """Excel分页拆分处理（后台线程）"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_splitter_results)
+            
+            # 显示开始信息
+            self.root.after(0, lambda: self.append_result('sheet_splitter', 
+                f"开始处理文件: {input_file}\n"))
+            self.root.after(0, lambda: self.append_result('sheet_splitter', 
+                f"输出文件: {output_file}\n"))
+            self.root.after(0, lambda: self.append_result('sheet_splitter', 
+                "-" * 50 + "\n"))
+            
+            # 获取选项
+            sheet_name = self.splitter_sheet_var.get().strip() or None
+            group_column = self.splitter_group_column_var.get().strip() or None
+            extract_filename = self.splitter_extract_filename_var.get()
+            include_summary = self.splitter_include_summary_var.get()
+            remove_first_column = self.splitter_remove_first_col_var.get()
+            
+            # 执行处理
+            success, report = self.sheet_splitter.process_file(
+                input_path=input_file,
+                output_path=output_file,
+                sheet_name=sheet_name,
+                group_column=group_column,
+                extract_filename=extract_filename,
+                include_summary=include_summary,
+                remove_first_column=remove_first_column
+            )
+            
+            # 显示结果
+            if success:
+                self.root.after(0, lambda: self._show_splitter_success_result(report, output_file))
+            else:
+                self.root.after(0, lambda: self._show_splitter_error_result(report))
+            
+        except Exception as e:
+            error_msg = f"处理过程中发生错误: {str(e)}"
+            self.root.after(0, lambda: self._show_splitter_error_result(error_msg))
+    
+    def _show_splitter_success_result(self, report, output_file):
+        """显示分页拆分成功结果"""
+        self.append_result('sheet_splitter', report)
+        self.append_result('sheet_splitter', "\n\n✅ Excel分页拆分完成！")
+        self.append_result('sheet_splitter', f"\n输出文件: {output_file}")
+        
+        self.splitter_process_button.config(state="normal")
+        self.splitter_open_folder_button.config(state="normal")
+        self.status_var.set("Excel分页拆分完成")
+        
+        # 保存输出文件路径用于打开文件夹
+        self._splitter_output_file = output_file
+        
+        messagebox.showinfo("成功", f"Excel分页拆分完成！\n\n输出文件: {output_file}")
+    
+    def _show_splitter_error_result(self, error_msg):
+        """显示分页拆分错误结果"""
+        self.append_result('sheet_splitter', f"❌ {error_msg}\n")
+        
+        self.splitter_process_button.config(state="normal")
+        self.status_var.set("Excel分页拆分失败")
+        
+        messagebox.showerror("错误", error_msg)
+    
+    def clear_splitter_results(self):
+        """清空分页拆分结果"""
+        self.clear_result('sheet_splitter')
+    
+    def open_splitter_output_folder(self):
+        """打开输出文件所在的文件夹"""
+        try:
+            output_file = getattr(self, '_splitter_output_file', None)
+            if output_file and os.path.exists(output_file):
+                folder_path = os.path.dirname(output_file)
+                if sys.platform == 'win32':
+                    os.startfile(folder_path)
+                elif sys.platform == 'darwin':
+                    subprocess.run(['open', folder_path])
+                else:
+                    subprocess.run(['xdg-open', folder_path])
+            else:
+                messagebox.showwarning("提示", "输出文件不存在，请先执行拆分操作")
+        except Exception as e:
+            messagebox.showerror("错误", f"无法打开文件夹: {str(e)}")
     
     # ==================== 跨项目翻译对应相关方法 ====================
     
