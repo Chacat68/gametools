@@ -96,7 +96,6 @@ a = Analysis(
     datas=[
         ('../core', 'core'),
         ('../tools/json_error_detector', 'tools/json_error_detector'),
-        ('../tools/excel_text_extractor', 'tools/excel_text_extractor'),
         ('../tools', 'tools'),
         ('../docs', 'docs'),
     ],
@@ -108,7 +107,6 @@ a = Analysis(
         'tkinter.filedialog',
         'tkinter.messagebox',
         'tkinter.scrolledtext',
-        'tools.excel_text_extractor',
         'tools.excel_data_processor',
         'core.localization_checker',
         'core.table_range_translator',
