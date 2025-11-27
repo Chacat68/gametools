@@ -10,6 +10,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
 import os
 import sys
+import json
 from pathlib import Path
 import subprocess
 import logging
@@ -27,6 +28,7 @@ from core.cross_project_translator import CrossProjectTranslator
 from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator
 from core.excel_sheet_splitter import ExcelSheetSplitter
+from core.batch_excel_modifier import BatchExcelModifier
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_description, get_latest_changes
@@ -63,6 +65,7 @@ class GameToolsUnified:
         self.field_extractor = ExcelFieldExtractor()
         self.table_range_translator = TableRangeTranslator()
         self.sheet_splitter = ExcelSheetSplitter()
+        self.batch_modifier = BatchExcelModifier()
         
         # 扫描状态
         self.is_scanning = False
@@ -75,7 +78,8 @@ class GameToolsUnified:
             'excel_processor': '',
             'field_extractor': '',
             'table_range_translator': '',
-            'sheet_splitter': ''
+            'sheet_splitter': '',
+            'batch_modifier': ''
         }
         
         # 字段提取结果数据
@@ -133,6 +137,7 @@ class GameToolsUnified:
         self.create_sheet_splitter_tab()
         self.create_field_extractor_tab()
         self.create_table_range_translator_tab()
+        self.create_batch_modifier_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -917,6 +922,180 @@ class GameToolsUnified:
                                                  command=lambda: self.show_results_dialog('table_range_translator'))
         self.trt_view_results_button.pack(side=tk.LEFT)
     
+    def create_batch_modifier_tab(self):
+        """创建批量改表页签"""
+        # 批量改表框架
+        batch_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(batch_frame, text="批量改表")
+        
+        # 配置网格
+        batch_frame.columnconfigure(0, weight=1)
+        batch_frame.rowconfigure(3, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(batch_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="批量改表工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, 
+                              text="根据映射表和JSON配置，批量修改指定文件夹中的Excel文件", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(batch_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 文件选择区域
+        file_frame = ttk.LabelFrame(control_frame, text="文件配置", padding="12")
+        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        file_frame.columnconfigure(1, weight=1)
+        
+        # JSON配置文件（必需 - 定义表和字段）
+        ttk.Label(file_frame, text="JSON配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.batch_json_var = tk.StringVar()
+        self.batch_json_entry = ttk.Entry(file_frame, textvariable=self.batch_json_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.batch_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        json_btn_frame = ttk.Frame(file_frame)
+        json_btn_frame.grid(row=0, column=2, pady=(0, 8))
+        self.batch_json_browse_button = ttk.Button(json_btn_frame, text="浏览JSON", 
+                                                  command=self.browse_batch_json_file)
+        self.batch_json_browse_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.batch_json_preview_button = ttk.Button(json_btn_frame, text="预览", 
+                                                   command=self.preview_batch_json_config)
+        self.batch_json_preview_button.pack(side=tk.LEFT)
+        
+        # 映射表文件（如 p9-3t_分页.xlsx）
+        ttk.Label(file_frame, text="映射表文件:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.batch_mapping_var = tk.StringVar()
+        self.batch_mapping_entry = ttk.Entry(file_frame, textvariable=self.batch_mapping_var, 
+                                            font=("Microsoft YaHei", 9))
+        self.batch_mapping_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.batch_mapping_browse_button = ttk.Button(file_frame, text="浏览文件", 
+                                                     command=self.browse_batch_mapping_file)
+        self.batch_mapping_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        # 映射表工作表选择
+        ttk.Label(file_frame, text="工作表:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.batch_sheet_var = tk.StringVar()
+        self.batch_sheet_combo = ttk.Combobox(file_frame, textvariable=self.batch_sheet_var, 
+                                             state="readonly", width=30)
+        self.batch_sheet_combo.grid(row=2, column=1, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        
+        self.batch_refresh_sheets_button = ttk.Button(file_frame, text="刷新工作表", 
+                                                     command=self.refresh_batch_sheets)
+        self.batch_refresh_sheets_button.grid(row=2, column=2, pady=(0, 8))
+        
+        # Excel文件目录（要修改的文件所在目录）
+        ttk.Label(file_frame, text="Excel目录:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.batch_excel_dir_var = tk.StringVar()
+        self.batch_excel_dir_entry = ttk.Entry(file_frame, textvariable=self.batch_excel_dir_var, 
+                                              font=("Microsoft YaHei", 9))
+        self.batch_excel_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.batch_excel_dir_browse_button = ttk.Button(file_frame, text="浏览目录", 
+                                                       command=self.browse_batch_excel_directory)
+        self.batch_excel_dir_browse_button.grid(row=3, column=2, pady=(0, 8))
+        
+        # 输出报告文件
+        ttk.Label(file_frame, text="报告文件:").grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
+        self.batch_report_var = tk.StringVar()
+        self.batch_report_entry = ttk.Entry(file_frame, textvariable=self.batch_report_var, 
+                                           font=("Microsoft YaHei", 9))
+        self.batch_report_entry.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        self.batch_report_browse_button = ttk.Button(file_frame, text="选择位置", 
+                                                    command=self.browse_batch_report_file)
+        self.batch_report_browse_button.grid(row=4, column=2)
+        
+        # 列配置区域
+        column_frame = ttk.LabelFrame(control_frame, text="映射表列配置", padding="12")
+        column_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        column_frame.columnconfigure(1, weight=1)
+        column_frame.columnconfigure(3, weight=1)
+        
+        # 表名列
+        ttk.Label(column_frame, text="表名列:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.batch_table_col_var = tk.StringVar(value="A")
+        self.batch_table_col_combo = ttk.Combobox(column_frame, textvariable=self.batch_table_col_var, 
+                                                  width=20, state="readonly")
+        self.batch_table_col_combo.grid(row=0, column=1, sticky=tk.W, padx=(0, 20), pady=(0, 5))
+        
+        # ID列
+        ttk.Label(column_frame, text="ID列:").grid(row=0, column=2, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.batch_id_col_var = tk.StringVar(value="C")
+        self.batch_id_col_combo = ttk.Combobox(column_frame, textvariable=self.batch_id_col_var, 
+                                               width=20, state="readonly")
+        self.batch_id_col_combo.grid(row=0, column=3, sticky=tk.W, pady=(0, 5))
+        
+        # 修改列说明
+        ttk.Label(column_frame, text="修改字段:", style='Info.TLabel').grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
+        ttk.Label(column_frame, text="根据JSON配置自动匹配（映射表列名需与JSON中的字段名相同）", 
+                 style='Info.TLabel', foreground='green').grid(row=1, column=1, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
+        # 选项设置区域
+        options_frame = ttk.LabelFrame(control_frame, text="处理选项", padding="12")
+        options_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # 备份选项
+        self.batch_backup_var = tk.BooleanVar(value=True)
+        self.batch_backup_check = ttk.Checkbutton(options_frame, text="修改前创建备份文件（.bak）", 
+                                                 variable=self.batch_backup_var)
+        self.batch_backup_check.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
+        
+        # 说明信息
+        info_text = """💡 工作流程:
+  1. 选择JSON配置文件 - 定义每个表有哪些字段需要修改
+  2. 选择映射表 - 包含表名、ID和新值（列名需与JSON中的字段名一致）
+  3. 选择Excel目录 - 存放要修改的Excel文件
+  4. 程序自动匹配: 映射表列名 ↔ JSON字段名 → 更新目标Excel"""
+        
+        info_label = ttk.Label(options_frame, text=info_text, 
+                              font=("Microsoft YaHei", 9), 
+                              justify=tk.LEFT, foreground='blue')
+        info_label.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(batch_frame)
+        button_frame.grid(row=2, column=0, pady=(0, 15))
+        
+        self.batch_process_button = ttk.Button(button_frame, text="🚀 开始修改", 
+                                              command=self.start_batch_modification, 
+                                              style='Accent.TButton')
+        self.batch_process_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.batch_preview_button = ttk.Button(button_frame, text="👁️ 预览映射表", 
+                                              command=self.preview_batch_mapping)
+        self.batch_preview_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.batch_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                            command=self.clear_batch_results)
+        self.batch_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.batch_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
+                                                   command=lambda: self.show_results_dialog('batch_modifier'))
+        self.batch_view_results_button.pack(side=tk.LEFT)
+        
+        # 结果显示区域
+        results_frame = ttk.LabelFrame(batch_frame, text="处理结果", padding="10")
+        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        results_frame.columnconfigure(0, weight=1)
+        results_frame.rowconfigure(0, weight=1)
+        
+        # 结果文本框
+        self.batch_results_text = scrolledtext.ScrolledText(results_frame, 
+                                                           wrap=tk.WORD,
+                                                           font=("Consolas", 9))
+        self.batch_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
     def create_about_tab(self):
         """创建关于页签"""
         about_frame = ttk.Frame(self.notebook, padding="20")
@@ -1067,7 +1246,8 @@ class GameToolsUnified:
             'json_detector': 'JSON错误检测结果',
             'excel_processor': 'Excel数据处理结果',
             'field_extractor': '表字段导出结果',
-            'table_range_translator': '多语言翻译提取结果'
+            'table_range_translator': '多语言翻译提取结果',
+            'batch_modifier': '批量改表结果'
         }
         
         # 标题
@@ -2283,6 +2463,432 @@ class GameToolsUnified:
     def clear_trt_results(self):
         """清空多语言翻译提取结果"""
         self.clear_result('table_range_translator')
+    
+    # 批量改表相关方法
+    def browse_batch_mapping_file(self):
+        """浏览批量改表映射文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择映射表文件",
+            filetypes=[("Excel文件", "*.xlsx *.xls"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.batch_mapping_var.set(file_path)
+            # 自动刷新工作表列表
+            self.refresh_batch_sheets()
+            # 自动设置输出报告路径
+            if not self.batch_report_var.get():
+                report_path = os.path.splitext(file_path)[0] + "_修改报告.xlsx"
+                self.batch_report_var.set(report_path)
+    
+    def refresh_batch_sheets(self):
+        """刷新映射表的工作表列表"""
+        mapping_file = self.batch_mapping_var.get().strip()
+        if not mapping_file or not os.path.exists(mapping_file):
+            messagebox.showwarning("警告", "请先选择有效的映射表文件")
+            return
+        
+        try:
+            import pandas as pd
+            xl = pd.ExcelFile(mapping_file)
+            sheets = xl.sheet_names
+            self.batch_sheet_combo['values'] = sheets
+            if sheets:
+                self.batch_sheet_combo.set(sheets[0])
+                # 同时刷新列名
+                self.refresh_batch_columns()
+            messagebox.showinfo("成功", f"找到 {len(sheets)} 个工作表")
+        except Exception as e:
+            messagebox.showerror("错误", f"读取工作表失败: {e}")
+    
+    def refresh_batch_columns(self):
+        """刷新映射表的列名"""
+        mapping_file = self.batch_mapping_var.get().strip()
+        sheet_name = self.batch_sheet_var.get().strip()
+        
+        if not mapping_file or not os.path.exists(mapping_file):
+            return
+        
+        try:
+            import pandas as pd
+            df = pd.read_excel(mapping_file, sheet_name=sheet_name if sheet_name else 0, header=0, nrows=1)
+            columns = df.columns.tolist()
+            
+            # 更新列选择下拉框
+            self.batch_table_col_combo['values'] = columns
+            self.batch_id_col_combo['values'] = columns
+            
+            # 设置默认值
+            if columns:
+                self.batch_table_col_combo.set(columns[0])
+                if len(columns) > 2:
+                    self.batch_id_col_combo.set(columns[2])  # 默认C列
+                
+                # 设置修改列的默认值（D列开始）
+                if len(columns) > 3:
+                    modify_cols = [columns[3]]  # D列
+                    if len(columns) > 6:
+                        modify_cols.append(columns[6])  # G列
+                    self.batch_modify_cols_var.set(",".join(modify_cols))
+        except Exception as e:
+            pass  # 静默处理错误
+    
+    def browse_batch_json_file(self):
+        """浏览批量改表JSON配置文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择JSON配置文件",
+            filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.batch_json_var.set(file_path)
+    
+    def browse_batch_excel_directory(self):
+        """浏览要修改的Excel文件目录"""
+        directory = filedialog.askdirectory(title="选择Excel文件目录")
+        if directory:
+            self.batch_excel_dir_var.set(directory)
+    
+    def browse_batch_report_file(self):
+        """浏览修改报告保存位置"""
+        file_path = filedialog.asksaveasfilename(
+            title="选择报告保存位置",
+            defaultextension=".xlsx",
+            filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.batch_report_var.set(file_path)
+    
+    def preview_batch_mapping(self):
+        """预览映射表内容"""
+        mapping_file = self.batch_mapping_var.get().strip()
+        sheet_name = self.batch_sheet_var.get().strip()
+        
+        if not mapping_file:
+            messagebox.showerror("错误", "请先选择映射表文件")
+            return
+        
+        if not os.path.exists(mapping_file):
+            messagebox.showerror("错误", "映射表文件不存在")
+            return
+        
+        try:
+            import pandas as pd
+            # 读取前20行数据预览
+            df = pd.read_excel(mapping_file, sheet_name=sheet_name if sheet_name else 0, 
+                              header=0, nrows=20)
+            
+            # 创建预览对话框
+            preview_dialog = tk.Toplevel(self.root)
+            preview_dialog.title(f"映射表预览 - {os.path.basename(mapping_file)}")
+            preview_dialog.geometry("900x500")
+            
+            # 信息标签
+            info_label = ttk.Label(preview_dialog, 
+                                  text=f"工作表: {sheet_name or '第一个'} | 列数: {len(df.columns)} | 显示前20行")
+            info_label.pack(pady=10)
+            
+            # 创建表格框架
+            table_frame = ttk.Frame(preview_dialog)
+            table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+            
+            # 创建文本框显示数据
+            text_widget = scrolledtext.ScrolledText(table_frame, wrap=tk.NONE, 
+                                                   font=("Consolas", 9))
+            text_widget.pack(fill=tk.BOTH, expand=True)
+            
+            # 格式化显示数据
+            header_line = " | ".join([f"{col:<20}" for col in df.columns])
+            text_widget.insert(tk.END, header_line + "\n")
+            text_widget.insert(tk.END, "-" * len(header_line) + "\n")
+            
+            for idx, row in df.iterrows():
+                row_line = " | ".join([f"{str(val)[:20]:<20}" for val in row])
+                text_widget.insert(tk.END, row_line + "\n")
+            
+            text_widget.config(state=tk.DISABLED)
+            
+            # 关闭按钮
+            close_button = ttk.Button(preview_dialog, text="关闭", 
+                                     command=preview_dialog.destroy)
+            close_button.pack(pady=10)
+            
+            preview_dialog.transient(self.root)
+            preview_dialog.grab_set()
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"预览失败: {e}")
+    
+    def start_batch_modification(self):
+        """开始批量修改"""
+        json_file = self.batch_json_var.get().strip()
+        mapping_file = self.batch_mapping_var.get().strip()
+        excel_dir = self.batch_excel_dir_var.get().strip()
+        table_col = self.batch_table_col_var.get().strip()
+        id_col = self.batch_id_col_var.get().strip()
+        report_file = self.batch_report_var.get().strip()
+        sheet_name = self.batch_sheet_var.get().strip()
+        
+        # 验证必要参数
+        if not json_file:
+            messagebox.showerror("错误", "请选择JSON配置文件")
+            return
+        
+        if not os.path.exists(json_file):
+            messagebox.showerror("错误", "JSON配置文件不存在")
+            return
+        
+        if not mapping_file:
+            messagebox.showerror("错误", "请选择映射表文件")
+            return
+        
+        if not os.path.exists(mapping_file):
+            messagebox.showerror("错误", "映射表文件不存在")
+            return
+        
+        if not excel_dir:
+            messagebox.showerror("错误", "请选择Excel文件目录")
+            return
+        
+        if not os.path.exists(excel_dir):
+            messagebox.showerror("错误", "Excel文件目录不存在")
+            return
+        
+        if not table_col:
+            messagebox.showerror("错误", "请指定表名列")
+            return
+        
+        if not id_col:
+            messagebox.showerror("错误", "请指定ID列")
+            return
+        
+        # 确认操作
+        confirm_msg = f"""确认开始批量修改？
+
+JSON配置: {os.path.basename(json_file)}
+映射表: {os.path.basename(mapping_file)}
+工作表: {sheet_name or '第一个'}
+Excel目录: {excel_dir}
+
+表名列: {table_col}
+ID列: {id_col}
+修改字段: 根据JSON配置自动匹配
+
+备份: {'是' if self.batch_backup_var.get() else '否'}"""
+        
+        if not messagebox.askyesno("确认", confirm_msg):
+            return
+        
+        # 开始处理
+        self.batch_process_button.config(state="disabled")
+        self.status_var.set("正在批量修改...")
+        
+        thread = threading.Thread(target=self._batch_modification_thread, 
+                                 args=(mapping_file, excel_dir, table_col, id_col, 
+                                       report_file, sheet_name, json_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _batch_modification_thread(self, mapping_file, excel_dir, table_col, id_col, 
+                                   report_file, sheet_name, json_file):
+        """批量修改处理线程"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_batch_results)
+            
+            # 显示开始信息
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "开始批量修改Excel文件...\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"JSON配置: {json_file}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"映射表: {mapping_file}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"工作表: {sheet_name or '第一个'}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"Excel目录: {excel_dir}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"表名列: {table_col}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"ID列: {id_col}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"备份: {'是' if self.batch_backup_var.get() else '否'}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "\n"))
+            
+            # 设置进度回调
+            def progress_callback(msg, percentage=None):
+                self.root.after(0, lambda m=msg: self.append_result('batch_modifier', m + "\n"))
+            
+            self.batch_modifier.set_progress_callback(progress_callback)
+            
+            # 加载JSON配置
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "正在加载JSON配置...\n"))
+            field_config = self.batch_modifier.load_json_config(json_file)
+            
+            if not field_config:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    "✗ JSON配置加载失败或为空\n"))
+                self.root.after(0, lambda: messagebox.showerror("错误", "JSON配置加载失败"))
+                return
+            
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"✓ 已加载 {len(field_config)//2} 个表的字段配置\n\n"))
+            
+            # 执行批量修改（使用JSON配置自动匹配字段）
+            stats = self.batch_modifier.process_batch_modification_with_json(
+                mapping_path=mapping_file,
+                excel_directory=excel_dir,
+                table_col=table_col,
+                id_col=id_col,
+                mapping_sheet=sheet_name if sheet_name else None,
+                backup=self.batch_backup_var.get()
+            )
+            
+            # 显示统计信息
+            summary = self.batch_modifier.get_stats_summary()
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "\n" + summary + "\n"))
+            
+            # 显示跳过的表（不在JSON配置中）
+            if stats.get('skipped_no_config', 0) > 0:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    f"\n⚠️ 跳过了 {stats['skipped_no_config']} 行（表名不在JSON配置中）\n"))
+            
+            # 生成报告
+            if report_file:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    f"\n正在生成修改报告...\n"))
+                
+                if self.batch_modifier.generate_modification_report(report_file):
+                    self.root.after(0, lambda: self.append_result('batch_modifier', 
+                        f"✓ 修改报告已生成: {report_file}\n"))
+                else:
+                    self.root.after(0, lambda: self.append_result('batch_modifier', 
+                        "✗ 生成修改报告失败\n"))
+            
+            # 显示错误日志
+            if self.batch_modifier.error_logs:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    "\n错误日志:\n"))
+                for error in self.batch_modifier.error_logs[:20]:  # 最多显示20条
+                    self.root.after(0, lambda e=error: self.append_result('batch_modifier', 
+                        f"  ✗ {e}\n"))
+                if len(self.batch_modifier.error_logs) > 20:
+                    self.root.after(0, lambda: self.append_result('batch_modifier', 
+                        f"  ... 还有 {len(self.batch_modifier.error_logs) - 20} 条错误\n"))
+            
+            # 显示成功消息
+            msg = f"""批量修改完成！
+
+修改的文件数: {stats['modified_files']}
+修改的单元格数: {stats['modified_cells']}
+错误数: {stats['errors']}
+
+报告已保存: {report_file if report_file else '未生成'}"""
+            
+            self.root.after(0, lambda: messagebox.showinfo("完成", msg))
+            
+        except Exception as e:
+            error_msg = f"处理过程中发生错误: {str(e)}"
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"\n✗ {error_msg}\n"))
+            self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
+        
+        finally:
+            # 恢复按钮状态
+            self.root.after(0, lambda: self.batch_process_button.config(state="normal"))
+            self.root.after(0, lambda: self.status_var.set("就绪"))
+    
+    def clear_batch_results(self):
+        """清空批量改表结果"""
+        self.clear_result('batch_modifier')
+        if hasattr(self, 'batch_results_text'):
+            self.batch_results_text.delete(1.0, tk.END)
+    
+    def preview_batch_json_config(self):
+        """预览JSON配置内容"""
+        json_file = self.batch_json_var.get().strip()
+        
+        if not json_file:
+            messagebox.showwarning("提示", "请先选择JSON配置文件")
+            return
+        
+        if not os.path.exists(json_file):
+            messagebox.showerror("错误", f"文件不存在: {json_file}")
+            return
+        
+        try:
+            with open(json_file, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            # 构建预览内容
+            preview_lines = []
+            preview_lines.append("=" * 60)
+            preview_lines.append(f"JSON配置文件: {os.path.basename(json_file)}")
+            preview_lines.append("=" * 60)
+            
+            text_tables = config.get('text_tables', [])
+            if not text_tables:
+                preview_lines.append("\n⚠️ 未找到 text_tables 配置")
+            else:
+                preview_lines.append(f"\n共 {len(text_tables)} 个表配置:\n")
+                
+                for i, table in enumerate(text_tables, 1):
+                    table_name = table.get('table_name', '未知')
+                    sheet_name = table.get('sheet_name', '')
+                    fields = table.get('fields', [])
+                    fields_with_examples = table.get('fields_with_examples', [])
+                    
+                    preview_lines.append(f"[{i}] {table_name}")
+                    if sheet_name:
+                        preview_lines.append(f"    工作表: {sheet_name}")
+                    
+                    # 显示字段
+                    all_fields = list(set(fields + fields_with_examples))
+                    if all_fields:
+                        preview_lines.append(f"    字段 ({len(all_fields)}): {', '.join(all_fields)}")
+                    else:
+                        preview_lines.append("    字段: (无)")
+                    preview_lines.append("")
+            
+            preview_lines.append("-" * 60)
+            preview_lines.append("注: 映射表中的列名需要与上述字段名完全匹配才会被处理")
+            
+            # 显示预览
+            preview_text = "\n".join(preview_lines)
+            
+            # 创建预览窗口
+            preview_window = tk.Toplevel(self.root)
+            preview_window.title("JSON配置预览")
+            preview_window.geometry("600x500")
+            
+            # 文本框
+            text_frame = ttk.Frame(preview_window)
+            text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 10))
+            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+            
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            
+            text_widget.insert(1.0, preview_text)
+            text_widget.config(state='disabled')
+            
+            # 关闭按钮
+            close_btn = ttk.Button(preview_window, text="关闭", 
+                                  command=preview_window.destroy)
+            close_btn.pack(pady=10)
+            
+        except json.JSONDecodeError as e:
+            messagebox.showerror("错误", f"JSON解析错误: {str(e)}")
+        except Exception as e:
+            messagebox.showerror("错误", f"读取配置失败: {str(e)}")
 
 
 def main():

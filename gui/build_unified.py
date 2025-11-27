@@ -111,6 +111,8 @@ a = Analysis(
         'core.localization_checker',
         'core.table_range_translator',
         'core.excel_field_extractor',
+        'core.batch_excel_modifier',
+        'core.excel_sheet_splitter',
     ],
     hookspath=[],
     hooksconfig={},

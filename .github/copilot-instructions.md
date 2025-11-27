@@ -10,6 +10,9 @@
 - `localization_checker.py`: 越南语检测的核心逻辑
 - `excel_vietnamese_scanner.py`: Excel 文件扫描引擎
 - `vietnamese_excel_processor.py`: Excel 处理器，整合了检测和导出功能
+- `excel_field_extractor.py`: 表字段导出器
+- `table_range_translator.py`: 多语言翻译提取器
+- `batch_excel_modifier.py`: 批量Excel修改器
 
 ### 工具模块 (`tools/`)
 - Excel 数据处理工具
@@ -35,7 +38,32 @@ stats = processor.process_directory(
 )
 ```
 
-### 2. 文件格式支持
+### 2. 批量改表流程
+
+```python
+from core.batch_excel_modifier import BatchExcelModifier
+
+modifier = BatchExcelModifier()
+
+# 可选：加载JSON配置
+modifier.load_json_config("config.json")
+
+# 执行批量修改
+stats = modifier.process_batch_modification(
+    mapping_path="mapping_table.xlsx",      # 映射表文件
+    excel_directory="excel_folder",          # 目标Excel目录
+    table_col="表名",                        # 表名列
+    id_col="ID",                             # ID列
+    modify_cols=["VN", "EN"],                # 要修改的列
+    mapping_sheet="Sheet1",                  # 映射表工作表
+    backup=True                              # 是否备份
+)
+
+# 生成修改报告
+modifier.generate_modification_report("report.xlsx")
+```
+
+### 3. 文件格式支持
 - Excel 文件: `.xlsx`, `.xls`
 - CSV 文件: `.csv`, `.tsv`
 
