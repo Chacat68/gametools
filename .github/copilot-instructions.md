@@ -13,6 +13,7 @@
 - `excel_field_extractor.py`: 表字段导出器
 - `table_range_translator.py`: 多语言翻译提取器
 - `batch_excel_modifier.py`: 批量Excel修改器
+- `excel_config_sync.py`: Excel配置同步器
 
 ### 工具模块 (`tools/`)
 - Excel 数据处理工具
@@ -63,7 +64,28 @@ stats = modifier.process_batch_modification(
 modifier.generate_modification_report("report.xlsx")
 ```
 
-### 3. 文件格式支持
+### 3. Excel配置同步流程
+
+```python
+from core.excel_config_sync import ExcelConfigSync
+
+syncer = ExcelConfigSync()
+
+# 可选：加载JSON配置（仅用于参考，不做修改）
+syncer.load_json_config("config.json")
+
+# 执行配置同步
+stats = syncer.sync_directories(
+    source_dir="source_folder",          # 源目录
+    target_dir1="target_folder1",        # 目标目录1
+    target_dir2="target_folder2"         # 目标目录2（可选）
+)
+
+# 生成同步报告
+syncer.generate_sync_report("sync_report.xlsx")
+```
+
+### 4. 文件格式支持
 - Excel 文件: `.xlsx`, `.xls`
 - CSV 文件: `.csv`, `.tsv`
 

@@ -1328,6 +1328,9 @@ class GameToolsUnified:
 🌐 多语言翻译提取工具
    根据字段导出的JSON配置，智能提取多语言翻译内容
 
+🔄 Excel配置同步工具
+   将源目录的Excel配置同步到其他目录的同名文件
+
 📋 版本信息
    当前版本: v{get_version()}
    项目描述: {get_description()}"""
