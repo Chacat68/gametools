@@ -29,6 +29,7 @@ from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator
 from core.excel_sheet_splitter import ExcelSheetSplitter
 from core.batch_excel_modifier import BatchExcelModifier
+from core.excel_config_sync import ExcelConfigSync
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_description, get_latest_changes
@@ -66,6 +67,7 @@ class GameToolsUnified:
         self.table_range_translator = TableRangeTranslator()
         self.sheet_splitter = ExcelSheetSplitter()
         self.batch_modifier = BatchExcelModifier()
+        self.config_sync = ExcelConfigSync()
         
         # 扫描状态
         self.is_scanning = False
@@ -79,7 +81,8 @@ class GameToolsUnified:
             'field_extractor': '',
             'table_range_translator': '',
             'sheet_splitter': '',
-            'batch_modifier': ''
+            'batch_modifier': '',
+            'config_sync': ''
         }
         
         # 字段提取结果数据
@@ -138,6 +141,7 @@ class GameToolsUnified:
         self.create_field_extractor_tab()
         self.create_table_range_translator_tab()
         self.create_batch_modifier_tab()
+        self.create_config_sync_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -1096,6 +1100,181 @@ class GameToolsUnified:
                                                            font=("Consolas", 9))
         self.batch_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
+    def create_config_sync_tab(self):
+        """创建Excel配置同步页签"""
+        # 配置同步框架
+        sync_frame = ttk.Frame(self.notebook, padding="15")
+        self.notebook.add(sync_frame, text="Excel配置同步")
+        
+        # 配置网格
+        sync_frame.columnconfigure(0, weight=1)
+        sync_frame.rowconfigure(3, weight=1)
+        
+        # 标题和描述
+        header_frame = ttk.Frame(sync_frame)
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        header_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(header_frame, text="Excel配置同步工具", 
+                               style='Heading.TLabel')
+        title_label.grid(row=0, column=0, pady=(0, 5))
+        
+        desc_label = ttk.Label(header_frame, 
+                              text="将源目录的Excel文件配置同步到其他目录的同名文件上", 
+                              style='Info.TLabel')
+        desc_label.grid(row=1, column=0)
+        
+        # 控制面板
+        control_frame = ttk.Frame(sync_frame)
+        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
+        control_frame.columnconfigure(0, weight=1)
+        
+        # 目录选择区域
+        dir_frame = ttk.LabelFrame(control_frame, text="目录配置", padding="12")
+        dir_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        dir_frame.columnconfigure(1, weight=1)
+        
+        # 源目录
+        ttk.Label(dir_frame, text="源目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.sync_source_dir_var = tk.StringVar()
+        self.sync_source_dir_entry = ttk.Entry(dir_frame, textvariable=self.sync_source_dir_var, 
+                                              font=("Microsoft YaHei", 9))
+        self.sync_source_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.sync_source_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                                   command=self.browse_sync_source_dir)
+        self.sync_source_browse_button.grid(row=0, column=2, pady=(0, 8))
+        
+        # 目标目录1
+        ttk.Label(dir_frame, text="目标目录1:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.sync_target1_dir_var = tk.StringVar()
+        self.sync_target1_dir_entry = ttk.Entry(dir_frame, textvariable=self.sync_target1_dir_var, 
+                                               font=("Microsoft YaHei", 9))
+        self.sync_target1_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.sync_target1_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                                    command=self.browse_sync_target1_dir)
+        self.sync_target1_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        # 目标目录2
+        ttk.Label(dir_frame, text="目标目录2:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.sync_target2_dir_var = tk.StringVar()
+        self.sync_target2_dir_entry = ttk.Entry(dir_frame, textvariable=self.sync_target2_dir_var, 
+                                               font=("Microsoft YaHei", 9))
+        self.sync_target2_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.sync_target2_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                                    command=self.browse_sync_target2_dir)
+        self.sync_target2_browse_button.grid(row=2, column=2, pady=(0, 8))
+        
+        # JSON配置文件（可选，仅用于参考）
+        ttk.Label(dir_frame, text="JSON配置:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.sync_json_var = tk.StringVar()
+        self.sync_json_entry = ttk.Entry(dir_frame, textvariable=self.sync_json_var, 
+                                        font=("Microsoft YaHei", 9))
+        self.sync_json_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        json_btn_frame = ttk.Frame(dir_frame)
+        json_btn_frame.grid(row=3, column=2, pady=(0, 8))
+        self.sync_json_browse_button = ttk.Button(json_btn_frame, text="浏览JSON", 
+                                                 command=self.browse_sync_json_file)
+        self.sync_json_browse_button.pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 提示信息
+        json_hint = ttk.Label(dir_frame, text="(可选，仅用于参考，不会被修改)", 
+                             foreground='gray')
+        json_hint.grid(row=4, column=1, sticky=tk.W, pady=(0, 5))
+        
+        # 报告文件
+        ttk.Label(dir_frame, text="报告文件:").grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        self.sync_report_var = tk.StringVar()
+        self.sync_report_entry = ttk.Entry(dir_frame, textvariable=self.sync_report_var, 
+                                          font=("Microsoft YaHei", 9))
+        self.sync_report_entry.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        self.sync_report_browse_button = ttk.Button(dir_frame, text="选择位置", 
+                                                   command=self.browse_sync_report_file)
+        self.sync_report_browse_button.grid(row=5, column=2)
+        
+        # 选项设置区域
+        options_frame = ttk.LabelFrame(control_frame, text="同步选项", padding="12")
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # 备份选项
+        self.sync_backup_var = tk.BooleanVar(value=True)
+        self.sync_backup_check = ttk.Checkbutton(options_frame, text="同步前创建备份文件（.bak）", 
+                                                variable=self.sync_backup_var)
+        self.sync_backup_check.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
+        
+        # 同步值选项
+        self.sync_values_var = tk.BooleanVar(value=True)
+        self.sync_values_check = ttk.Checkbutton(options_frame, text="同步单元格值", 
+                                                variable=self.sync_values_var)
+        self.sync_values_check.grid(row=0, column=1, sticky=tk.W, padx=(20, 0), pady=(0, 5))
+        
+        # 同步公式选项
+        self.sync_formulas_var = tk.BooleanVar(value=True)
+        self.sync_formulas_check = ttk.Checkbutton(options_frame, text="同步公式", 
+                                                  variable=self.sync_formulas_var)
+        self.sync_formulas_check.grid(row=0, column=2, sticky=tk.W, padx=(20, 0), pady=(0, 5))
+        
+        # 同步样式选项
+        self.sync_styles_var = tk.BooleanVar(value=False)
+        self.sync_styles_check = ttk.Checkbutton(options_frame, text="同步样式", 
+                                                variable=self.sync_styles_var)
+        self.sync_styles_check.grid(row=1, column=0, sticky=tk.W, pady=(0, 5))
+        
+        # 同步列宽选项
+        self.sync_column_widths_var = tk.BooleanVar(value=False)
+        self.sync_column_widths_check = ttk.Checkbutton(options_frame, text="同步列宽", 
+                                                       variable=self.sync_column_widths_var)
+        self.sync_column_widths_check.grid(row=1, column=1, sticky=tk.W, padx=(20, 0), pady=(0, 5))
+        
+        # 说明信息
+        info_text = """💡 工作流程:
+  1. 选择源目录 - 包含配置模板的Excel文件
+  2. 选择目标目录1和目标目录2 - 需要同步配置的Excel文件目录
+  3. 可选择JSON配置文件（仅用于参考，不会被修改）
+  4. 程序会将源目录中Excel文件的内容同步到目标目录中的同名文件"""
+        
+        info_label = ttk.Label(options_frame, text=info_text, 
+                              font=("Microsoft YaHei", 9), 
+                              justify=tk.LEFT, foreground='blue')
+        info_label.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(sync_frame)
+        button_frame.grid(row=2, column=0, pady=(0, 15))
+        
+        self.sync_process_button = ttk.Button(button_frame, text="🚀 开始同步", 
+                                             command=self.start_config_sync, 
+                                             style='Accent.TButton')
+        self.sync_process_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.sync_preview_button = ttk.Button(button_frame, text="👁️ 预览匹配", 
+                                             command=self.preview_sync_matching)
+        self.sync_preview_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.sync_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                           command=self.clear_sync_results)
+        self.sync_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.sync_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
+                                                  command=lambda: self.show_results_dialog('config_sync'))
+        self.sync_view_results_button.pack(side=tk.LEFT)
+        
+        # 结果显示区域
+        results_frame = ttk.LabelFrame(sync_frame, text="同步结果", padding="10")
+        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        results_frame.columnconfigure(0, weight=1)
+        results_frame.rowconfigure(0, weight=1)
+        
+        # 结果文本框
+        self.sync_results_text = scrolledtext.ScrolledText(results_frame, 
+                                                          wrap=tk.WORD,
+                                                          font=("Consolas", 9))
+        self.sync_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+    
     def create_about_tab(self):
         """创建关于页签"""
         about_frame = ttk.Frame(self.notebook, padding="20")
@@ -1212,8 +1391,20 @@ class GameToolsUnified:
     
     # 结果存储辅助函数
     def append_result(self, result_type, text):
-        """追加文本到结果存储"""
+        """追加文本到结果存储，并同时更新对应的文本框"""
         self.results_storage[result_type] += text
+        
+        # 同时更新对应的文本框
+        text_widget_map = {
+            'batch_modifier': 'batch_results_text',
+            'config_sync': 'sync_results_text',
+        }
+        
+        widget_name = text_widget_map.get(result_type)
+        if widget_name and hasattr(self, widget_name):
+            widget = getattr(self, widget_name)
+            widget.insert(tk.END, text)
+            widget.see(tk.END)  # 滚动到底部
     
     def clear_result(self, result_type):
         """清空结果存储"""
@@ -1247,7 +1438,8 @@ class GameToolsUnified:
             'excel_processor': 'Excel数据处理结果',
             'field_extractor': '表字段导出结果',
             'table_range_translator': '多语言翻译提取结果',
-            'batch_modifier': '批量改表结果'
+            'batch_modifier': '批量改表结果',
+            'config_sync': 'Excel配置同步结果'
         }
         
         # 标题
@@ -2889,6 +3081,269 @@ ID列: {id_col}
             messagebox.showerror("错误", f"JSON解析错误: {str(e)}")
         except Exception as e:
             messagebox.showerror("错误", f"读取配置失败: {str(e)}")
+    
+    # ==================== Excel配置同步相关方法 ====================
+    
+    def browse_sync_source_dir(self):
+        """浏览源目录"""
+        directory = filedialog.askdirectory(title="选择源目录")
+        if directory:
+            self.sync_source_dir_var.set(directory)
+    
+    def browse_sync_target1_dir(self):
+        """浏览目标目录1"""
+        directory = filedialog.askdirectory(title="选择目标目录1")
+        if directory:
+            self.sync_target1_dir_var.set(directory)
+    
+    def browse_sync_target2_dir(self):
+        """浏览目标目录2"""
+        directory = filedialog.askdirectory(title="选择目标目录2")
+        if directory:
+            self.sync_target2_dir_var.set(directory)
+    
+    def browse_sync_json_file(self):
+        """浏览JSON配置文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择JSON配置文件",
+            filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.sync_json_var.set(file_path)
+    
+    def browse_sync_report_file(self):
+        """浏览报告输出位置"""
+        file_path = filedialog.asksaveasfilename(
+            title="选择报告保存位置",
+            defaultextension=".xlsx",
+            filetypes=[("Excel文件", "*.xlsx"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.sync_report_var.set(file_path)
+    
+    def clear_sync_results(self):
+        """清空同步结果"""
+        self.sync_results_text.delete(1.0, tk.END)
+        self.results_storage['config_sync'] = ''
+    
+    def preview_sync_matching(self):
+        """预览匹配的文件"""
+        source_dir = self.sync_source_dir_var.get().strip()
+        target1_dir = self.sync_target1_dir_var.get().strip()
+        target2_dir = self.sync_target2_dir_var.get().strip()
+        
+        if not source_dir:
+            messagebox.showerror("错误", "请选择源目录")
+            return
+        
+        if not os.path.exists(source_dir):
+            messagebox.showerror("错误", "源目录不存在")
+            return
+        
+        if not target1_dir and not target2_dir:
+            messagebox.showerror("错误", "请至少选择一个目标目录")
+            return
+        
+        # 构建目标目录列表
+        target_dirs = []
+        if target1_dir and os.path.exists(target1_dir):
+            target_dirs.append(target1_dir)
+        if target2_dir and os.path.exists(target2_dir):
+            target_dirs.append(target2_dir)
+        
+        if not target_dirs:
+            messagebox.showerror("错误", "没有有效的目标目录")
+            return
+        
+        # 查找匹配的文件
+        matching_files = self.config_sync.find_matching_files(source_dir, target_dirs)
+        
+        # 创建预览窗口
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title("文件匹配预览")
+        preview_window.geometry("700x500")
+        
+        # 文本框
+        text_frame = ttk.Frame(preview_window)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 10))
+        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # 生成预览内容
+        preview_lines = []
+        preview_lines.append("=" * 60)
+        preview_lines.append("文件匹配预览")
+        preview_lines.append("=" * 60)
+        preview_lines.append(f"\n源目录: {source_dir}")
+        preview_lines.append(f"目标目录1: {target1_dir or '(未选择)'}")
+        preview_lines.append(f"目标目录2: {target2_dir or '(未选择)'}")
+        preview_lines.append(f"\n源目录文件数: {self.config_sync.processing_stats['source_files']}")
+        preview_lines.append(f"匹配的文件数: {len(matching_files)}")
+        preview_lines.append("\n" + "-" * 60)
+        preview_lines.append("匹配详情:")
+        preview_lines.append("-" * 60)
+        
+        for filename, info in matching_files.items():
+            preview_lines.append(f"\n📄 {filename}")
+            preview_lines.append(f"   源文件: {info['source']}")
+            for idx, target in enumerate(info['targets'], 1):
+                preview_lines.append(f"   目标{idx}: {target}")
+        
+        if not matching_files:
+            preview_lines.append("\n⚠️ 没有找到匹配的文件")
+        
+        text_widget.insert(1.0, "\n".join(preview_lines))
+        text_widget.config(state='disabled')
+        
+        # 关闭按钮
+        close_btn = ttk.Button(preview_window, text="关闭", 
+                              command=preview_window.destroy)
+        close_btn.pack(pady=10)
+    
+    def start_config_sync(self):
+        """开始配置同步"""
+        source_dir = self.sync_source_dir_var.get().strip()
+        target1_dir = self.sync_target1_dir_var.get().strip()
+        target2_dir = self.sync_target2_dir_var.get().strip()
+        json_file = self.sync_json_var.get().strip()
+        report_file = self.sync_report_var.get().strip()
+        
+        # 验证参数
+        if not source_dir:
+            messagebox.showerror("错误", "请选择源目录")
+            return
+        
+        if not os.path.exists(source_dir):
+            messagebox.showerror("错误", "源目录不存在")
+            return
+        
+        if not target1_dir and not target2_dir:
+            messagebox.showerror("错误", "请至少选择一个目标目录")
+            return
+        
+        # 检查目标目录
+        if target1_dir and not os.path.exists(target1_dir):
+            messagebox.showerror("错误", "目标目录1不存在")
+            return
+        
+        if target2_dir and not os.path.exists(target2_dir):
+            messagebox.showerror("错误", "目标目录2不存在")
+            return
+        
+        # 确认操作
+        confirm_msg = f"""确认开始同步配置？
+
+源目录: {source_dir}
+目标目录1: {target1_dir or '(未选择)'}
+目标目录2: {target2_dir or '(未选择)'}
+JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
+
+同步选项:
+- 备份: {'是' if self.sync_backup_var.get() else '否'}
+- 同步值: {'是' if self.sync_values_var.get() else '否'}
+- 同步公式: {'是' if self.sync_formulas_var.get() else '否'}
+- 同步样式: {'是' if self.sync_styles_var.get() else '否'}
+- 同步列宽: {'是' if self.sync_column_widths_var.get() else '否'}"""
+        
+        if not messagebox.askyesno("确认", confirm_msg):
+            return
+        
+        # 开始处理
+        self.sync_process_button.config(state="disabled")
+        self.status_var.set("正在同步配置...")
+        
+        thread = threading.Thread(target=self._config_sync_thread, 
+                                 args=(source_dir, target1_dir, target2_dir, 
+                                       json_file, report_file))
+        thread.daemon = True
+        thread.start()
+    
+    def _config_sync_thread(self, source_dir, target1_dir, target2_dir, 
+                           json_file, report_file):
+        """配置同步处理线程"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_sync_results)
+            
+            # 显示开始信息
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                "开始同步Excel配置...\n"))
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                f"源目录: {source_dir}\n"))
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                f"目标目录1: {target1_dir or '(未选择)'}\n"))
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                f"目标目录2: {target2_dir or '(未选择)'}\n"))
+            if json_file:
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    f"JSON配置: {json_file}\n"))
+            self.root.after(0, lambda: self.append_result('config_sync', "\n"))
+            
+            # 设置同步选项
+            self.config_sync.sync_options['backup_before_sync'] = self.sync_backup_var.get()
+            self.config_sync.sync_options['sync_values'] = self.sync_values_var.get()
+            self.config_sync.sync_options['sync_formulas'] = self.sync_formulas_var.get()
+            self.config_sync.sync_options['sync_styles'] = self.sync_styles_var.get()
+            self.config_sync.sync_options['sync_column_widths'] = self.sync_column_widths_var.get()
+            
+            # 设置进度回调
+            def progress_callback(msg, percentage=None):
+                self.root.after(0, lambda m=msg: self.append_result('config_sync', m + "\n"))
+            
+            self.config_sync.set_progress_callback(progress_callback)
+            
+            # 加载JSON配置（如果有）
+            if json_file and os.path.exists(json_file):
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    "正在加载JSON配置（仅用于参考）...\n"))
+                self.config_sync.load_json_config(json_file)
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    "✓ JSON配置已加载\n\n"))
+            
+            # 执行同步
+            stats = self.config_sync.sync_directories(
+                source_dir=source_dir,
+                target_dir1=target1_dir if target1_dir else None,
+                target_dir2=target2_dir if target2_dir else None
+            )
+            
+            # 显示统计信息
+            summary = self.config_sync.get_stats_summary()
+            self.root.after(0, lambda: self.append_result('config_sync', "\n" + summary + "\n"))
+            
+            # 生成报告
+            if report_file:
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    f"\n正在生成报告: {report_file}\n"))
+                if self.config_sync.generate_sync_report(report_file):
+                    self.root.after(0, lambda: self.append_result('config_sync', 
+                        "✓ 报告生成成功\n"))
+                else:
+                    self.root.after(0, lambda: self.append_result('config_sync', 
+                        "✗ 报告生成失败\n"))
+            
+            # 完成
+            self.root.after(0, lambda: self.status_var.set("同步完成"))
+            self.root.after(0, lambda: messagebox.showinfo("完成", "配置同步完成！"))
+            
+        except Exception as e:
+            error_msg = f"同步过程出错: {str(e)}"
+            self.root.after(0, lambda: self.append_result('config_sync', 
+                f"\n✗ 错误: {error_msg}\n"))
+            self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
+        
+        finally:
+            self.root.after(0, lambda: self.sync_process_button.config(state="normal"))
+            self.root.after(0, lambda: self.status_var.set("就绪"))
 
 
 def main():
