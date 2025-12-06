@@ -68,7 +68,7 @@ class GameToolsUnified:
         
         # 结果存储字典
         self.results_storage = {
-            'cross_project_translator': ',
+            'cross_project_translator': '',
             'json_detector': '',
             'excel_processor': '',
             'field_extractor': '',
@@ -567,7 +567,7 @@ class GameToolsUnified:
         
         # 配置网格
         field_frame.columnconfigure(0, weight=1)
-        field_frame.rowconfigure(3, weight=1)
+        field_frame.rowconfigure(2, weight=1)
         
         # 标题和描述
         header_frame = ttk.Frame(field_frame)
@@ -671,18 +671,6 @@ class GameToolsUnified:
         self.field_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
                                                    command=lambda: self.show_results_dialog('field_extractor'))
         self.field_view_results_button.pack(side=tk.LEFT)
-        
-        # 结果显示区域
-        results_frame = ttk.LabelFrame(field_frame, text="提取结果", padding="10")
-        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        results_frame.columnconfigure(0, weight=1)
-        results_frame.rowconfigure(0, weight=1)
-        
-        # 结果文本框
-        self.field_results_text = scrolledtext.ScrolledText(results_frame, 
-                                                           wrap=tk.WORD,
-                                                           font=("Consolas", 9))
-        self.field_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_table_range_translator_tab(self):
         """创建多语言翻译提取页签"""
@@ -816,7 +804,7 @@ class GameToolsUnified:
         
         # 配置网格
         batch_frame.columnconfigure(0, weight=1)
-        batch_frame.rowconfigure(3, weight=1)
+        batch_frame.rowconfigure(2, weight=1)
         
         # 标题和描述
         header_frame = ttk.Frame(batch_frame)
@@ -969,18 +957,6 @@ class GameToolsUnified:
         self.batch_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
                                                    command=lambda: self.show_results_dialog('batch_modifier'))
         self.batch_view_results_button.pack(side=tk.LEFT)
-        
-        # 结果显示区域
-        results_frame = ttk.LabelFrame(batch_frame, text="处理结果", padding="10")
-        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        results_frame.columnconfigure(0, weight=1)
-        results_frame.rowconfigure(0, weight=1)
-        
-        # 结果文本框
-        self.batch_results_text = scrolledtext.ScrolledText(results_frame, 
-                                                           wrap=tk.WORD,
-                                                           font=("Consolas", 9))
-        self.batch_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_config_sync_tab(self):
         """创建Excel配置同步页签"""
@@ -990,7 +966,7 @@ class GameToolsUnified:
         
         # 配置网格
         sync_frame.columnconfigure(0, weight=1)
-        sync_frame.rowconfigure(3, weight=1)
+        sync_frame.rowconfigure(2, weight=1)
         
         # 标题和描述
         header_frame = ttk.Frame(sync_frame)
@@ -1166,18 +1142,6 @@ class GameToolsUnified:
         self.sync_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
                                                   command=lambda: self.show_results_dialog('config_sync'))
         self.sync_view_results_button.pack(side=tk.LEFT)
-        
-        # 结果显示区域
-        results_frame = ttk.LabelFrame(sync_frame, text="同步结果", padding="10")
-        results_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        results_frame.columnconfigure(0, weight=1)
-        results_frame.rowconfigure(0, weight=1)
-        
-        # 结果文本框
-        self.sync_results_text = scrolledtext.ScrolledText(results_frame, 
-                                                          wrap=tk.WORD,
-                                                          font=("Consolas", 9))
-        self.sync_results_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
     
     def create_about_tab(self):
         """创建关于页签"""
@@ -1295,20 +1259,8 @@ class GameToolsUnified:
     
     # 结果存储辅助函数
     def append_result(self, result_type, text):
-        """追加文本到结果存储，并同时更新对应的文本框"""
+        """追加文本到结果存储（所有结果只在查看结果弹窗中显示）"""
         self.results_storage[result_type] += text
-        
-        # 同时更新对应的文本框
-        text_widget_map = {
-            'batch_modifier': 'batch_results_text',
-            'config_sync': 'sync_results_text',
-        }
-        
-        widget_name = text_widget_map.get(result_type)
-        if widget_name and hasattr(self, widget_name):
-            widget = getattr(self, widget_name)
-            widget.insert(tk.END, text)
-            widget.see(tk.END)  # 滚动到底部
     
     def clear_result(self, result_type):
         """清空结果存储"""
@@ -2041,16 +1993,16 @@ class GameToolsUnified:
     def _field_extraction_thread(self, scan_dir, output_dir):
         """字段提取线程"""
         try:
-            # 清空结果显示
-            self.root.after(0, lambda: self.field_results_text.delete(1.0, tk.END))
-            self.root.after(0, lambda: self._log_field_result("=" * 60))
-            self.root.after(0, lambda: self._log_field_result("开始提取表字段信息..."))
-            self.root.after(0, lambda: self._log_field_result("=" * 60))
-            self.root.after(0, lambda: self._log_field_result(f"扫描目录: {scan_dir}"))
-            self.root.after(0, lambda: self._log_field_result(f"输出目录: {output_dir}"))
-            self.root.after(0, lambda: self._log_field_result(f"输出格式: {self.field_output_format_var.get().upper()}"))
-            self.root.after(0, lambda: self._log_field_result(f"递归扫描: {'是' if self.field_recursive_var.get() else '否'}"))
-            self.root.after(0, lambda: self._log_field_result(""))
+            # 清空结果存储
+            self.root.after(0, lambda: self.clear_result('field_extractor'))
+            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "开始提取表字段信息...\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"扫描目录: {scan_dir}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"输出目录: {output_dir}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"输出格式: {self.field_output_format_var.get().upper()}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"递归扫描: {'是' if self.field_recursive_var.get() else '否'}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
             
             # 执行提取
             stats = self.field_extractor.process_directory(
@@ -2065,20 +2017,20 @@ class GameToolsUnified:
             self.field_extraction_results = stats.get('results', [])
             
             # 显示统计信息
-            self.root.after(0, lambda: self._log_field_result(""))
-            self.root.after(0, lambda: self._log_field_result("=" * 60))
-            self.root.after(0, lambda: self._log_field_result("提取完成!"))
-            self.root.after(0, lambda: self._log_field_result("=" * 60))
-            self.root.after(0, lambda: self._log_field_result(f"扫描文件数: {stats['total_files']}"))
-            self.root.after(0, lambda: self._log_field_result(f"工作表数: {stats['total_sheets']}"))
-            self.root.after(0, lambda: self._log_field_result(f"提取字段数: {stats['total_fields']}"))
-            self.root.after(0, lambda: self._log_field_result(f"输出文件: {stats['output_file']}"))
-            self.root.after(0, lambda: self._log_field_result(""))
+            self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "提取完成!\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"扫描文件数: {stats['total_files']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"工作表数: {stats['total_sheets']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"提取字段数: {stats['total_fields']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"输出文件: {stats['output_file']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
             
             # 如果是JSON格式，显示JSON预览
             if self.field_output_format_var.get() == 'json' and self.field_extraction_results:
-                self.root.after(0, lambda: self._log_field_result("JSON结果预览:"))
-                self.root.after(0, lambda: self._log_field_result("-" * 60))
+                self.root.after(0, lambda: self.append_result('field_extractor', "JSON结果预览:\n"))
+                self.root.after(0, lambda: self.append_result('field_extractor', "-" * 60 + "\n"))
                 import json
                 json_data = [{
                     "table_name": r['excel_file'],
@@ -2087,9 +2039,9 @@ class GameToolsUnified:
                     "field_count": r['field_count']
                 } for r in self.field_extraction_results]
                 json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
-                self.root.after(0, lambda: self._log_field_result(json_str))
-                self.root.after(0, lambda: self._log_field_result("-" * 60))
-                self.root.after(0, lambda: self._log_field_result(""))
+                self.root.after(0, lambda: self.append_result('field_extractor', json_str + "\n"))
+                self.root.after(0, lambda: self.append_result('field_extractor', "-" * 60 + "\n"))
+                self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
             
             # 显示完成消息
             self.root.after(0, lambda: self.status_var.set("字段提取完成"))
@@ -2105,8 +2057,8 @@ class GameToolsUnified:
         except Exception as e:
             import traceback
             error_msg = traceback.format_exc()
-            self.root.after(0, lambda: self._log_field_result(f"\n错误: {str(e)}"))
-            self.root.after(0, lambda: self._log_field_result(error_msg))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"\n错误: {str(e)}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', error_msg + "\n"))
             self.root.after(0, lambda: self.status_var.set("字段提取失败"))
             self.root.after(0, lambda: messagebox.showerror("错误", f"处理失败:\n{str(e)}"))
         
@@ -2115,13 +2067,11 @@ class GameToolsUnified:
     
     def _log_field_result(self, message):
         """记录字段提取结果"""
-        self.field_results_text.insert(tk.END, message + "\n")
-        self.field_results_text.see(tk.END)
+        self.append_result('field_extractor', message + "\n")
     
     def clear_field_results(self):
         """清空字段提取结果"""
-        self.field_results_text.delete(1.0, tk.END)
-        self.results_storage['field_extractor'] = ''
+        self.clear_result('field_extractor')
         self.field_extraction_results = None
         # 清除提取器的日志
         self.field_extractor.clear_logs()
@@ -2757,8 +2707,6 @@ ID列: {id_col}
     def clear_batch_results(self):
         """清空批量改表结果"""
         self.clear_result('batch_modifier')
-        if hasattr(self, 'batch_results_text'):
-            self.batch_results_text.delete(1.0, tk.END)
     
     def preview_batch_json_config(self):
         """预览JSON配置内容"""
@@ -2891,8 +2839,7 @@ ID列: {id_col}
     
     def clear_sync_results(self):
         """清空同步结果"""
-        self.sync_results_text.delete(1.0, tk.END)
-        self.results_storage['config_sync'] = ''
+        self.clear_result('config_sync')
     
     def preview_sync_filter_config(self):
         """预览过滤配置"""
