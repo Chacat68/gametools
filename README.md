@@ -34,14 +34,14 @@ gametools/
 ├── core/                    # 核心功能模块
 │   ├── cache_manager.py     # 缓存管理系统
 │   ├── cross_project_translator_cached.py  # 增强版翻译工具（支持缓存）
-│   ├── localization_checker.py
+│   ├── excel_field_extractor.py  # 表字段导出器
+│   ├── table_range_translator.py # 多语言翻译提取器
+│   ├── batch_excel_modifier.py   # 批量Excel修改器
 │   └── requirements.txt
 ├── tools/                   # 工具脚本和模块
 │   ├── json_format_detector/ # JSON格式检测工具（命令行版）
-│   ├── demo.py              # 演示脚本
-│   ├── quick_start.py       # 快速启动脚本
-│   ├── run.bat              # 命令行启动脚本
-│   └── start_gui.bat        # GUI启动脚本
+│   ├── excel_data_processor.py  # Excel数据处理工具
+│   └── demo.py              # 演示脚本
 ├── gui/                     # GUI和打包相关文件 (Tkinter版本)
 │   ├── gametools_unified.py # 统一界面主程序
 │   ├── json_format_detector_gui.py # JSON检测GUI
@@ -66,31 +66,15 @@ gametools/
 │   ├── CACHE_IMPLEMENTATION.md # 缓存实现说明
 │   └── ...                  # 其他文档
 ├── dist/                    # 输出文件目录
-├── gametool.py             # 主程序
 └── README.md               # 项目说明
 ```
 
 ## 功能特点
 
 ### 🎯 统一界面
-- **多页签设计**: 将两个功能模块整合在一个界面中
+- **多页签设计**: 将多个功能模块整合在一个界面中
 - **现代化UI**: 基于tkinter的现代化图形界面
 - **操作简单**: 直观的界面设计，易于使用
-
-### 📊 越南文检测
-- **批量扫描**: 检测目录下所有表格文件中的越南文
-- **精确定位**: 单文件详细分析，定位越南文位置
-- **递归扫描**: 支持扫描子目录
-- **多格式支持**: Excel (.xlsx, .xls) 和 CSV (.csv, .tsv)
-- **结果导出**: 将检测结果导出到Excel文件
-- **演示功能**: 一键创建测试文件
-
-### 📊 Excel扫描导出
-- **全文件夹扫描**: 扫描整个文件夹下的所有Excel文件
-- **越南文检测**: 检测Excel文件中的越南文文本
-- **位置定位**: 精确定位越南文在表格中的行列位置
-- **结果导出**: 将检测结果导出到Excel文件
-- **详细报告**: 包含文件名、工作表名、行列位置、内容等详细信息
 
 ### 📋 JSON错误检测工具
 - **语法错误检测**: 检测尾随逗号、单引号、注释等JSON标准不允许的语法

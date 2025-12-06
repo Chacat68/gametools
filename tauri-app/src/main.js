@@ -2,13 +2,12 @@ import { invoke } from '@tauri-apps/api/tauri';
 import { open } from '@tauri-apps/api/dialog';
 
 // 状态管理
-let currentTab = 'vietnamese';
+let currentTab = 'json';
 const langDirs = [];
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
   initializeNavigation();
-  initializeVietnameseTab();
   initializeJsonTab();
   initializeExcelTab();
   initializeFieldExtractTab();
@@ -59,69 +58,6 @@ function showResult(elementId, text) {
 function clearResult(elementId) {
   const resultBox = document.getElementById(elementId);
   resultBox.textContent = '';
-}
-
-// ==================== 越南文检测页签 ====================
-function initializeVietnameseTab() {
-  // 浏览目录
-  document.getElementById('vn-browse-dir').addEventListener('click', async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: '选择扫描目录'
-    });
-    if (selected) {
-      document.getElementById('vn-directory').value = selected;
-    }
-  });
-
-  // 浏览输出文件
-  document.getElementById('vn-browse-output').addEventListener('click', async () => {
-    const selected = await open({
-      filters: [{
-        name: 'Excel',
-        extensions: ['xlsx']
-      }],
-      title: '选择输出文件'
-    });
-    if (selected) {
-      document.getElementById('vn-output').value = selected;
-    }
-  });
-
-  // 开始扫描
-  document.getElementById('vn-start').addEventListener('click', async () => {
-    const directory = document.getElementById('vn-directory').value;
-    const output = document.getElementById('vn-output').value;
-    const recursive = document.getElementById('vn-recursive').checked;
-
-    if (!directory || !output) {
-      alert('请选择扫描目录和输出文件');
-      return;
-    }
-
-    updateStatus('正在扫描越南文...');
-    clearResult('vn-result');
-    showResult('vn-result', '开始扫描越南文内容...\n');
-
-    try {
-      const result = await invoke('run_vietnamese_scanner', {
-        directory,
-        output,
-        recursive
-      });
-      showResult('vn-result', result);
-      updateStatus('扫描完成');
-    } catch (error) {
-      showResult('vn-result', `错误: ${error}`);
-      updateStatus('扫描失败');
-    }
-  });
-
-  // 清空结果
-  document.getElementById('vn-clear').addEventListener('click', () => {
-    clearResult('vn-result');
-  });
 }
 
 // ==================== JSON检测页签 ====================

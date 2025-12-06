@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 gametools - 统一用户界面
-集成越南文检测和JSON格式检测工具
+集成JSON格式检测和Excel处理工具
 """
 
 import tkinter as tk
@@ -21,9 +21,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # 添加模块路径
 sys.path.append(str(Path(__file__).parent.parent))
 
-from core.localization_checker import LocalizationChecker
-from core.excel_vietnamese_scanner import ExcelVietnameseScanner
-from core.vietnamese_excel_processor import VietnameseExcelProcessor
 from core.cross_project_translator import CrossProjectTranslator
 from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator
@@ -57,9 +54,6 @@ class GameToolsUnified:
         self.create_widgets()
         
         # 初始化检测器
-        self.localization_checker = LocalizationChecker()
-        self.excel_scanner = ExcelVietnameseScanner()
-        self.vietnamese_processor = VietnameseExcelProcessor()
         self.cross_project_translator = CrossProjectTranslator()
         self.json_detector = JSONErrorDetector()
         self.excel_processor = ExcelDataProcessor()
@@ -74,8 +68,7 @@ class GameToolsUnified:
         
         # 结果存储字典
         self.results_storage = {
-            'vietnamese_processor': '',
-            'cross_project_translator': '',
+            'cross_project_translator': ',
             'json_detector': '',
             'excel_processor': '',
             'field_extractor': '',
@@ -133,7 +126,6 @@ class GameToolsUnified:
         self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
         
         # 创建各个功能页签
-        self.create_vietnamese_processor_tab()
         self.create_cross_project_translator_tab()
         self.create_json_detector_tab()
         self.create_excel_data_processor_tab()
@@ -149,116 +141,6 @@ class GameToolsUnified:
         status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
                               relief=tk.SUNKEN, anchor=tk.W, padding="3")
         status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(2, 0))
-    
-    def create_vietnamese_processor_tab(self):
-        """创建越南文检测和导出页签"""
-        # 越南文处理器框架
-        processor_frame = ttk.Frame(self.notebook, padding="15")
-        self.notebook.add(processor_frame, text="越南文检测导出")
-        
-        # 配置网格
-        processor_frame.columnconfigure(0, weight=1)
-        processor_frame.rowconfigure(2, weight=1)
-        
-        # 标题和描述
-        header_frame = ttk.Frame(processor_frame)
-        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
-        header_frame.columnconfigure(0, weight=1)
-        
-        title_label = ttk.Label(header_frame, text="越南文检测和导出工具", 
-                               style='Heading.TLabel')
-        title_label.grid(row=0, column=0, pady=(0, 5))
-        
-        desc_label = ttk.Label(header_frame, text="检测Excel和CSV文件中的越南文内容，并导出详细结果到Excel文件", 
-                              style='Info.TLabel')
-        desc_label.grid(row=1, column=0)
-        
-        # 控制面板
-        control_frame = ttk.Frame(processor_frame)
-        control_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 15))
-        control_frame.columnconfigure(0, weight=1)
-        
-        # 目录选择区域
-        dir_frame = ttk.LabelFrame(control_frame, text="扫描设置", padding="12")
-        dir_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        dir_frame.columnconfigure(1, weight=1)
-        
-        # 扫描目录
-        ttk.Label(dir_frame, text="扫描目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.vp_scan_dir_var = tk.StringVar()
-        self.vp_scan_dir_entry = ttk.Entry(dir_frame, textvariable=self.vp_scan_dir_var, 
-                                          font=("Microsoft YaHei", 9))
-        self.vp_scan_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
-        
-        self.vp_scan_browse_button = ttk.Button(dir_frame, text="浏览目录", 
-                                               command=self.browse_vp_scan_directory)
-        self.vp_scan_browse_button.grid(row=0, column=2, pady=(0, 5))
-        
-        # 输出文件夹
-        ttk.Label(dir_frame, text="输出文件夹:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
-        self.vp_output_folder_var = tk.StringVar()
-        self.vp_output_folder_entry = ttk.Entry(dir_frame, textvariable=self.vp_output_folder_var, 
-                                               font=("Microsoft YaHei", 9))
-        self.vp_output_folder_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(5, 0))
-        
-        self.vp_output_browse_button = ttk.Button(dir_frame, text="选择输出文件夹", 
-                                                 command=self.browse_vp_output_folder)
-        self.vp_output_browse_button.grid(row=1, column=2, pady=(5, 0))
-        
-        # 选项设置区域
-        options_frame = ttk.LabelFrame(control_frame, text="处理选项", padding="12")
-        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        
-        # 递归扫描选项
-        self.vp_recursive_var = tk.BooleanVar(value=False)
-        self.vp_recursive_check = ttk.Checkbutton(options_frame, text="递归扫描子目录", 
-                                                 variable=self.vp_recursive_var)
-        self.vp_recursive_check.grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
-        
-        # 输出文件选项
-        output_options_frame = ttk.Frame(options_frame)
-        output_options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
-        
-        self.vp_create_excel_var = tk.BooleanVar(value=True)
-        self.vp_create_excel_check = ttk.Checkbutton(output_options_frame, text="创建Excel结果文件", 
-                                                    variable=self.vp_create_excel_var)
-        self.vp_create_excel_check.pack(side=tk.LEFT)
-        
-        # 操作按钮区域
-        button_frame = ttk.Frame(control_frame)
-        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        
-        # 主要操作按钮
-        self.vp_process_button = ttk.Button(button_frame, text="🔍 开始检测导出", 
-                                           command=self.start_vietnamese_processing, 
-                                           style='Accent.TButton')
-        self.vp_process_button.pack(side=tk.LEFT, padx=(0, 8))
-        
-        # 辅助操作按钮
-        self.vp_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
-                                         command=self.clear_vp_results)
-        self.vp_clear_button.pack(side=tk.LEFT, padx=(0, 8))
-        
-        self.vp_demo_button = ttk.Button(button_frame, text="📁 创建演示文件", 
-                                        command=self.create_demo_files)
-        self.vp_demo_button.pack(side=tk.LEFT, padx=(0, 8))
-        
-        # 查看结果按钮
-        self.vp_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
-                                                command=lambda: self.show_results_dialog('vietnamese_processor'))
-        self.vp_view_results_button.pack(side=tk.LEFT)
-        
-        # 进度条
-        progress_frame = ttk.Frame(control_frame)
-        progress_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
-        progress_frame.columnconfigure(0, weight=1)
-        
-        self.vp_progress_var = tk.StringVar(value="就绪")
-        self.vp_progress_label = ttk.Label(progress_frame, textvariable=self.vp_progress_var)
-        self.vp_progress_label.grid(row=0, column=0, sticky=tk.W)
-        
-        self.vp_progress_bar = ttk.Progressbar(progress_frame, mode='indeterminate')
-        self.vp_progress_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
     
     def create_cross_project_translator_tab(self):
         """创建跨项目翻译对应页签"""
@@ -1332,10 +1214,7 @@ class GameToolsUnified:
         left_frame = ttk.LabelFrame(content_frame, text="功能模块", padding="15")
         left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         
-        features_text = f"""🔍 越南文检测导出
-   检测Excel和CSV文件中的越南文内容并导出详细结果
-
-📊 JSON格式检测工具  
+        features_text = f"""📊 JSON格式检测工具  
    检测JSON文件中text字段的格式一致性
 
 📈 Excel数据处理工具
@@ -1457,7 +1336,6 @@ class GameToolsUnified:
         
         # 结果标题映射
         title_map = {
-            'vietnamese_processor': '越南文检测结果',
             'cross_project_translator': '跨项目翻译对应结果',
             'json_detector': 'JSON错误检测结果',
             'excel_processor': 'Excel数据处理结果',
@@ -1528,150 +1406,6 @@ class GameToolsUnified:
         # 设置对话框为模态
         dialog.transient(self.root)
         dialog.grab_set()
-    
-    # 越南文处理器相关方法
-    def browse_vp_scan_directory(self):
-        """浏览越南文处理器扫描目录"""
-        directory = filedialog.askdirectory(title="选择要扫描的目录")
-        if directory:
-            self.vp_scan_dir_var.set(directory)
-            # 自动设置输出文件夹为扫描目录下的子文件夹
-            if not self.vp_output_folder_var.get():
-                output_folder = os.path.join(directory, "越南文检测结果")
-                self.vp_output_folder_var.set(output_folder)
-    
-    def browse_vp_output_folder(self):
-        """浏览越南文处理器输出文件夹"""
-        folder = filedialog.askdirectory(title="选择输出文件夹")
-        if folder:
-            self.vp_output_folder_var.set(folder)
-    
-    def start_vietnamese_processing(self):
-        """开始越南文处理"""
-        scan_dir = self.vp_scan_dir_var.get().strip()
-        output_folder = self.vp_output_folder_var.get().strip()
-        
-        if not scan_dir:
-            messagebox.showerror("错误", "请选择要扫描的目录")
-            return
-        
-        if not output_folder:
-            messagebox.showerror("错误", "请选择输出文件夹")
-            return
-        
-        if not os.path.exists(scan_dir):
-            messagebox.showerror("错误", "扫描目录不存在")
-            return
-        
-        # 在新线程中执行处理
-        self.vp_process_button.config(state="disabled")
-        self.vp_progress_bar.start()
-        self.vp_progress_var.set("正在处理...")
-        self.status_var.set("正在处理越南文检测...")
-        
-        thread = threading.Thread(target=self._vietnamese_processing_thread, 
-                                 args=(scan_dir, output_folder))
-        thread.daemon = True
-        thread.start()
-    
-    def _vietnamese_processing_thread(self, scan_dir, output_folder):
-        """越南文处理线程"""
-        try:
-            # 清空结果
-            self.root.after(0, self.clear_vp_results)
-            
-            # 开始处理
-            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
-                f"开始扫描目录: {scan_dir}\n"))
-            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
-                f"输出文件夹: {output_folder}\n"))
-            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
-                f"递归扫描: {'是' if self.vp_recursive_var.get() else '否'}\n"))
-            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
-                "支持的格式: .xlsx, .xls, .csv, .tsv\n"))
-            self.root.after(0, lambda: self.append_result('vietnamese_processor', 
-                "-" * 50 + "\n"))
-            
-            # 执行处理
-            stats = self.vietnamese_processor.process_directory(
-                directory_path=scan_dir,
-                output_folder=output_folder,
-                recursive=self.vp_recursive_var.get(),
-                create_excel=self.vp_create_excel_var.get(),
-                create_report=False
-            )
-            
-            # 显示结果
-            self.root.after(0, self._show_vp_result, stats)
-            
-        except Exception as e:
-            error_msg = f"处理过程中发生错误: {str(e)}"
-            self.root.after(0, self._show_vp_error, error_msg)
-        finally:
-            # 恢复界面状态
-            self.root.after(0, self._vp_finished)
-    
-    def _show_vp_result(self, stats):
-        """显示越南文处理结果"""
-        self.append_result('vietnamese_processor', "\n" + "=" * 50 + "\n")
-        self.append_result('vietnamese_processor', "处理完成！\n")
-        self.append_result('vietnamese_processor', "=" * 50 + "\n")
-        self.append_result('vietnamese_processor', f"扫描的文件总数: {stats['total_files_scanned']}\n")
-        self.append_result('vietnamese_processor', f"包含越南文的文件数: {stats['files_with_vietnamese']}\n")
-        self.append_result('vietnamese_processor', f"越南文位置总数: {stats['total_vietnamese_locations']}\n")
-        
-        if stats['output_files']:
-            self.append_result('vietnamese_processor', "\n✓ 输出文件创建成功！\n")
-            self.append_result('vietnamese_processor', "生成的文件:\n")
-            for output_file in stats['output_files']:
-                self.append_result('vietnamese_processor', f"  - {output_file}\n")
-        else:
-            self.append_result('vietnamese_processor', "\n✗ 未找到越南文内容，未创建输出文件\n")
-        
-        # 显示成功消息
-        if stats['output_files']:
-            messagebox.showinfo("成功", f"越南文检测完成！\n找到 {stats['total_vietnamese_locations']} 个越南文位置\n已生成 {len(stats['output_files'])} 个输出文件")
-        else:
-            messagebox.showinfo("完成", "扫描完成，未发现越南文内容")
-    
-    def _show_vp_error(self, error_msg):
-        """显示越南文处理错误"""
-        self.append_result('vietnamese_processor', "\n" + "=" * 50 + "\n")
-        self.append_result('vietnamese_processor', f"错误: {error_msg}\n")
-        self.append_result('vietnamese_processor', "=" * 50 + "\n")
-        messagebox.showerror("错误", error_msg)
-    
-    def _vp_finished(self):
-        """越南文处理完成后的界面恢复"""
-        self.vp_process_button.config(state="normal")
-        self.vp_progress_bar.stop()
-        self.vp_progress_var.set("处理完成")
-        self.status_var.set("就绪")
-    
-    def clear_vp_results(self):
-        """清空越南文处理结果"""
-        self.clear_result('vietnamese_processor')
-        self.vp_progress_var.set("就绪")
-    
-    def create_demo_files(self):
-        """创建演示文件"""
-        try:
-            # 运行演示脚本
-            result = subprocess.run([sys.executable, "tools/demo.py"], 
-                                  capture_output=True, text=True, encoding='utf-8')
-            
-            if result.returncode == 0:
-                self.append_result('vietnamese_processor', "演示文件创建成功！\n")
-                self.append_result('vietnamese_processor', "文件位置: demo_tables/\n")
-                self.append_result('vietnamese_processor', "现在可以使用批量扫描功能测试这些文件。\n")
-                self.status_var.set("演示文件创建成功")
-                messagebox.showinfo("成功", "演示文件创建成功！\n文件位置: demo_tables/")
-            else:
-                self.append_result('vietnamese_processor', f"创建演示文件失败: {result.stderr}\n")
-                self.status_var.set("演示文件创建失败")
-        except Exception as e:
-            self.append_result('vietnamese_processor', f"创建演示文件时发生错误: {str(e)}\n")
-            self.status_var.set("演示文件创建失败")
     
     # JSON格式检测工具相关方法
     def browse_json_folder(self):

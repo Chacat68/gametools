@@ -4,29 +4,6 @@
 use std::process::Command;
 use tauri::Manager;
 
-// Tauri命令：调用Python脚本执行越南文检测
-#[tauri::command]
-fn run_vietnamese_scanner(directory: String, output: String, recursive: bool) -> Result<String, String> {
-    let python_exe = if cfg!(windows) { "python" } else { "python3" };
-    
-    let mut cmd = Command::new(python_exe);
-    cmd.arg("../core/vietnamese_excel_processor.py")
-        .arg(&directory)
-        .arg(&output)
-        .arg(if recursive { "--recursive" } else { "--no-recursive" });
-    
-    match cmd.output() {
-        Ok(output) => {
-            if output.status.success() {
-                Ok(String::from_utf8_lossy(&output.stdout).to_string())
-            } else {
-                Err(String::from_utf8_lossy(&output.stderr).to_string())
-            }
-        }
-        Err(e) => Err(format!("执行失败: {}", e)),
-    }
-}
-
 // Tauri命令：调用JSON格式检测
 #[tauri::command]
 fn run_json_detector(path: String) -> Result<String, String> {
@@ -127,7 +104,6 @@ fn run_translation_extractor(json_config: String, lang_dirs: Vec<String>, output
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
-            run_vietnamese_scanner,
             run_json_detector,
             run_excel_processor,
             run_field_extractor,

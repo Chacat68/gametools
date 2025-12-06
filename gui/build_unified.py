@@ -108,7 +108,6 @@ a = Analysis(
         'tkinter.messagebox',
         'tkinter.scrolledtext',
         'tools.excel_data_processor',
-        'core.localization_checker',
         'core.table_range_translator',
         'core.excel_field_extractor',
         'core.batch_excel_modifier',

@@ -1,19 +1,18 @@
 # GameTools AI 助手指导文档
 
-这是一个用于游戏开发的工具集，主要用于检测和处理越南语本地化内容。本指导文档将帮助 AI 助手理解项目架构和工作流程。
+这是一个用于游戏开发的工具集，主要用于处理Excel本地化内容和JSON格式检测。本指导文档将帮助 AI 助手理解项目架构和工作流程。
 
 ## 核心架构
 
 项目由以下主要组件构成：
 
 ### 核心模块 (`core/`)
-- `localization_checker.py`: 越南语检测的核心逻辑
-- `excel_vietnamese_scanner.py`: Excel 文件扫描引擎
-- `vietnamese_excel_processor.py`: Excel 处理器，整合了检测和导出功能
 - `excel_field_extractor.py`: 表字段导出器
 - `table_range_translator.py`: 多语言翻译提取器
 - `batch_excel_modifier.py`: 批量Excel修改器
 - `excel_config_sync.py`: Excel配置同步器
+- `cross_project_translator.py`: 跨项目翻译工具
+- `excel_sheet_splitter.py`: Excel工作表拆分器
 
 ### 工具模块 (`tools/`)
 - Excel 数据处理工具
@@ -26,20 +25,7 @@
 
 ## 关键工作流
 
-### 1. 越南语检测流程
-
-```python
-from core.vietnamese_excel_processor import VietnameseExcelProcessor
-
-processor = VietnameseExcelProcessor()
-stats = processor.process_directory(
-    directory_path="input_folder",
-    output_folder="output_folder",
-    recursive=True
-)
-```
-
-### 2. 批量改表流程
+### 1. 批量改表流程
 
 ```python
 from core.batch_excel_modifier import BatchExcelModifier
@@ -88,31 +74,6 @@ syncer.generate_sync_report("sync_report.xlsx")
 ### 4. 文件格式支持
 - Excel 文件: `.xlsx`, `.xls`
 - CSV 文件: `.csv`, `.tsv`
-
-## 项目特定约定
-
-1. 文本类型分类：
-   - "中文"
-   - "越南文"
-   - "中越混合"
-   - "中英混合"
-   - "越英混合"
-   - "其他"
-
-2. 结果输出格式：
-   ```python
-   {
-       'excel_file': str,      # 文件名
-       'sheet_name': str,      # 工作表名
-       'row': int,            # 行号
-       'col': int,            # 列号
-       'column_name': str,    # 列名
-       'content': str,        # 内容
-       'language_type': str,  # 语言类型
-       'position': str,       # Excel 位置引用 (例如 "A1")
-       'file_path': str       # 完整文件路径
-   }
-   ```
 
 ## 关键文件和目录
 
