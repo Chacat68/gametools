@@ -1185,16 +1185,37 @@ class GameToolsUnified:
                              foreground='gray')
         json_hint.grid(row=4, column=1, sticky=tk.W, pady=(0, 5))
         
+        # 字段过滤配置文件（可选）
+        ttk.Label(dir_frame, text="过滤配置:").grid(row=5, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.sync_filter_var = tk.StringVar()
+        self.sync_filter_entry = ttk.Entry(dir_frame, textvariable=self.sync_filter_var, 
+                                          font=("Microsoft YaHei", 9))
+        self.sync_filter_entry.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        filter_btn_frame = ttk.Frame(dir_frame)
+        filter_btn_frame.grid(row=5, column=2, pady=(0, 8))
+        self.sync_filter_browse_button = ttk.Button(filter_btn_frame, text="浏览JSON", 
+                                                   command=self.browse_sync_filter_file)
+        self.sync_filter_browse_button.pack(side=tk.LEFT, padx=(0, 5))
+        self.sync_filter_preview_button = ttk.Button(filter_btn_frame, text="预览", 
+                                                    command=self.preview_sync_filter_config)
+        self.sync_filter_preview_button.pack(side=tk.LEFT)
+        
+        # 过滤提示信息
+        filter_hint = ttk.Label(dir_frame, text="(可选，指定要跳过同步的字段)", 
+                               foreground='gray')
+        filter_hint.grid(row=6, column=1, sticky=tk.W, pady=(0, 5))
+        
         # 报告文件
-        ttk.Label(dir_frame, text="报告文件:").grid(row=5, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(dir_frame, text="报告文件:").grid(row=7, column=0, sticky=tk.W, padx=(0, 10))
         self.sync_report_var = tk.StringVar()
         self.sync_report_entry = ttk.Entry(dir_frame, textvariable=self.sync_report_var, 
                                           font=("Microsoft YaHei", 9))
-        self.sync_report_entry.grid(row=5, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.sync_report_entry.grid(row=7, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         
         self.sync_report_browse_button = ttk.Button(dir_frame, text="选择位置", 
                                                    command=self.browse_sync_report_file)
-        self.sync_report_browse_button.grid(row=5, column=2)
+        self.sync_report_browse_button.grid(row=7, column=2)
         
         # 选项设置区域
         options_frame = ttk.LabelFrame(control_frame, text="同步选项", padding="12")
@@ -1235,7 +1256,8 @@ class GameToolsUnified:
   1. 选择源目录 - 包含配置模板的Excel文件
   2. 选择目标目录1和目标目录2 - 需要同步配置的Excel文件目录
   3. 可选择JSON配置文件（仅用于参考，不会被修改）
-  4. 程序会将源目录中Excel文件的内容同步到目标目录中的同名文件"""
+  4. 可选择过滤配置文件 - 指定要跳过同步的字段
+  5. 程序会将源目录中Excel文件的内容同步到目标目录中的同名文件"""
         
         info_label = ttk.Label(options_frame, text=info_text, 
                               font=("Microsoft YaHei", 9), 
@@ -3114,6 +3136,15 @@ ID列: {id_col}
         if file_path:
             self.sync_json_var.set(file_path)
     
+    def browse_sync_filter_file(self):
+        """浏览字段过滤配置文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择字段过滤配置文件",
+            filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.sync_filter_var.set(file_path)
+    
     def browse_sync_report_file(self):
         """浏览报告输出位置"""
         file_path = filedialog.asksaveasfilename(
@@ -3128,6 +3159,81 @@ ID列: {id_col}
         """清空同步结果"""
         self.sync_results_text.delete(1.0, tk.END)
         self.results_storage['config_sync'] = ''
+    
+    def preview_sync_filter_config(self):
+        """预览过滤配置"""
+        filter_file = self.sync_filter_var.get().strip()
+        
+        if not filter_file:
+            messagebox.showwarning("提示", "请先选择过滤配置文件")
+            return
+        
+        if not os.path.exists(filter_file):
+            messagebox.showerror("错误", "过滤配置文件不存在")
+            return
+        
+        try:
+            with open(filter_file, 'r', encoding='utf-8') as f:
+                filter_config = json.load(f)
+            
+            # 解析过滤配置
+            skip_fields = {}
+            
+            if 'skip_fields' in filter_config:
+                skip_fields = filter_config['skip_fields']
+            elif 'text_tables' in filter_config:
+                for table_info in filter_config['text_tables']:
+                    table_name = table_info.get('table_name', '')
+                    fields = table_info.get('skip_fields', [])
+                    if table_name and fields:
+                        skip_fields[table_name] = fields
+            
+            # 生成预览内容
+            preview_lines = []
+            preview_lines.append("=" * 60)
+            preview_lines.append("字段过滤配置预览")
+            preview_lines.append("=" * 60)
+            preview_lines.append(f"\n配置文件: {os.path.basename(filter_file)}")
+            preview_lines.append(f"包含表数: {len(skip_fields)}")
+            preview_lines.append("\n" + "-" * 60)
+            preview_lines.append("过滤详情:")
+            preview_lines.append("-" * 60)
+            
+            if skip_fields:
+                for table_name, fields in skip_fields.items():
+                    preview_lines.append(f"\n📄 {table_name}")
+                    preview_lines.append(f"   跳过字段 ({len(fields)}): {', '.join(fields)}")
+            else:
+                preview_lines.append("\n⚠️ 没有配置过滤字段")
+            
+            # 创建预览窗口
+            preview_window = tk.Toplevel(self.root)
+            preview_window.title("过滤配置预览")
+            preview_window.geometry("700x500")
+            
+            # 文本框
+            text_frame = ttk.Frame(preview_window)
+            text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            text_widget = tk.Text(text_frame, wrap=tk.WORD, font=("Consolas", 10))
+            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+            
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            
+            text_widget.insert(1.0, "\n".join(preview_lines))
+            text_widget.config(state='disabled')
+            
+            # 关闭按钮
+            close_btn = ttk.Button(preview_window, text="关闭", 
+                                  command=preview_window.destroy)
+            close_btn.pack(pady=10)
+            
+        except json.JSONDecodeError as e:
+            messagebox.showerror("错误", f"JSON解析错误: {str(e)}")
+        except Exception as e:
+            messagebox.showerror("错误", f"读取配置失败: {str(e)}")
     
     def preview_sync_matching(self):
         """预览匹配的文件"""
@@ -3214,6 +3320,7 @@ ID列: {id_col}
         target1_dir = self.sync_target1_dir_var.get().strip()
         target2_dir = self.sync_target2_dir_var.get().strip()
         json_file = self.sync_json_var.get().strip()
+        filter_file = self.sync_filter_var.get().strip()
         report_file = self.sync_report_var.get().strip()
         
         # 验证参数
@@ -3245,6 +3352,7 @@ ID列: {id_col}
 目标目录1: {target1_dir or '(未选择)'}
 目标目录2: {target2_dir or '(未选择)'}
 JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
+过滤配置: {os.path.basename(filter_file) if filter_file else '(未选择)'}
 
 同步选项:
 - 备份: {'是' if self.sync_backup_var.get() else '否'}
@@ -3262,12 +3370,12 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
         
         thread = threading.Thread(target=self._config_sync_thread, 
                                  args=(source_dir, target1_dir, target2_dir, 
-                                       json_file, report_file))
+                                       json_file, filter_file, report_file))
         thread.daemon = True
         thread.start()
     
     def _config_sync_thread(self, source_dir, target1_dir, target2_dir, 
-                           json_file, report_file):
+                           json_file, filter_file, report_file):
         """配置同步处理线程"""
         try:
             # 清空结果
@@ -3289,6 +3397,9 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
             if json_file:
                 self.root.after(0, lambda: self.append_result('config_sync', 
                     f"JSON配置: {json_file}\n"))
+            if filter_file:
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    f"过滤配置: {filter_file}\n"))
             self.root.after(0, lambda: self.append_result('config_sync', "\n"))
             
             # 设置同步选项
@@ -3311,6 +3422,15 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
                 self.config_sync.load_json_config(json_file)
                 self.root.after(0, lambda: self.append_result('config_sync', 
                     "✓ JSON配置已加载\n\n"))
+            
+            # 加载过滤配置（如果有）
+            if filter_file and os.path.exists(filter_file):
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    "正在加载过滤配置...\n"))
+                self.config_sync.load_filter_config(filter_file)
+                skip_count = len(self.config_sync.skip_fields)
+                self.root.after(0, lambda: self.append_result('config_sync', 
+                    f"✓ 过滤配置已加载，包含 {skip_count} 个表的过滤规则\n\n"))
             
             # 执行同步
             stats = self.config_sync.sync_directories(

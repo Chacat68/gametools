@@ -48,6 +48,11 @@ class ExcelConfigSync:
         self.json_config = {}
         self.json_path = ""
         
+        # 字段过滤配置
+        self.filter_config = {}
+        self.filter_path = ""
+        self.skip_fields = {}  # {表名: [字段名列表]}
+        
         # 进度回调
         self.progress_callback = None
         
@@ -80,6 +85,7 @@ class ExcelConfigSync:
             'target1_skipped': 0,
             'target2_skipped': 0,
             'total_cells_synced': 0,
+            'total_cells_skipped': 0,
             'errors': 0
         }
         self.sync_logs = []
@@ -106,6 +112,88 @@ class ExcelConfigSync:
             logger.error(error_msg)
             self.error_logs.append(error_msg)
             return {}
+    
+    def load_filter_config(self, filter_path: str) -> Dict:
+        """
+        加载字段过滤配置文件
+        
+        配置格式示例：
+        {
+            "skip_fields": {
+                "table1.xlsx": ["field1", "field2"],
+                "table2.xlsx": ["field3"]
+            }
+        }
+        
+        或者:
+        {
+            "text_tables": [
+                {
+                    "table_name": "table1.xlsx",
+                    "skip_fields": ["field1", "field2"]
+                }
+            ]
+        }
+        
+        Args:
+            filter_path: 过滤配置文件路径
+            
+        Returns:
+            Dict: 过滤配置内容
+        """
+        try:
+            with open(filter_path, 'r', encoding='utf-8') as f:
+                self.filter_config = json.load(f)
+            self.filter_path = filter_path
+            
+            # 解析过滤配置
+            self.skip_fields = {}
+            
+            # 格式1: 直接的 skip_fields 字典
+            if 'skip_fields' in self.filter_config:
+                self.skip_fields = self.filter_config['skip_fields']
+            
+            # 格式2: text_tables 数组格式
+            elif 'text_tables' in self.filter_config:
+                for table_info in self.filter_config['text_tables']:
+                    table_name = table_info.get('table_name', '')
+                    skip_fields = table_info.get('skip_fields', [])
+                    if table_name and skip_fields:
+                        self.skip_fields[table_name] = skip_fields
+                        # 同时支持不带扩展名的表名
+                        table_key = Path(table_name).stem
+                        self.skip_fields[table_key] = skip_fields
+            
+            logger.info(f"成功加载过滤配置: {filter_path}")
+            logger.info(f"  - 包含 {len(self.skip_fields)} 个表的过滤字段配置")
+            return self.filter_config
+        
+        except Exception as e:
+            error_msg = f"加载过滤配置失败: {e}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
+    
+    def get_skip_fields_for_table(self, table_name: str) -> List[str]:
+        """
+        获取指定表需要跳过的字段列表
+        
+        Args:
+            table_name: 表名（可以带或不带扩展名）
+            
+        Returns:
+            List[str]: 需要跳过的字段名列表
+        """
+        # 尝试直接匹配
+        if table_name in self.skip_fields:
+            return self.skip_fields[table_name]
+        
+        # 尝试不带扩展名匹配
+        table_key = Path(table_name).stem
+        if table_key in self.skip_fields:
+            return self.skip_fields[table_key]
+        
+        return []
     
     def get_excel_files(self, directory: str) -> List[str]:
         """
@@ -194,6 +282,10 @@ class ExcelConfigSync:
             else:
                 sheets_to_sync = [s for s in sync_sheets if s in source_wb.sheetnames]
             
+            # 获取该表的过滤字段
+            table_name = os.path.basename(source_path)
+            skip_fields = self.get_skip_fields_for_table(table_name)
+            
             for sheet_name in sheets_to_sync:
                 if sheet_name not in target_wb.sheetnames:
                     # 目标文件中没有该工作表，跳过
@@ -202,11 +294,28 @@ class ExcelConfigSync:
                 source_ws = source_wb[sheet_name]
                 target_ws = target_wb[sheet_name]
                 
+                # 如果有过滤字段，构建字段行到列索引的映射
+                skip_cols = set()
+                if skip_fields:
+                    # 假设字段名在第5行（可配置）
+                    field_row = 5
+                    for col in range(1, source_ws.max_column + 1):
+                        cell_value = source_ws.cell(row=field_row, column=col).value
+                        if cell_value and str(cell_value).strip() in skip_fields:
+                            skip_cols.add(col)
+                            logger.debug(f"跳过字段列: {cell_value} (列 {col})")
+                
                 # 同步单元格内容
                 skip_rows = self.sync_options['skip_first_n_rows']
+                cells_skipped = 0
                 
                 for row in range(skip_rows + 1, source_ws.max_row + 1):
                     for col in range(1, source_ws.max_column + 1):
+                        # 检查是否需要跳过该列
+                        if col in skip_cols:
+                            cells_skipped += 1
+                            continue
+                        
                         source_cell = source_ws.cell(row=row, column=col)
                         target_cell = target_ws.cell(row=row, column=col)
                         
@@ -225,6 +334,9 @@ class ExcelConfigSync:
                             target_cell.border = source_cell.border.copy() if source_cell.border else None
                         
                         cells_synced += 1
+                
+                # 更新跳过的单元格统计
+                self.processing_stats['total_cells_skipped'] += cells_skipped
                 
                 # 同步列宽（可选）
                 if self.sync_options['sync_column_widths']:
@@ -380,6 +492,7 @@ class ExcelConfigSync:
                 ['目标目录1跳过文件数', self.processing_stats['target1_skipped']],
                 ['目标目录2跳过文件数', self.processing_stats['target2_skipped']],
                 ['同步的单元格总数', self.processing_stats['total_cells_synced']],
+                ['跳过的单元格总数', self.processing_stats['total_cells_skipped']],
                 ['错误数', self.processing_stats['errors']]
             ]
             
@@ -427,6 +540,7 @@ class ExcelConfigSync:
 - 目标目录1跳过文件数: {self.processing_stats['target1_skipped']}
 - 目标目录2跳过文件数: {self.processing_stats['target2_skipped']}
 - 同步的单元格总数: {self.processing_stats['total_cells_synced']}
+- 跳过的单元格总数: {self.processing_stats['total_cells_skipped']}
 - 错误数: {self.processing_stats['errors']}
 
 同步记录数: {len(self.sync_logs)} 条"""
@@ -441,6 +555,7 @@ if __name__ == '__main__':
     parser.add_argument('--target1', '-t1', required=True, help='目标目录1路径')
     parser.add_argument('--target2', '-t2', help='目标目录2路径（可选）')
     parser.add_argument('--json', '-j', help='JSON配置文件路径（可选，仅用于参考）')
+    parser.add_argument('--filter', '-f', help='字段过滤配置文件路径（可选）')
     parser.add_argument('--report', '-r', help='报告输出路径')
     parser.add_argument('--no-backup', action='store_true', help='不创建备份')
     
@@ -453,6 +568,9 @@ if __name__ == '__main__':
     
     if args.json:
         syncer.load_json_config(args.json)
+    
+    if args.filter:
+        syncer.load_filter_config(args.filter)
     
     stats = syncer.sync_directories(
         source_dir=args.source,
