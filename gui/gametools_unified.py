@@ -957,9 +957,10 @@ class GameToolsUnified:
         )
 
         features_textbox = tk.Text(left_frame, wrap='word', height=15, padx=6, pady=6,
-                                   font=("Microsoft YaHei", 10), relief='flat')
+                                   font=("Microsoft YaHei", 10), relief='flat',
+                                   background='SystemButtonFace')
         features_textbox.insert('1.0', features_text)
-        features_textbox.configure(state='disabled', background=left_frame.cget('background'))
+        features_textbox.configure(state='disabled')
         features_textbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         left_scroll = ttk.Scrollbar(left_frame, orient='vertical', command=features_textbox.yview)
@@ -993,9 +994,10 @@ class GameToolsUnified:
         )
 
         tech_textbox = tk.Text(right_frame, wrap='word', height=15, padx=6, pady=6,
-                               font=("Microsoft YaHei", 10), relief='flat')
+                               font=("Microsoft YaHei", 10), relief='flat',
+                               background='SystemButtonFace')
         tech_textbox.insert('1.0', tech_text)
-        tech_textbox.configure(state='disabled', background=right_frame.cget('background'))
+        tech_textbox.configure(state='disabled')
         tech_textbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         right_scroll = ttk.Scrollbar(right_frame, orient='vertical', command=tech_textbox.yview)
