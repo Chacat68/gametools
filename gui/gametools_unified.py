@@ -928,75 +928,79 @@ class GameToolsUnified:
                                  style='Info.TLabel')
         version_label.grid(row=1, column=0, pady=(0, 20))
         
-        # 内容区域
+        # 内容区域（改为左右两栏可滚动文本，提升可读性与自适应）
         content_frame = ttk.Frame(about_frame)
         content_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        content_frame.columnconfigure(0, weight=1)
-        content_frame.columnconfigure(1, weight=1)
-        
-        # 左侧：功能模块
-        left_frame = ttk.LabelFrame(content_frame, text="功能模块", padding="15")
-        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
-        
-        features_text = f"""📊 JSON格式检测工具  
-   检测JSON文件中text字段的格式一致性
+        content_frame.columnconfigure(0, weight=1, minsize=360)
+        content_frame.columnconfigure(1, weight=1, minsize=360)
+        content_frame.rowconfigure(0, weight=1)
 
-📈 Excel数据处理工具
-   根据指定列对Excel数据进行分组和处理
+        # 左侧：功能模块（使用 Text + Scrollbar 以便内容较多时可滚动）
+        left_frame = ttk.LabelFrame(content_frame, text="功能模块", padding=12)
+        left_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 8))
+        left_frame.columnconfigure(0, weight=1)
 
-📄 Excel分页拆分工具
-   根据第一列文件名将数据拆分到新表格的对应分页
+        features_text = (
+            "📊 JSON格式检测工具\n"
+            "  检测JSON文件中text字段的格式一致性\n\n"
+            "📈 Excel数据处理工具\n"
+            "  根据指定列对Excel数据进行分组和处理\n\n"
+            "📄 Excel分页拆分工具\n"
+            "  根据第一列文件名将数据拆分到新表格的对应分页\n\n"
+            "📋 表字段导出工具\n"
+            "  扫描Excel文件，提取包含文本的列的字段信息\n\n"
+            "🌐 多语言翻译提取工具\n"
+            "  根据字段导出的JSON配置，智能提取多语言翻译内容\n\n"
+            "🔄 Excel配置同步工具\n"
+            "  将源目录的Excel配置同步到其他目录的同名文件\n\n"
+            f"📋 版本信息\n  当前版本: v{get_version()}\n  项目描述: {get_description()}"
+        )
 
-📋 表字段导出工具
-   扫描Excel文件，提取包含文本的列的字段信息
+        features_textbox = tk.Text(left_frame, wrap='word', height=15, padx=6, pady=6,
+                                   font=("Microsoft YaHei", 10), relief='flat')
+        features_textbox.insert('1.0', features_text)
+        features_textbox.configure(state='disabled', background=left_frame.cget('background'))
+        features_textbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-🌐 多语言翻译提取工具
-   根据字段导出的JSON配置，智能提取多语言翻译内容
+        left_scroll = ttk.Scrollbar(left_frame, orient='vertical', command=features_textbox.yview)
+        features_textbox['yscrollcommand'] = left_scroll.set
+        left_scroll.grid(row=0, column=1, sticky=(tk.N, tk.S))
 
-🔄 Excel配置同步工具
-   将源目录的Excel配置同步到其他目录的同名文件
+        # 右侧：技术信息（同样使用 Text + Scrollbar）
+        right_frame = ttk.LabelFrame(content_frame, text="技术信息", padding=12)
+        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(8, 0))
+        right_frame.columnconfigure(0, weight=1)
 
-📋 版本信息
-   当前版本: v{get_version()}
-   项目描述: {get_description()}"""
-        
-        features_label = ttk.Label(left_frame, text=features_text, 
-                                  font=("Microsoft YaHei", 10), 
-                                  justify=tk.LEFT)
-        features_label.pack(anchor=tk.W)
-        
-        # 右侧：技术信息
-        right_frame = ttk.LabelFrame(content_frame, text="技术信息", padding="15")
-        right_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(10, 0))
-        
-        # 获取最新更新内容
         latest_changes = get_latest_changes()
         changes_text = "\n".join([f"• {change}" for change in latest_changes])
-        
-        tech_text = f"""🛠️ 技术栈:
-• Python 3.7+
-• Tkinter (GUI界面)
-• pandas (数据处理)
-• openpyxl (Excel文件处理)
 
-✨ 主要特性:
-• 支持多种文件格式
-• 图形化界面，操作简单
-• 多线程处理，界面响应流畅
-• 支持exe文件打包和分发
+        tech_text = (
+            "🛠️ 技术栈:\n"
+            "• Python 3.7+\n"
+            "• Tkinter (GUI界面)\n"
+            "• pandas (数据处理)\n"
+            "• openpyxl (Excel文件处理)\n\n"
+            "✨ 主要特性:\n"
+            "• 支持多种文件格式\n"
+            "• 图形化界面，操作简单\n"
+            "• 多线程处理，界面响应流畅\n"
+            "• 支持exe文件打包和分发\n\n"
+            f"🆕 最新更新 (v{get_version()}):\n{changes_text}\n\n"
+            "⚠️ 注意事项:\n"
+            "• 确保文件格式正确\n"
+            "• 大文件处理可能需要较长时间\n"
+            "• 建议在检测前备份重要文件"
+        )
 
-🆕 最新更新 (v{get_version()}):
-{changes_text}
+        tech_textbox = tk.Text(right_frame, wrap='word', height=15, padx=6, pady=6,
+                               font=("Microsoft YaHei", 10), relief='flat')
+        tech_textbox.insert('1.0', tech_text)
+        tech_textbox.configure(state='disabled', background=right_frame.cget('background'))
+        tech_textbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-⚠️ 注意事项:
-• 确保文件格式正确
-• 大文件处理可能需要较长时间
-• 建议在检测前备份重要文件"""
-        
-        tech_label = ttk.Label(right_frame, text=tech_text, 
-                              font=("Microsoft YaHei", 10), 
-                              justify=tk.LEFT)
-        tech_label.pack(anchor=tk.W)
+        right_scroll = ttk.Scrollbar(right_frame, orient='vertical', command=tech_textbox.yview)
+        tech_textbox['yscrollcommand'] = right_scroll.set
+        right_scroll.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
         # 底部信息
         bottom_frame = ttk.Frame(about_frame)
