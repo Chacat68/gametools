@@ -518,6 +518,19 @@ class BatchExcelModifier:
         self._report_progress(f"映射表加载完成，共 {len(df)} 行数据")
         self._report_progress(f"映射表列: {mapping_columns}")
         
+        # 验证列名是否存在
+        if table_col not in mapping_columns:
+            error_msg = f"错误: 映射表中不存在表名列 '{table_col}'，可用列: {mapping_columns}"
+            self._report_progress(error_msg)
+            self.error_logs.append(error_msg)
+            return self.processing_stats
+        
+        if id_col not in mapping_columns:
+            error_msg = f"错误: 映射表中不存在ID列 '{id_col}'，可用列: {mapping_columns}"
+            self._report_progress(error_msg)
+            self.error_logs.append(error_msg)
+            return self.processing_stats
+        
         # 按表名分组修改
         grouped_modifications = {}
         
@@ -841,3 +854,243 @@ class BatchExcelModifier:
 - 错误数: {self.processing_stats['errors']}
 
 修改记录数: {len(self.modification_logs)} 条"""
+
+    def get_mapping_file_languages(self, mapping_path: str) -> List[str]:
+        """
+        获取映射表中可用的语言列
+        
+        Args:
+            mapping_path: 映射表Excel文件路径
+            
+        Returns:
+            List[str]: 语言列名列表
+        """
+        # 常见的语言列名
+        language_columns = ['VN', 'EN', 'TH', 'Support-CH', 'Polish-CH', 'VN.1', 
+                           'CN', 'JP', 'KR', 'ID', 'TW', 'RU', 'DE', 'FR', 'ES', 'PT']
+        
+        try:
+            # 读取映射表的第一个工作表来获取列名
+            xl = pd.ExcelFile(mapping_path)
+            if xl.sheet_names:
+                df = pd.read_excel(mapping_path, sheet_name=xl.sheet_names[0], nrows=0)
+                columns = df.columns.tolist()
+                
+                # 过滤出语言列（与预定义列表匹配，或包含常见语言标识）
+                available_langs = []
+                for col in columns:
+                    col_upper = str(col).upper()
+                    if col in language_columns or col_upper in [l.upper() for l in language_columns]:
+                        available_langs.append(col)
+                    # 也检查是否包含语言相关关键词
+                    elif any(lang in col_upper for lang in ['VN', 'EN', 'TH', 'CH', 'CN', 'JP', 'KR']):
+                        available_langs.append(col)
+                
+                return available_langs
+        except Exception as e:
+            logger.error(f"获取语言列失败: {e}")
+        
+        return []
+
+    def process_batch_modification_by_language(self, mapping_path: str, 
+                                               excel_directory: str,
+                                               id_col: str,
+                                               target_language: str,
+                                               field_col: str = None,
+                                               backup: bool = True) -> Dict:
+        """
+        按语言执行批量修改（每个工作表对应一个Excel文件）
+        
+        映射表结构:
+        - 每个工作表名 = 目标Excel文件名（不含扩展名）
+        - Classification列: 字段名
+        - ID列: 数据ID
+        - 语言列（如 VN, EN, TH）: 要修改的内容
+        
+        Args:
+            mapping_path: 映射表路径
+            excel_directory: Excel文件所在目录
+            id_col: 映射表中的ID列名
+            target_language: 目标语言列名（如 'VN', 'EN', 'TH'）
+            field_col: 字段名列名（如 'Classification'），可选
+            backup: 是否创建备份
+            
+        Returns:
+            Dict: 处理结果统计
+        """
+        # 重置统计
+        self.processing_stats = {
+            'total_rows': 0,
+            'processed_rows': 0,
+            'modified_files': 0,
+            'modified_cells': 0,
+            'skipped_rows': 0,
+            'skipped_no_config': 0,
+            'skipped_no_file': 0,
+            'errors': 0
+        }
+        self.error_logs = []
+        self.modification_logs = []
+        
+        self._report_progress(f"开始按语言批量修改，目标语言: {target_language}")
+        
+        # 获取所有工作表
+        try:
+            xl = pd.ExcelFile(mapping_path)
+            sheet_names = xl.sheet_names
+            self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
+        except Exception as e:
+            error_msg = f"无法读取映射表: {e}"
+            self._report_progress(error_msg)
+            self.error_logs.append(error_msg)
+            return self.processing_stats
+        
+        # 跳过汇总信息等非数据工作表
+        skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+        data_sheets = [s for s in sheet_names if s not in skip_sheets]
+        
+        self._report_progress(f"将处理 {len(data_sheets)} 个数据工作表")
+        
+        total_sheets = len(data_sheets)
+        processed_sheets = 0
+        
+        for sheet_name in data_sheets:
+            # 工作表名就是目标Excel文件名
+            table_name = sheet_name
+            excel_filename = f"{table_name}.xlsx"
+            excel_path = os.path.join(excel_directory, excel_filename)
+            
+            # 检查文件是否存在
+            if not os.path.exists(excel_path):
+                # 尝试其他扩展名
+                excel_path_xls = os.path.join(excel_directory, f"{table_name}.xls")
+                if os.path.exists(excel_path_xls):
+                    excel_path = excel_path_xls
+                else:
+                    self.processing_stats['skipped_no_file'] += 1
+                    self._report_progress(f"  跳过: 文件不存在 - {excel_filename}")
+                    continue
+            
+            # 检查JSON配置中是否有该表
+            table_fields = self.get_table_fields(table_name)
+            if not table_fields:
+                # 也尝试带扩展名
+                table_fields = self.get_table_fields(excel_filename)
+            
+            if not table_fields:
+                self.processing_stats['skipped_no_config'] += 1
+                continue
+            
+            # 读取该工作表的数据
+            try:
+                df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+            except Exception as e:
+                error_msg = f"读取工作表 {sheet_name} 失败: {e}"
+                self.error_logs.append(error_msg)
+                continue
+            
+            if df.empty:
+                continue
+            
+            columns = df.columns.tolist()
+            self.processing_stats['total_rows'] += len(df)
+            
+            # 验证必要的列存在
+            if id_col not in columns:
+                error_msg = f"工作表 {sheet_name} 中不存在ID列 '{id_col}'"
+                self.error_logs.append(error_msg)
+                continue
+            
+            if target_language not in columns:
+                error_msg = f"工作表 {sheet_name} 中不存在语言列 '{target_language}'"
+                self.error_logs.append(error_msg)
+                continue
+            
+            # 确定字段列（Classification 或类似）
+            actual_field_col = field_col
+            if not actual_field_col:
+                # 自动检测字段列
+                for possible_col in ['Classification', 'classification', 'Field', 'field', '字段', '字段名']:
+                    if possible_col in columns:
+                        actual_field_col = possible_col
+                        break
+            
+            # 收集该工作表的所有修改
+            modifications = []
+            
+            for idx, row in df.iterrows():
+                id_value = row[id_col] if pd.notna(row[id_col]) else ''
+                lang_value = row[target_language] if pd.notna(row[target_language]) else ''
+                
+                if not id_value or not lang_value:
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                # 获取字段名
+                field_name = None
+                if actual_field_col and actual_field_col in columns:
+                    field_name = str(row[actual_field_col]).strip() if pd.notna(row[actual_field_col]) else None
+                
+                # 如果没有字段列，尝试从JSON配置匹配
+                # 在JSON配置的字段列表中查找与目标语言对应的字段
+                target_field = None
+                if field_name:
+                    # 有Classification列，直接使用
+                    target_field = field_name
+                else:
+                    # 没有Classification列，尝试匹配语言字段
+                    lang_lower = target_language.lower().replace('-', '_').replace('.', '_')
+                    for field in table_fields:
+                        field_lower = field.lower()
+                        if lang_lower in field_lower or field_lower.endswith(f'_{lang_lower}'):
+                            target_field = field
+                            break
+                    
+                    # 如果还没找到，使用语言列名本身
+                    if not target_field:
+                        target_field = target_language
+                
+                if target_field:
+                    modifications.append({
+                        'id': id_value,
+                        'modify_values': {target_field: str(lang_value).strip()}
+                    })
+            
+            if not modifications:
+                continue
+            
+            # 创建备份
+            if backup:
+                backup_path = excel_path + '.bak'
+                try:
+                    import shutil
+                    shutil.copy2(excel_path, backup_path)
+                except Exception as e:
+                    logger.warning(f"创建备份失败: {e}")
+            
+            self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改)")
+            
+            # 修改文件
+            modified_count, errors = self.modify_excel_file(
+                excel_path, 
+                modifications, 
+                field_mapping=None
+            )
+            
+            if modified_count > 0:
+                self.processing_stats['modified_files'] += 1
+                self.processing_stats['modified_cells'] += modified_count
+            
+            self.processing_stats['processed_rows'] += len(modifications)
+            
+            if errors:
+                self.error_logs.extend(errors)
+                self.processing_stats['errors'] += len(errors)
+            
+            processed_sheets += 1
+            progress = (processed_sheets / total_sheets) * 100
+            self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
+        
+        self._report_progress("批量修改完成！", 100)
+        
+        return self.processing_stats

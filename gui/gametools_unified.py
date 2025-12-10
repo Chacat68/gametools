@@ -703,22 +703,43 @@ class GameToolsUnified:
         
         # 表名列
         ttk.Label(column_frame, text="表名列:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.batch_table_col_var = tk.StringVar(value="A")
+        self.batch_table_col_var = tk.StringVar(value="")
         self.batch_table_col_combo = ttk.Combobox(column_frame, textvariable=self.batch_table_col_var, 
                                                   width=20, state="readonly")
         self.batch_table_col_combo.grid(row=0, column=1, sticky=tk.W, padx=(0, 20), pady=(0, 5))
         
         # ID列
         ttk.Label(column_frame, text="ID列:").grid(row=0, column=2, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.batch_id_col_var = tk.StringVar(value="C")
+        self.batch_id_col_var = tk.StringVar(value="")
         self.batch_id_col_combo = ttk.Combobox(column_frame, textvariable=self.batch_id_col_var, 
                                                width=20, state="readonly")
         self.batch_id_col_combo.grid(row=0, column=3, sticky=tk.W, pady=(0, 5))
         
+        # 字段列
+        ttk.Label(column_frame, text="字段列:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.batch_field_col_var = tk.StringVar(value="")
+        self.batch_field_col_combo = ttk.Combobox(column_frame, textvariable=self.batch_field_col_var, 
+                                                  width=20, state="readonly")
+        self.batch_field_col_combo.grid(row=1, column=1, sticky=tk.W, padx=(0, 20), pady=(0, 5))
+        
+        # 目标语言选择
+        ttk.Label(column_frame, text="目标语言:").grid(row=1, column=2, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.batch_language_var = tk.StringVar(value="VN")
+        # 默认语言选项
+        default_languages = ['VN', 'Support-CH', 'TH', 'EN', 'Polish-CH', 'VN.1']
+        self.batch_language_combo = ttk.Combobox(column_frame, textvariable=self.batch_language_var, 
+                                                 width=20, values=default_languages)
+        self.batch_language_combo.grid(row=1, column=3, sticky=tk.W, pady=(0, 5))
+        
+        # 刷新语言列表按钮
+        self.batch_refresh_lang_button = ttk.Button(column_frame, text="刷新语言", 
+                                                   command=self.refresh_batch_languages)
+        self.batch_refresh_lang_button.grid(row=1, column=4, padx=(10, 0), pady=(0, 5))
+        
         # 修改列说明
-        ttk.Label(column_frame, text="修改字段:", style='Info.TLabel').grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
-        ttk.Label(column_frame, text="根据JSON配置自动匹配（映射表列名需与JSON中的字段名相同）", 
-                 style='Info.TLabel', foreground='green').grid(row=1, column=1, columnspan=3, sticky=tk.W, pady=(5, 0))
+        ttk.Label(column_frame, text="使用说明:", style='Info.TLabel').grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
+        ttk.Label(column_frame, text="选择目标语言后，将使用映射表中该语言列的数据修改对应Excel文件", 
+                 style='Info.TLabel', foreground='green').grid(row=2, column=1, columnspan=4, sticky=tk.W, pady=(5, 0))
         
         # 选项设置区域
         options_frame = ttk.LabelFrame(batch_frame, text="处理选项", padding="10")
@@ -2183,21 +2204,65 @@ class GameToolsUnified:
             # 更新列选择下拉框
             self.batch_table_col_combo['values'] = columns
             self.batch_id_col_combo['values'] = columns
+            self.batch_field_col_combo['values'] = ['(自动检测)'] + columns
             
             # 设置默认值
             if columns:
                 self.batch_table_col_combo.set(columns[0])
-                if len(columns) > 2:
-                    self.batch_id_col_combo.set(columns[2])  # 默认C列
+                # 设置字段列默认值
+                self.batch_field_col_combo.set('(自动检测)')
+                for col in columns:
+                    if col.lower() in ['classification', 'field', '字段', '字段名']:
+                        self.batch_field_col_combo.set(col)
+                        break
                 
-                # 设置修改列的默认值（D列开始）
-                if len(columns) > 3:
-                    modify_cols = [columns[3]]  # D列
-                    if len(columns) > 6:
-                        modify_cols.append(columns[6])  # G列
-                    self.batch_modify_cols_var.set(",".join(modify_cols))
+                # 设置ID列默认值 - 查找ID或包含id的列
+                for i, col in enumerate(columns):
+                    if col.upper() == 'ID' or 'ID' in col.upper():
+                        self.batch_id_col_combo.set(col)
+                        break
+                else:
+                    if len(columns) > 2:
+                        self.batch_id_col_combo.set(columns[2])  # 默认C列
+            
+            # 同时刷新语言列表
+            self.refresh_batch_languages()
         except Exception as e:
             pass  # 静默处理错误
+    
+    def refresh_batch_languages(self):
+        """刷新可用的语言列表"""
+        mapping_file = self.batch_mapping_var.get().strip()
+        
+        if not mapping_file or not os.path.exists(mapping_file):
+            messagebox.showwarning("警告", "请先选择有效的映射表文件")
+            return
+        
+        try:
+            # 使用BatchExcelModifier的方法获取语言列
+            languages = self.batch_modifier.get_mapping_file_languages(mapping_file)
+            
+            if languages:
+                self.batch_language_combo['values'] = languages
+                # 默认选择第一个语言
+                if not self.batch_language_var.get() or self.batch_language_var.get() not in languages:
+                    self.batch_language_combo.set(languages[0])
+            else:
+                # 如果没有检测到，手动读取列名
+                import pandas as pd
+                xl = pd.ExcelFile(mapping_file)
+                if xl.sheet_names:
+                    df = pd.read_excel(mapping_file, sheet_name=xl.sheet_names[0], nrows=0)
+                    columns = df.columns.tolist()
+                    # 排除一些常见的非语言列
+                    exclude_cols = ['Classification', 'classification', 'ID', 'id', 'Field', 'field', 
+                                   '字段', '字段名', '表名', 'Table', 'table']
+                    lang_cols = [c for c in columns if c not in exclude_cols]
+                    self.batch_language_combo['values'] = lang_cols
+                    if lang_cols:
+                        self.batch_language_combo.set(lang_cols[0])
+        except Exception as e:
+            messagebox.showerror("错误", f"获取语言列表失败: {e}")
     
     def browse_batch_json_file(self):
         """浏览批量改表JSON配置文件"""
@@ -2293,6 +2358,8 @@ class GameToolsUnified:
         id_col = self.batch_id_col_var.get().strip()
         report_file = self.batch_report_var.get().strip()
         sheet_name = self.batch_sheet_var.get().strip()
+        target_language = self.batch_language_var.get().strip()
+        field_col = self.batch_field_col_var.get().strip()
         
         # 验证必要参数
         if not json_file:
@@ -2319,12 +2386,12 @@ class GameToolsUnified:
             messagebox.showerror("错误", "Excel文件目录不存在")
             return
         
-        if not table_col:
-            messagebox.showerror("错误", "请指定表名列")
+        if not id_col:
+            messagebox.showerror("错误", "请指定ID列（请先点击'刷新工作表'按钮加载列名）")
             return
         
-        if not id_col:
-            messagebox.showerror("错误", "请指定ID列")
+        if not target_language:
+            messagebox.showerror("错误", "请选择目标语言（请先点击'刷新语言'按钮）")
             return
         
         # 确认操作
@@ -2332,12 +2399,13 @@ class GameToolsUnified:
 
 JSON配置: {os.path.basename(json_file)}
 映射表: {os.path.basename(mapping_file)}
-工作表: {sheet_name or '第一个'}
 Excel目录: {excel_dir}
 
-表名列: {table_col}
 ID列: {id_col}
-修改字段: 根据JSON配置自动匹配
+字段列: {field_col if field_col != '(自动检测)' else '自动检测'}
+目标语言: {target_language}
+
+修改模式: 按工作表名匹配Excel文件，使用选中语言列的数据
 
 备份: {'是' if self.batch_backup_var.get() else '否'}"""
         
@@ -2348,14 +2416,19 @@ ID列: {id_col}
         self.batch_process_button.config(state="disabled")
         self.status_var.set("正在批量修改...")
         
+        # 处理字段列参数
+        actual_field_col = field_col if field_col and field_col != '(自动检测)' else None
+        
         thread = threading.Thread(target=self._batch_modification_thread, 
                                  args=(mapping_file, excel_dir, table_col, id_col, 
-                                       report_file, sheet_name, json_file))
+                                       report_file, sheet_name, json_file, 
+                                       target_language, actual_field_col))
         thread.daemon = True
         thread.start()
     
     def _batch_modification_thread(self, mapping_file, excel_dir, table_col, id_col, 
-                                   report_file, sheet_name, json_file):
+                                   report_file, sheet_name, json_file,
+                                   target_language=None, field_col=None):
         """批量修改处理线程"""
         try:
             # 清空结果
@@ -2373,13 +2446,13 @@ ID列: {id_col}
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"映射表: {mapping_file}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"工作表: {sheet_name or '第一个'}\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"Excel目录: {excel_dir}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"表名列: {table_col}\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"ID列: {id_col}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"字段列: {field_col or '自动检测'}\n"))
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                f"目标语言: {target_language}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"备份: {'是' if self.batch_backup_var.get() else '否'}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
@@ -2405,13 +2478,13 @@ ID列: {id_col}
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"✓ 已加载 {len(field_config)//2} 个表的字段配置\n\n"))
             
-            # 执行批量修改（使用JSON配置自动匹配字段）
-            stats = self.batch_modifier.process_batch_modification_with_json(
+            # 执行批量修改（使用按语言修改模式）
+            stats = self.batch_modifier.process_batch_modification_by_language(
                 mapping_path=mapping_file,
                 excel_directory=excel_dir,
-                table_col=table_col,
                 id_col=id_col,
-                mapping_sheet=sheet_name if sheet_name else None,
+                target_language=target_language,
+                field_col=field_col,
                 backup=self.batch_backup_var.get()
             )
             
@@ -2423,7 +2496,12 @@ ID列: {id_col}
             # 显示跳过的表（不在JSON配置中）
             if stats.get('skipped_no_config', 0) > 0:
                 self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"\n⚠️ 跳过了 {stats['skipped_no_config']} 行（表名不在JSON配置中）\n"))
+                    f"\n⚠️ 跳过了 {stats['skipped_no_config']} 个工作表（表名不在JSON配置中）\n"))
+            
+            # 显示跳过的文件（文件不存在）
+            if stats.get('skipped_no_file', 0) > 0:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    f"⚠️ 跳过了 {stats['skipped_no_file']} 个工作表（对应Excel文件不存在）\n"))
             
             # 生成报告
             if report_file:
