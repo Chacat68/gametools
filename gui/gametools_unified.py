@@ -725,14 +725,10 @@ class GameToolsUnified:
                                                  variable=self.batch_backup_var)
         self.batch_backup_check.grid(row=0, column=0, sticky=tk.W, padx=(0, 20))
         
-        # xlwings 选项
-        self.batch_use_xlwings_var = tk.BooleanVar(value=True)
-        self.batch_use_xlwings_check = ttk.Checkbutton(
-            options_frame, 
-            text="使用Excel原生引擎（推荐，完全保留文件结构）", 
-            variable=self.batch_use_xlwings_var
-        )
-        self.batch_use_xlwings_check.grid(row=0, column=1, sticky=tk.W)
+        # Excel引擎说明标签
+        engine_label = ttk.Label(options_frame, text="使用xlwings引擎（完全保留文件结构）", 
+                                foreground="green")
+        engine_label.grid(row=0, column=1, sticky=tk.W)
         
         # 操作按钮区域
         button_frame = ttk.Frame(batch_frame)
@@ -984,7 +980,7 @@ class GameToolsUnified:
             "• Python 3.7+\n"
             "• Tkinter (GUI界面)\n"
             "• pandas (数据处理)\n"
-            "• openpyxl (Excel文件处理)\n\n"
+            "• xlwings (Excel修改引擎，需要安装Excel)\n\n"
             "✨ 主要特性:\n"
             "• 支持多种文件格式\n"
             "• 图形化界面，操作简单\n"
@@ -2355,10 +2351,8 @@ Excel目录: {excel_dir}
             # 清空结果
             self.root.after(0, self.clear_batch_results)
             
-            # 根据用户选择重新初始化 batch_modifier
-            use_xlwings = self.batch_use_xlwings_var.get()
-            self.batch_modifier = BatchExcelModifier(use_xlwings=use_xlwings)
-            engine_name = "Excel原生引擎(xlwings)" if self.batch_modifier.use_xlwings else "openpyxl"
+            # 初始化 batch_modifier（使用 xlwings 引擎）
+            self.batch_modifier = BatchExcelModifier()
             
             # 显示开始信息
             self.root.after(0, lambda: self.append_result('batch_modifier', 
@@ -2380,7 +2374,7 @@ Excel目录: {excel_dir}
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"备份: {'是' if self.batch_backup_var.get() else '否'}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"处理引擎: {engine_name}\n"))
+                f"处理引擎: xlwings (Excel原生引擎)\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 "\n"))
             

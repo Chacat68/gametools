@@ -224,8 +224,7 @@ python gui/build_unified.py
 
 - tkinter (通常随Python安装)
 - pandas (数据处理)
-- openpyxl (Excel文件处理)
-- xlwings (可选，Excel原生引擎支持)
+- xlwings (默认Excel修改引擎，需要安装Excel)
 - PyInstaller (用于打包)
 
 ## 版本信息

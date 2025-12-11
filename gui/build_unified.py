@@ -101,7 +101,6 @@ a = Analysis(
     ],
     hiddenimports=[
         'pandas',
-        'openpyxl',
         'xlwings',
         'tkinter',
         'tkinter.ttk',
