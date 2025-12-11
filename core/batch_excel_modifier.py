@@ -18,6 +18,13 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter, column_index_from_string
 import logging
 
+# 尝试导入 xlwings（可选依赖）
+try:
+    import xlwings as xw
+    XLWINGS_AVAILABLE = True
+except ImportError:
+    XLWINGS_AVAILABLE = False
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -25,9 +32,21 @@ logger = logging.getLogger(__name__)
 class BatchExcelModifier:
     """批量Excel修改器"""
     
-    def __init__(self):
-        """初始化批量修改器"""
+    def __init__(self, use_xlwings: bool = True):
+        """
+        初始化批量修改器
+        
+        Args:
+            use_xlwings: 是否使用 xlwings 库进行修改（需要安装 Excel）
+                        使用 xlwings 可以完全保留 Excel 文件的原有结构
+                        如果 xlwings 不可用，将自动回退到 openpyxl
+        """
         self.supported_extensions = {'.xlsx', '.xls'}
+        
+        # 是否使用 xlwings
+        self.use_xlwings = use_xlwings and XLWINGS_AVAILABLE
+        if use_xlwings and not XLWINGS_AVAILABLE:
+            logger.warning("xlwings 不可用，将使用 openpyxl 进行修改")
         
         # 处理统计
         self.processing_stats = {
@@ -50,6 +69,9 @@ class BatchExcelModifier:
         
         # 进度回调
         self.progress_callback = None
+        
+        # xlwings Excel 应用实例（延迟初始化）
+        self._excel_app = None
     
     def set_progress_callback(self, callback):
         """设置进度回调函数"""
@@ -370,6 +392,23 @@ class BatchExcelModifier:
         # 如果没找到精确匹配，返回列名本身（让用户在GUI中指定映射）
         return None
     
+    def _get_excel_app(self):
+        """获取或创建 xlwings Excel 应用实例"""
+        if self._excel_app is None and XLWINGS_AVAILABLE:
+            self._excel_app = xw.App(visible=False, add_book=False)
+            self._excel_app.display_alerts = False
+            self._excel_app.screen_updating = False
+        return self._excel_app
+    
+    def _close_excel_app(self):
+        """关闭 xlwings Excel 应用实例"""
+        if self._excel_app is not None:
+            try:
+                self._excel_app.quit()
+            except:
+                pass
+            self._excel_app = None
+    
     def modify_excel_file(self, excel_path: str, modifications: List[Dict], 
                          field_mapping: Dict[str, str] = None,
                          id_col: int = 1, 
@@ -389,12 +428,197 @@ class BatchExcelModifier:
         Returns:
             Tuple[int, List[str]]: (修改的单元格数, 错误列表)
         """
+        if self.use_xlwings:
+            return self._modify_excel_file_xlwings(
+                excel_path, modifications, field_mapping, 
+                id_col, field_row, data_start_row
+            )
+        else:
+            return self._modify_excel_file_openpyxl(
+                excel_path, modifications, field_mapping, 
+                id_col, field_row, data_start_row
+            )
+    
+    def _modify_excel_file_xlwings(self, excel_path: str, modifications: List[Dict], 
+                                   field_mapping: Dict[str, str] = None,
+                                   id_col: int = 1, 
+                                   field_row: int = 5,
+                                   data_start_row: int = 7) -> Tuple[int, List[str]]:
+        """
+        使用 xlwings 修改单个Excel文件（完全保留原文件结构）
+        
+        Args:
+            excel_path: Excel文件路径
+            modifications: 修改列表，每项包含 {id, modify_values}
+            field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
+            id_col: ID所在列
+            field_row: 字段名所在行
+            data_start_row: 数据起始行
+            
+        Returns:
+            Tuple[int, List[str]]: (修改的单元格数, 错误列表)
+        """
+        modified_count = 0
+        errors = []
+        
+        wb = None
+        try:
+            # 使用 xlwings 打开文件
+            app = self._get_excel_app()
+            wb = app.books.open(excel_path)
+            ws = wb.sheets[0]  # 使用第一个工作表
+            
+            # 获取数据范围
+            used_range = ws.used_range
+            max_row = used_range.last_cell.row
+            max_col = used_range.last_cell.column
+            
+            # 缓存字段列号
+            field_columns = {}
+            
+            # 读取字段行（用于查找列号）
+            field_row_values = ws.range((field_row, 1), (field_row, max_col)).value
+            if not isinstance(field_row_values, list):
+                field_row_values = [field_row_values]
+            
+            # 构建字段名到列号的映射
+            field_to_col = {}
+            for col_idx, field_val in enumerate(field_row_values, start=1):
+                if field_val:
+                    field_to_col[str(field_val).strip()] = col_idx
+            
+            # 读取 ID 列数据（用于查找行号）
+            id_column_values = ws.range((data_start_row, id_col), (max_row, id_col)).value
+            if not isinstance(id_column_values, list):
+                id_column_values = [id_column_values]
+            
+            # 构建 ID 到行号的映射
+            id_to_row = {}
+            for row_offset, id_val in enumerate(id_column_values):
+                if id_val is not None:
+                    id_str = str(id_val).strip()
+                    id_to_row[id_str] = data_start_row + row_offset
+                    # 也尝试数字格式
+                    try:
+                        id_to_row[str(int(float(id_str)))] = data_start_row + row_offset
+                    except:
+                        pass
+            
+            for mod in modifications:
+                id_value = mod.get('id')
+                modify_values = mod.get('modify_values', {})
+                
+                if not id_value or not modify_values:
+                    continue
+                
+                # 查找ID对应的行
+                id_str = str(id_value).strip()
+                target_row = id_to_row.get(id_str)
+                
+                # 尝试数字格式
+                if target_row is None:
+                    try:
+                        target_row = id_to_row.get(str(int(float(id_str))))
+                    except:
+                        pass
+                
+                if target_row is None:
+                    error_msg = f"未找到ID: {id_value}"
+                    errors.append(error_msg)
+                    continue
+                
+                # 修改每个指定的列
+                for col_name, new_value in modify_values.items():
+                    # 获取字段名
+                    field_name = field_mapping.get(col_name) if field_mapping else col_name
+                    
+                    if not field_name:
+                        continue
+                    
+                    # 查找字段对应的列
+                    col_num = field_to_col.get(field_name)
+                    
+                    if col_num is None:
+                        error_msg = f"未找到字段: {field_name}"
+                        if error_msg not in errors:
+                            errors.append(error_msg)
+                        continue
+                    
+                    # 读取旧值
+                    cell = ws.range((target_row, col_num))
+                    old_value = cell.value
+                    
+                    # 比较新旧值，避免不必要的修改
+                    old_str = str(old_value).strip() if old_value is not None else ''
+                    new_str = str(new_value).strip() if new_value is not None else ''
+                    
+                    if old_str == new_str:
+                        # 值相同，跳过修改
+                        continue
+                    
+                    # 修改单元格
+                    cell.value = new_value
+                    
+                    # 记录修改日志
+                    self.modification_logs.append({
+                        'file': os.path.basename(excel_path),
+                        'id': id_value,
+                        'field': field_name,
+                        'position': f"{get_column_letter(col_num)}{target_row}",
+                        'old_value': old_value,
+                        'new_value': new_value
+                    })
+                    
+                    modified_count += 1
+            
+            # 保存文件 - 只有实际发生修改时才保存
+            if modified_count > 0:
+                wb.save()
+                logger.info(f"[xlwings] 已修改并保存: {excel_path} ({modified_count} 处修改)")
+            else:
+                logger.info(f"[xlwings] 无需修改: {excel_path} (数据未变化)")
+            
+        except Exception as e:
+            error_msg = f"修改文件失败 {excel_path}: {e}"
+            errors.append(error_msg)
+            logger.error(error_msg)
+        finally:
+            if wb is not None:
+                try:
+                    wb.close()
+                except:
+                    pass
+        
+        return modified_count, errors
+    
+    def _modify_excel_file_openpyxl(self, excel_path: str, modifications: List[Dict], 
+                                    field_mapping: Dict[str, str] = None,
+                                    id_col: int = 1, 
+                                    field_row: int = 5,
+                                    data_start_row: int = 7) -> Tuple[int, List[str]]:
+        """
+        使用 openpyxl 修改单个Excel文件（备用方案）
+        
+        Args:
+            excel_path: Excel文件路径
+            modifications: 修改列表，每项包含 {id, modify_values}
+            field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
+            id_col: ID所在列
+            field_row: 字段名所在行
+            data_start_row: 数据起始行
+            
+        Returns:
+            Tuple[int, List[str]]: (修改的单元格数, 错误列表)
+        """
         modified_count = 0
         errors = []
         
         try:
-            # 加载Excel文件
-            wb = load_workbook(excel_path)
+            # 加载Excel文件，保留所有原有结构（VBA、链接、样式等）
+            # rich_text=True 保留富文本格式
+            # keep_vba=True 保留VBA宏（仅对.xlsm有效，但不会影响.xlsx）
+            # keep_links=True 保留外部链接
+            wb = load_workbook(excel_path, keep_vba=True, keep_links=True, rich_text=True)
             ws = wb.active
             
             # 缓存字段列号
@@ -435,8 +659,17 @@ class BatchExcelModifier:
                             errors.append(error_msg)
                         continue
                     
-                    # 修改单元格
+                    # 修改单元格 - 只有值真正改变时才修改
                     old_value = ws.cell(row=target_row, column=col_num).value
+                    
+                    # 比较新旧值，避免不必要的修改
+                    old_str = str(old_value).strip() if old_value is not None else ''
+                    new_str = str(new_value).strip() if new_value is not None else ''
+                    
+                    if old_str == new_str:
+                        # 值相同，跳过修改
+                        continue
+                    
                     ws.cell(row=target_row, column=col_num).value = new_value
                     
                     # 记录修改日志
@@ -451,10 +684,12 @@ class BatchExcelModifier:
                     
                     modified_count += 1
             
-            # 保存文件
+            # 保存文件 - 只有实际发生修改时才保存
             if modified_count > 0:
                 wb.save(excel_path)
                 logger.info(f"已修改并保存: {excel_path} ({modified_count} 处修改)")
+            else:
+                logger.info(f"无需修改: {excel_path} (数据未变化)")
             
             wb.close()
             
@@ -627,6 +862,9 @@ class BatchExcelModifier:
             progress = (processed_files / total_files) * 100
             self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
         
+        # 关闭 xlwings Excel 应用
+        self._close_excel_app()
+        
         self._report_progress("批量修改完成！", 100)
         
         return self.processing_stats
@@ -742,6 +980,9 @@ class BatchExcelModifier:
             processed_files += 1
             progress = (processed_files / total_files) * 100
             self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
+        
+        # 关闭 xlwings Excel 应用
+        self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -867,19 +1108,39 @@ class BatchExcelModifier:
         """
         # 常见的语言列名
         language_columns = ['VN', 'EN', 'TH', 'Support-CH', 'Polish-CH', 'VN.1', 
-                           'CN', 'JP', 'KR', 'ID', 'TW', 'RU', 'DE', 'FR', 'ES', 'PT']
+                           'CN', 'JP', 'KR', 'TW', 'RU', 'DE', 'FR', 'ES', 'PT']
+        
+        # 需要排除的列名
+        exclude_columns = ['Classification', 'classification', 'ID', 'id', 'Field', 'field',
+                          '字段', '字段名', '表名', 'Table', 'table', '项目', '值', 'Name', 'name']
         
         try:
-            # 读取映射表的第一个工作表来获取列名
             xl = pd.ExcelFile(mapping_path)
-            if xl.sheet_names:
-                df = pd.read_excel(mapping_path, sheet_name=xl.sheet_names[0], nrows=0)
+            
+            # 跳过汇总信息等非数据工作表
+            skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+            data_sheet = None
+            for sheet in xl.sheet_names:
+                if sheet not in skip_sheets:
+                    data_sheet = sheet
+                    break
+            
+            if not data_sheet:
+                data_sheet = xl.sheet_names[0] if xl.sheet_names else None
+            
+            if data_sheet:
+                df = pd.read_excel(mapping_path, sheet_name=data_sheet, nrows=0)
                 columns = df.columns.tolist()
                 
-                # 过滤出语言列（与预定义列表匹配，或包含常见语言标识）
+                # 过滤出语言列
                 available_langs = []
                 for col in columns:
+                    # 排除非语言列
+                    if col in exclude_columns:
+                        continue
+                    
                     col_upper = str(col).upper()
+                    # 匹配预定义语言列
                     if col in language_columns or col_upper in [l.upper() for l in language_columns]:
                         available_langs.append(col)
                     # 也检查是否包含语言相关关键词
@@ -995,9 +1256,17 @@ class BatchExcelModifier:
             columns = df.columns.tolist()
             self.processing_stats['total_rows'] += len(df)
             
+            # 自动检测ID列
+            actual_id_col = id_col
+            if not actual_id_col or actual_id_col not in columns:
+                for possible_id in ['ID', 'id', 'Id', 'ID列', '编号']:
+                    if possible_id in columns:
+                        actual_id_col = possible_id
+                        break
+            
             # 验证必要的列存在
-            if id_col not in columns:
-                error_msg = f"工作表 {sheet_name} 中不存在ID列 '{id_col}'"
+            if actual_id_col not in columns:
+                error_msg = f"工作表 {sheet_name} 中未找到ID列"
                 self.error_logs.append(error_msg)
                 continue
             
@@ -1019,7 +1288,7 @@ class BatchExcelModifier:
             modifications = []
             
             for idx, row in df.iterrows():
-                id_value = row[id_col] if pd.notna(row[id_col]) else ''
+                id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
                 lang_value = row[target_language] if pd.notna(row[target_language]) else ''
                 
                 if not id_value or not lang_value:
@@ -1090,6 +1359,9 @@ class BatchExcelModifier:
             processed_sheets += 1
             progress = (processed_sheets / total_sheets) * 100
             self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
+        
+        # 关闭 xlwings Excel 应用
+        self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         

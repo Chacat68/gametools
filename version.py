@@ -5,14 +5,94 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.36.0"
-__version_info__ = (1, 36, 0)
+__version__ = "1.36.7"
+__version_info__ = (1, 36, 7)
 __build_date__ = "2025-12-10"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.36.7": {
+        "date": "2025-12-10",
+        "changes": [
+            "✨ 新增xlwings引擎支持：使用Excel原生引擎修改文件，完全保留文件结构",
+            "🔧 添加引擎选择选项：GUI界面可选择使用Excel原生引擎或openpyxl",
+            "🐛 彻底修复批量改表导致文件结构损坏的问题",
+            "📝 优化值比较逻辑：只有值真正变化时才修改单元格"
+        ],
+        "fixes": [
+            "使用xlwings解决openpyxl保存文件后破坏comments等内部结构的问题",
+            "修复批量改表后其他工具（如xls2json）无法读取文件的问题"
+        ],
+        "technical": [
+            "添加xlwings库支持（可选依赖，需要安装Excel）",
+            "BatchExcelModifier新增use_xlwings参数，默认使用xlwings",
+            "新增_modify_excel_file_xlwings方法使用Excel原生引擎",
+            "保留_modify_excel_file_openpyxl作为备用方案",
+            "GUI添加'使用Excel原生引擎'复选框"
+        ]
+    },
+    "1.36.6": {
+        "date": "2025-12-10",
+        "changes": [
+            "🐛 修复批量改表功能：解决处理Excel文件时可能导致未修改文件数据错误的问题",
+            "🔧 改进资源管理：为所有Excel文件操作添加finally块确保正确关闭",
+            "✨ 增强Excel处理：添加keep_vba=True保留宏代码",
+            "📝 完善日志记录：明确记录文件是否被修改",
+            "🧪 添加测试验证：创建全面的测试脚本验证修复效果",
+            "📚 更新文档：添加详细修复报告和使用指南"
+        ],
+        "fixes": [
+            "修复批量改表功能在处理没有修改的Excel文件时可能导致数据错误的问题",
+            "修复Excel配置同步缺少finally块的问题",
+            "修复Excel字段提取缺少异常保护的问题"
+        ],
+        "technical": [
+            "在batch_excel_modifier.py的modify_excel_file方法中添加finally块",
+            "在excel_config_sync.py的sync_single_file方法中添加finally块",
+            "在excel_field_extractor.py的extract_fields_from_excel方法中添加finally块",
+            "明确初始化工作簿变量防止未定义访问",
+            "为工作簿关闭操作添加异常处理"
+        ]
+    },
+    "1.36.5": {
+        "date": "2025-12-10",
+        "changes": [
+            "🧹 简化批量改表界面：隐藏工作表选择控件",
+            "✨ 保留刷新语言按钮，自动识别语言列"
+        ]
+    },
+    "1.36.4": {
+        "date": "2025-12-10",
+        "changes": [
+            "🐛 修复选择映射表后语言列表不刷新的问题",
+            "🔄 选择映射表文件后自动读取并显示可用语言列"
+        ]
+    },
+    "1.36.3": {
+        "date": "2025-12-10",
+        "changes": [
+            "🐛 修复语言列表刷新问题：跳过汇总信息工作表",
+            "🔍 自动从第一个数据工作表读取语言列",
+            "🚫 排除非语言列（如项目、值、Classification、ID等）"
+        ]
+    },
+    "1.36.2": {
+        "date": "2025-12-10",
+        "changes": [
+            "🔧 简化批量改表界面：移除表名列、ID列、字段列配置",
+            "🤖 全自动识别：工作表名=文件名，ID列=ID，字段列=Classification",
+            "🎯 界面只保留目标语言选择，操作更简单"
+        ]
+    },
+    "1.36.1": {
+        "date": "2025-12-10",
+        "changes": [
+            "🌍 目标语言下拉框添加默认选项：VN(越南文)、Support-CH(简体中文)、TH(泰文)等",
+            "✏️ 语言下拉框支持手动输入自定义语言列名"
+        ]
+    },
     "1.36.0": {
         "date": "2025-12-10",
         "changes": [

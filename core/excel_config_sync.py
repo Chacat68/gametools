@@ -272,9 +272,9 @@ class ExcelConfigSync:
                 except Exception as e:
                     logger.warning(f"创建备份失败: {e}")
             
-            # 加载工作簿
-            source_wb = load_workbook(source_path, data_only=False)
-            target_wb = load_workbook(target_path, data_only=False)
+            # 加载工作簿，保留所有原有结构（VBA、链接、样式、批注等）
+            source_wb = load_workbook(source_path, data_only=False, keep_vba=True, keep_links=True, rich_text=True)
+            target_wb = load_workbook(target_path, data_only=False, keep_vba=True, keep_links=True, rich_text=True)
             
             # 确定要同步的工作表
             if sync_sheets is None:
