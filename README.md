@@ -1,70 +1,49 @@
 # gametools
 游戏工具集
 
-一个集成了越南文检测和JSON格式检测工具的多功能游戏开发工具集。
+一个集成了策划本地化、跨项目翻译对应、JSON检测、Excel处理、翻译提取、批量改表等功能的多功能游戏开发工具集。
 
-## 🎉 NEW! Tauri 版本已推出
+## 🚀 当前版本 v1.36.7
 
-**全新的 Tauri 版本现已可用！** 采用 Rust + 现代 Web 技术重构：
-
-- 🚀 **启动速度提升 3-5倍**: 从 2-3秒 降至 0.5-1秒
-- 📦 **安装包体积减少 70%+**: 从 ~100MB 降至 ~15-25MB
-- ⚡ **内存占用降低 50%**: 从 ~80-120MB 降至 ~40-60MB
-- 🎨 **现代化 UI**: 更美观、更流畅的用户界面
-- 🔒 **更安全**: 严格的权限控制和安全机制
-
-👉 **[查看 Tauri 版本文档](tauri-app/README.md)**
-
-## 🚀 v1.23.0 性能优化
-
-**重大更新！** 本版本进行了全面性能优化：
-
-- ⚡ **并行处理**: 多文件处理速度提升 **3-5倍**
-- 📊 **大文件优化**: 支持500MB+文件，内存占用降低 **80%**
-- 🧠 **智能缓存**: LRU策略，命中率可达 **70-90%**
+**最新特性：**
+- ✨ **xlwings引擎支持**: 使用Excel原生引擎修改文件，完全保留文件结构
+- ⚡ **并行处理**: 多文件处理速度提升 3-5倍
+- 🧠 **智能缓存**: LRU策略，命中率可达 70-90%
 - 🛡️ **增强错误处理**: 友好的错误消息和修复建议
 - 📈 **进度跟踪**: 实时进度和ETA显示
-
-详见: [优化报告](docs/OPTIMIZATION_REPORT_v1.23.0.md) | [快速开始](docs/OPTIMIZATION_QUICKSTART.md)
 
 ## 项目结构
 
 ```
 gametools/
 ├── core/                    # 核心功能模块
-│   ├── cache_manager.py     # 缓存管理系统
-│   ├── cross_project_translator_cached.py  # 增强版翻译工具（支持缓存）
-│   ├── excel_field_extractor.py  # 表字段导出器
-│   ├── table_range_translator.py # 多语言翻译提取器
 │   ├── batch_excel_modifier.py   # 批量Excel修改器
+│   ├── cache_manager.py          # 缓存管理系统
+│   ├── config_manager.py         # 配置管理器
+│   ├── cross_project_translator.py       # 跨项目翻译工具
+│   ├── cross_project_translator_cached.py # 增强版翻译工具（支持缓存）
+│   ├── excel_config_sync.py      # Excel配置同步器
+│   ├── excel_field_extractor.py  # 表字段导出器
+│   ├── excel_sheet_splitter.py   # Excel工作表拆分器
+│   ├── table_range_translator.py # 多语言翻译提取器
 │   └── requirements.txt
 ├── tools/                   # 工具脚本和模块
-│   ├── json_format_detector/ # JSON格式检测工具（命令行版）
-│   ├── excel_data_processor.py  # Excel数据处理工具
-│   └── demo.py              # 演示脚本
-├── gui/                     # GUI和打包相关文件 (Tkinter版本)
-│   ├── gametools_unified.py # 统一界面主程序
+│   ├── json_error_detector/      # JSON格式检测工具（命令行版）
+│   ├── excel_data_processor/     # Excel数据处理工具
+│   ├── excel_data_processor.py   # Excel数据处理脚本
+│   └── demo.py                   # 演示脚本
+├── gui/                     # GUI和打包相关文件
+│   ├── gametools_unified.py      # 统一界面主程序
 │   ├── json_format_detector_gui.py # JSON检测GUI
 │   ├── cross_project_translator_cache_gui.py # 缓存翻译工具GUI
-│   ├── build_unified.py     # 统一版本构建脚本
-│   └── ...                  # 其他GUI相关文件
-├── tauri-app/              # 🆕 Tauri版本 (推荐使用)
-│   ├── src/                # 前端源代码 (HTML/CSS/JS)
-│   ├── src-tauri/          # Rust后端
-│   ├── README.md           # Tauri版本文档
-│   └── ...                 # 配置和构建文件
-├── test/                    # ⭐ 测试文件夹 (v1.19.0新增)
-│   ├── README.md            # 测试文档
-│   ├── test_cache_*.py      # 缓存系统测试
-│   ├── test_*.py            # 其他功能测试
-│   ├── create_test_*.py     # 测试数据生成
-│   ├── run_all_tests.py     # 测试运行脚本
-│   └── run_tests.bat        # 测试启动脚本
-├── docs/                    # 文档
-│   ├── README.md
-│   ├── CACHE_SYSTEM_GUIDE.md # 缓存系统使用指南
-│   ├── CACHE_IMPLEMENTATION.md # 缓存实现说明
-│   └── ...                  # 其他文档
+│   ├── build_unified.py          # 统一版本构建脚本
+│   └── run_unified.py            # GUI启动脚本
+├── test/                    # 测试文件夹
+│   ├── test_*.py                 # 功能测试脚本
+│   ├── create_test_*.py          # 测试数据生成
+│   ├── run_all_tests.py          # 运行所有测试脚本
+│   └── README.md                 # 测试文档
+├── docs/                    # 文档目录
 ├── dist/                    # 输出文件目录
 └── README.md               # 项目说明
 ```
@@ -94,9 +73,9 @@ gametools/
 - **灵活配置**: 支持自定义分组列和工作表前缀
 - **演示功能**: 一键创建测试文件
 
-### 📑 表字段导出工具 ⭐ v1.27.1 新增字段过滤
+### 📑 表字段导出工具
 - **智能提取**: 自动检测包含本地化文本的列，从第5行提取字段名
-- **字段过滤**: 自动过滤 `name`、`model`、`id`、`code`、`type` 等代码字段 ✨
+- **字段过滤**: 自动过滤 `name`、`model`、`id`、`code`、`type` 等代码字段
 - **精准识别**: 只保留真正需要翻译的文本字段（如 `des_cn`、`des_vcn`）
 - **c_ 标记支持**: 自动识别两个 `c_` 标记之间的列范围
 - **多格式输出**: 支持 CSV、Excel、JSON 三种输出格式
@@ -104,7 +83,7 @@ gametools/
 - **详细报告**: 包含字段列表、示例数据、统计信息
 - **已集成**: 已合并到统一界面的"表字段导出"页签
 
-### 🌐 多语言翻译提取工具 ⭐ v1.30.0
+### 🌐 多语言翻译提取工具
 - **智能配置**: 根据字段导出的JSON配置，自动提取多语言翻译内容
 - **字段类型筛选**: 只导出前端、后端、前后端字段，过滤无关字段
 - **多语言支持**: 支持中文、越南文、英文、泰文等多种语言
@@ -114,8 +93,9 @@ gametools/
 - **详细报告**: 生成包含所有提取结果的Excel文件
 - **已集成**: 已合并到统一界面的"多语言翻译提取"页签
 
-### 📝 批量改表工具 ⭐ 新增
+### 📝 批量改表工具
 - **映射表驱动**: 根据映射表（如分页Excel）批量修改多个Excel文件
+- **xlwings引擎**: 支持使用Excel原生引擎，完全保留文件结构
 - **灵活配置**: 支持自定义表名列、ID列、修改列
 - **JSON配置**: 可选配合JSON配置文件定义字段映射
 - **精确定位**: 根据ID精确定位要修改的行
@@ -127,34 +107,12 @@ gametools/
 
 ## 快速开始
 
-### 方法1: Tauri 版本（🌟 强烈推荐）
+### 方法1: 使用发布版本（推荐）
 
-```bash
-# 进入 Tauri 目录
-cd tauri-app
+1. 进入 `dist/` 目录
+2. 双击 `gametools_v1.36.7.exe`
 
-# 安装依赖
-npm install
-
-# 开发模式运行
-npm run tauri:dev
-
-# 或双击启动脚本
-# Windows: 启动开发模式.bat
-# macOS/Linux: ./启动开发模式.sh
-
-# 构建生产版本
-npm run tauri:build
-# 或双击: 构建生产版本.bat
-```
-
-**优势**: 更快、更小、更安全，现代化 UI
-
-详见: [Tauri 版本完整文档](tauri-app/README.md)
-
----
-
-### 方法2: Tkinter 统一界面（经典版本）
+### 方法2: 使用源码运行
 
 ```bash
 # 安装依赖
@@ -166,30 +124,9 @@ python gui/run_unified.py
 
 或双击 `gui/启动gametools.bat`
 
-**说明**: 经典 Python + Tkinter 版本，稳定可靠
+### 方法3: 使用启动脚本
 
-### 方法3: 使用发布版本
-
-**Tauri 版本**:
-1. 进入 `tauri-app/src-tauri/target/release/bundle/` 目录
-2. 运行对应平台的安装包或可执行文件
-
-**Tkinter 版本**:
-1. 进入 `dist/` 目录
-2. 双击 `gametools.exe`
-
-### 方法4: 使用源码版本（开发调试）
-
-```bash
-# 安装依赖
-pip install -r core/requirements.txt
-
-# 启动GUI
-python tools/start_gui.bat
-
-# 或运行命令行版本
-python tools/run.bat
-```
+双击项目根目录下的 `启动策划工具.bat`
 
 ## 界面说明
 
@@ -260,97 +197,22 @@ test/
 
 ### 🧪 运行测试
 
-#### 快速运行单个测试
 ```bash
-cd d:\dev\gametools
+# 快速运行单个测试
 python test\test_cache_basic.py
-```
 
-#### 运行所有测试
-```bash
-# 使用Python脚本运行
+# 运行所有测试
 python test\run_all_tests.py
-
-# 或双击启动脚本
-# test\run_tests.bat
-```
-
-#### 缓存系统测试
-测试缓存系统的基本功能和性能提升：
-
-```bash
-# 基本功能测试（验证缓存机制工作正常）
-python test\test_cache_basic.py
-
-# 性能对比测试（演示8-10倍的性能提升）
-python test\test_cache_performance.py
-```
-
-**预期结果**: ✓ 所有测试通过，缓存系统性能提升 7-10 倍
-
-### 越南文检测测试
-运行演示脚本创建测试文件：
-
-```bash
-python tools/demo.py
-```
-
-这将创建包含越南文的演示表格文件，然后使用图形界面进行测试。
-
-### Excel数据处理工具测试
-运行Excel工具演示脚本：
-
-```bash
-# 创建测试数据
-python test/create_test_excel.py
-
-# 运行演示
-python tools/demo_excel_data_processor.py
-
-# 或使用GUI界面
-python tools/excel_data_processor_gui.py
-```
-
-这将创建包含分组数据的测试Excel文件，演示多文件输出功能。
-
-### 🔄 持续集成
-
-项目结构已支持 CI/CD 集成：
-
-```yaml
-# 示例 GitHub Actions 工作流 (.github/workflows/test.yml)
-name: Tests
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
-      - run: pip install -r core/requirements.txt
-      - run: python test\run_all_tests.py
 ```
 
 ## 打包成exe文件
-
-### 自动构建
 
 ```bash
 # 运行构建脚本
 python gui/build_unified.py
 ```
 
-或双击 `gui/构建exe.bat`
-
-### 构建结果
-
-构建完成后会生成：
-- `dist/gametools_v1.4.0.exe` - 主程序（带版本号）
-- `dist/gametools.exe` - 主程序（兼容性版本）
-- `dist/gametools_v1.4.0_便携版/` - 便携版包（带版本号）
-- `dist/gametools_便携版/` - 便携版包（兼容性版本）
+构建完成后会在 `dist/` 目录生成 `gametools_vX.X.X.exe`
 
 ## 系统要求
 
@@ -363,133 +225,17 @@ python gui/build_unified.py
 - tkinter (通常随Python安装)
 - pandas (数据处理)
 - openpyxl (Excel文件处理)
+- xlwings (可选，Excel原生引擎支持)
 - PyInstaller (用于打包)
-
-## 工具目录
-
-### 📁 tools/excel_data_processor/
-Excel数据拆分和整合工具
-
-- **智能分组**: 根据A列（或指定列）内容自动分组数据
-- **多文件输出**: 为每个分组创建独立的Excel文件（默认模式）
-- **单文件输出**: 创建单个Excel文件包含多个工作表
-- **自动文件名**: 根据分组内容自动生成有意义的文件名
-- **重复检测**: 自动跳过已存在的文件，避免意外覆盖
-- **文件夹输出**: 支持选择输出文件夹而不是单个文件
-- **汇总信息**: 每个文件包含独立的汇总统计信息
-- **灵活配置**: 支持自定义分组列和工作表前缀
-- **GUI界面**: 提供友好的图形化界面
-- **命令行支持**: 支持批量处理和自动化
-
-**快速开始：**
-```bash
-# GUI界面
-python tools/excel_data_processor_gui.py
-
-# 命令行模式
-python tools/excel_data_processor.py input.xlsx output_folder
-
-# 演示功能
-python tools/demo_excel_data_processor.py
-```
-
-**功能特性：**
-- 支持Excel文件格式：.xlsx, .xls
-- 自动文件名生成和重复检测
-- 多线程处理，界面响应流畅
-- 完整的错误处理和日志记录
-- 支持大文件处理
-
-详细说明请查看 [tools/excel_data_processor/README.md](tools/excel_data_processor/README.md)
-
-### 📁 tools/json_error_detector/
-JSON错误检测工具（命令行版本）
-
-- 检测JSON文件中的语法错误、结构错误、编码错误
-- 支持文件夹批量检测
-- 递归搜索子文件夹中的JSON文件
-- 生成详细的错误报告
-- 支持多种检测模式
-
-**快速开始：**
-```bash
-cd tools/json_error_detector
-python json_error_detector.py example_data.json
-```
-
-详细说明请查看 [tools/json_error_detector/README.md](tools/json_error_detector/README.md)
-
-### 📁 gui/
-JSON错误检测工具（图形界面版本）
-
-- 🖥️ 直观的图形界面，操作简单
-- 📁 文件夹浏览和选择功能
-- 🔍 多种检测模式选择
-- 📊 实时显示检测结果
-- 💾 保存检测报告到文件
-- ⚡ 多线程处理，界面响应流畅
-- 📦 可打包成独立的exe文件
-
-**快速开始：**
-```bash
-cd gui
-python run_gui.py
-```
-
-**打包成exe：**
-```bash
-cd gui
-python build.py
-```
-
-详细说明请查看 [gui/README.md](gui/README.md)
-
-### 📁 dist/
-输出文件目录
-
-- 存放构建生成的exe文件
-- 包含主程序和便携版包
-- 可直接分发给用户使用
-
-**文件说明：**
-- `gametools_v1.4.0.exe` - 主程序（带版本号，推荐使用）
-- `gametools.exe` - 主程序（兼容性版本）
-- `gametools_v1.4.0_便携版/` - 便携版包（带版本号，推荐使用）
-- `gametools_便携版/` - 便携版包（兼容性版本）
-
-## 使用技巧
-
-1. **多线程处理**: 所有检测操作都在后台线程中执行，不会阻塞界面
-2. **实时反馈**: 界面会实时显示操作进度和结果
-3. **错误处理**: 完善的错误提示和异常处理
-4. **结果保存**: JSON错误检测结果可以保存为文本文件
-
-## 注意事项
-
-1. 确保文件格式正确
-2. 大文件处理可能需要较长时间
-3. 建议在检测前备份重要文件
-4. 首次运行可能需要管理员权限
-
-## 文档
-
-- **快速开始**: 查看本README文件
-- **完整说明**: 查看 [docs/完整使用说明.md](docs/完整使用说明.md)
-- **详细文档**: 查看 `docs/` 目录
 
 ## 版本信息
 
-- 版本: v1.4.0
-- 开发日期: 2024年
+- 版本: v1.36.7
+- 开发日期: 2025年
 - 支持语言: 中文界面
 - 目标用户: 游戏策划人员和开发人员
 
-### 更新历史
-- **v1.4.0** (2024年12月): 添加统一的版本号管理系统，优化GUI界面版本显示，打包文件名包含版本号，优化界面大小以显示所有内容
-- **v1.3.0** (2024年10月): Excel数据拆分工具多文件输出功能
-- **v1.2.0** (2024年10月): Excel工具自动文件名生成和重复检测功能
-- **v1.1.0** (2024年10月): Excel工具文件夹输出功能
-- **v1.0.0** (2024年10月): 初始版本，包含越南文检测和JSON错误检测工具
+详细版本历史请查看 [version.py](version.py)
 
 ## 技术支持
 
@@ -498,4 +244,4 @@ python build.py
 ---
 
 **gametools**  
-版权所有 © 2024
+版权所有 © 2024-2025
