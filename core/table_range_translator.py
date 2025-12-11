@@ -342,7 +342,7 @@ class TableRangeTranslator:
         """
         生成多语言翻译总表
         每个表格文件对应一个工作表标签
-        列格式: 文本字段 | 中文内容 | 越南文 | 泰文
+        列格式: 字段名 | 字段类型 | Excel位置 | ZH | VN | TH
         
         Args:
             output_path: 输出Excel文件路径
@@ -383,7 +383,7 @@ class TableRangeTranslator:
                 ws = wb.create_sheet(title=sheet_name)
                 
                 # 设置表头
-                headers = ['字段名', '字段类型', 'Excel位置', '中文内容', '越南文', '泰文']
+                headers = ['Field', 'Type', 'Position', 'ZH', 'VN', 'TH']
                 ws.append(headers)
                 
                 # 设置表头样式
@@ -622,7 +622,7 @@ class TableRangeTranslator:
         """
         生成多语言翻译总表（基于多语言目录提取的数据）
         每个表格文件对应一个工作表标签
-        列格式: 字段名 | 字段类型 | Excel位置 | 中文内容 | 越南文 | 泰文
+        列格式: 字段名 | 字段类型 | Excel位置 | ZH | VN | TH
         
         Args:
             output_path: 输出Excel文件路径
@@ -663,7 +663,7 @@ class TableRangeTranslator:
                 ws = wb.create_sheet(title=sheet_name)
                 
                 # 设置表头
-                headers = ['字段名', '字段类型', 'Excel位置', '中文内容', '越南文', '泰文']
+                headers = ['Field', 'Type', 'Position', 'ZH', 'VN', 'TH']
                 ws.append(headers)
                 
                 # 设置表头样式
