@@ -1,121 +1,116 @@
 # GameTools AI 助手指导文档
 
-这是一个用于游戏开发的工具集，主要用于处理Excel本地化内容和JSON格式检测。本指导文档将帮助 AI 助手理解项目架构和工作流程。
+游戏策划本地化工具集，用于Excel批量处理、多语言翻译提取、JSON检测等。
 
-## 核心架构
+## 项目架构
 
-项目由以下主要组件构成：
-
-### 核心模块 (`core/`)
-- `excel_field_extractor.py`: 表字段导出器
-- `table_range_translator.py`: 多语言翻译提取器
-- `batch_excel_modifier.py`: 批量Excel修改器
-- `excel_config_sync.py`: Excel配置同步器
-- `cross_project_translator.py`: 跨项目翻译工具
-- `excel_sheet_splitter.py`: Excel工作表拆分器
-
-### 工具模块 (`tools/`)
-- Excel 数据处理工具
-- Excel 文本提取工具
-- JSON 格式检测工具
-
-### GUI 模块 (`gui/`)
-- 统一的图形界面入口
-- 各工具的 GUI 实现
-
-## 关键工作流
-
-### 1. 批量改表流程
-
-```python
-from core.batch_excel_modifier import BatchExcelModifier
-
-modifier = BatchExcelModifier()
-
-# 可选：加载JSON配置
-modifier.load_json_config("config.json")
-
-# 执行批量修改
-stats = modifier.process_batch_modification(
-    mapping_path="mapping_table.xlsx",      # 映射表文件
-    excel_directory="excel_folder",          # 目标Excel目录
-    table_col="表名",                        # 表名列
-    id_col="ID",                             # ID列
-    modify_cols=["VN", "EN"],                # 要修改的列
-    mapping_sheet="Sheet1",                  # 映射表工作表
-    backup=True                              # 是否备份
-)
-
-# 生成修改报告
-modifier.generate_modification_report("report.xlsx")
+```
+gametools/
+├── core/               # 核心功能类（所有业务逻辑）
+├── gui/                # tkinter GUI实现（统一界面入口）
+├── tools/              # 命令行工具和辅助脚本
+├── test/               # 测试脚本和测试数据生成
+├── docs/               # 版本报告和功能文档
+└── version.py          # 版本信息和历史记录
 ```
 
-### 3. Excel配置同步流程
+### 核心模块关系
 
+| 模块 | 功能 | 关键方法 |
+|------|------|----------|
+| `batch_excel_modifier.py` | 批量改表（默认xlwings引擎） | `process_batch_modification()` |
+| `excel_field_extractor.py` | 字段导出（检测本地化列） | `extract_fields()` |
+| `table_range_translator.py` | 多语言提取 | `extract_translations()` |
+| `cross_project_translator.py` | 跨项目翻译对应 | 支持缓存版 `*_cached.py` |
+| `cache_manager.py` | LRU缓存+文件缓存 | `MemoryCache`, `FileCache` |
+
+## 关键开发模式
+
+### 1. 核心类标准结构
+每个核心类遵循相同模式（参考 `batch_excel_modifier.py`）：
 ```python
-from core.excel_config_sync import ExcelConfigSync
+class SomeProcessor:
+    def __init__(self):
+        self.supported_extensions = {'.xlsx', '.xls'}
+        self.processing_stats = {}    # 统计信息字典
+        self.error_logs = []          # 错误收集列表
+        self.progress_callback = None # GUI进度回调
 
-syncer = ExcelConfigSync()
+    def set_progress_callback(self, callback):
+        """设置进度回调: callback(message, percentage)"""
+        self.progress_callback = callback
 
-# 可选：加载JSON配置（仅用于参考，不做修改）
-syncer.load_json_config("config.json")
-
-# 执行配置同步
-stats = syncer.sync_directories(
-    source_dir="source_folder",          # 源目录
-    target_dir1="target_folder1",        # 目标目录1
-    target_dir2="target_folder2"         # 目标目录2（可选）
-)
-
-# 生成同步报告
-syncer.generate_sync_report("sync_report.xlsx")
+    def _report_progress(self, message: str, percentage: float = None):
+        """统一进度报告"""
+        if self.progress_callback:
+            self.progress_callback(message, percentage)
 ```
 
-### 4. 文件格式支持
-- Excel 文件: `.xlsx`, `.xls`
-- CSV 文件: `.csv`, `.tsv`
+### 2. Excel处理引擎选择
+- **xlwings**（默认）：调用Excel原生引擎，完全保留文件结构（批注、宏等）
+- **openpyxl**（备用）：纯Python实现，不需要Excel安装
+- 关键：批量改表必须用xlwings，否则会破坏文件结构导致其他工具无法读取
 
-## 关键文件和目录
+### 3. 错误处理模式
+使用 `core/error_handler.py` 中的自定义异常：
+```python
+from core.error_handler import ExcelReadError, FileProcessingError, GameToolsError
+# 异常包含 message, suggestion, original_error 属性
+```
 
-- `/core`: 核心功能实现
-- `/tools`: 命令行工具集
-- `/gui`: 图形界面实现
-- `/docs`: 构建报告和使用说明
+### 4. 本地化文本检测规则
+检测中文、越南文、泰文字符（在 `excel_field_extractor.py`）：
+```python
+# Unicode范围
+中文: \u4e00-\u9fff, \u3400-\u4dbf
+越南文: \u00C0-\u1EF9
+泰文: \u0E00-\u0E7F
+```
+过滤字段：`name`, `model`, `id`, `code`, `type` 等代码字段
 
-## 开发工作流程
+### 5. GUI开发模式
+统一界面在 `gui/gametools_unified.py`，使用多页签设计：
+- 每个功能一个 `create_xxx_tab()` 方法
+- 耗时操作必须用 `threading.Thread` 避免阻塞UI
+- 结果存储在 `self.results_storage` 字典
 
-1. 功能开发
-   - 在相应模块下实现功能
-   - 同时提供命令行和 GUI 接口
+## 常用命令
 
-2. 测试数据
-   - 使用 `/test_excel_files` 目录进行测试
-   - 通过 `tools/create_test_excel.py` 创建测试数据
+```bash
+# 运行GUI（唯一入口）
+双击 启动策划工具.bat
+# 或: python gui/run_unified.py
 
-## 集成要点
+# 运行测试
+python test/run_all_tests.py
+python test/test_cache_basic.py  # 单个测试
 
-1. 错误处理：
-   - 文件编码处理（支持 utf-8、gbk、gb2312）
-   - Excel 文件格式兼容性
+# 打包exe
+python gui/build_unified.py
+# 输出到 dist/gametools_vX.X.X.exe
+```
 
-2. 性能考虑：
-   - 大文件处理时使用分批读取
-   - 支持递归扫描目录结构
+## 配置文件
 
-## 调试指南
+- `config.json`: 运行时配置（缓存、并行、日志等）
+- `config_export.json`: 字段导出配置（表名、字段映射）
 
-1. GUI 调试
-   ```bash
-   python gui/run_gui.py
-   ```
+## 编码规范
 
-2. 命令行调试
-   ```bash
-   python tools/quick_start.py
-   ```
+- 所有Python文件使用 `# -*- coding: utf-8 -*-`
+- 文件编码尝试顺序：`utf-8` → `gbk` → `gb2312`
+- 中文注释和文档字符串
+- 版本更新需同步修改 `version.py`
 
-## 备注
+## 测试数据
 
-- 使用 `pandas` 处理 Excel 文件
-- 使用 `openpyxl` 进行 Excel 输出格式化
-- 遵循中文编码规范和注释要求
+- `test/create_test_excel.py`: 生成测试Excel
+- `test/create_test_mapping_file.py`: 生成映射文件
+- 测试前确保 `test/` 目录下有测试数据
+
+## 注意事项
+
+1. **Excel文件操作后必须关闭**：使用 `finally` 确保资源释放
+2. **大文件分批处理**：使用 `chunk_size` 参数控制内存
+3. **进度回调节流**：`ProgressTracker` 控制更新频率避免UI卡顿
+4. **缓存失效**：文件修改后需清理相关缓存
