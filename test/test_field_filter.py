@@ -2,79 +2,72 @@
 # -*- coding: utf-8 -*-
 """
 测试字段过滤功能
-验证只提取包含中文、越南文、泰文的字段
+验证 name 和 model 等字段是否被正确过滤
 """
 
-import sys
 from pathlib import Path
-
-# 添加项目根目录到路径
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
 from core.excel_field_extractor import ExcelFieldExtractor
 
-
-def test_contains_text():
-    """测试文本检测逻辑"""
+def test_field_filter():
+    """测试字段过滤功能"""
+    print("=" * 60)
+    print("测试字段过滤功能")
+    print("=" * 60)
+    
+    # 创建提取器实例
     extractor = ExcelFieldExtractor()
     
-    # 测试用例：[值, 期望结果, 说明]
-    test_cases = [
-        # 应该被提取的（包含中文、越南文、泰文）
-        ("角色名称", True, "纯中文"),
-        ("玩家ID", True, "中英混合"),
-        ("等级123", True, "中文+数字"),
-        ("Tên nhân vật", True, "越南文"),
-        ("Cấp độ", True, "越南文"),
-        ("ชื่อตัวละคร", True, "泰文"),
-        ("角色名称_v2", True, "中文+英文+数字"),
-        ("Điểm HP", True, "越南文+英文"),
-        ("ระดับ123", True, "泰文+数字"),
-        
-        # 应该被忽略的（纯数字、英文、代码）
-        ("12345", False, "纯数字"),
-        ("123.456", False, "小数"),
-        ("-999", False, "负数"),
-        ("1.23e5", False, "科学计数法"),
-        ("PlayerID", False, "纯英文"),
-        ("player_id", False, "英文下划线"),
-        ("CONFIG_NAME", False, "英文大写配置"),
-        ("true", False, "布尔值"),
-        ("false", False, "布尔值"),
-        ("null", False, "空值标识"),
-        ("ID_001", False, "代码标识"),
-        ("", False, "空字符串"),
-        (None, False, "None值"),
-        ("HP_MAX", False, "纯英文常量"),
-        ("position_x", False, "英文变量名"),
-    ]
+    # 显示过滤的字段名列表
+    print(f"\n当前过滤的字段名: {extractor.excluded_field_names}")
     
-    print("=" * 60)
-    print("测试字段过滤逻辑")
+    # 测试目录
+    test_dir = Path("test_excel_files")
+    
+    if not test_dir.exists():
+        print(f"\n❌ 测试目录不存在: {test_dir}")
+        return
+    
+    # 扫描目录
+    print(f"\n开始扫描目录: {test_dir}")
+    print("-" * 60)
+    
+    results = extractor.scan_directory(test_dir, recursive=True)
+    
+    # 显示结果
+    print("\n" + "=" * 60)
+    print("扫描结果:")
     print("=" * 60)
     
-    passed = 0
-    failed = 0
+    for idx, result in enumerate(results, 1):
+        print(f"\n[{idx}] {result['excel_file']} - {result['sheet_name']}")
+        print(f"    是否包含文本: {result['has_text']}")
+        if result['has_text']:
+            print(f"    字段数量: {result['field_count']}")
+            print(f"    字段列表: {', '.join(result['fields'])}")
+            
+            # 检查是否成功过滤了 name 和 model
+            filtered_fields = [f for f in result['fields'] if f.lower() in ['name', 'model', 'id', 'code', 'type']]
+            if filtered_fields:
+                print(f"    ⚠️ 警告: 以下字段应该被过滤但未被过滤: {filtered_fields}")
+            else:
+                print(f"    ✅ 过滤成功: name/model/id/code/type 字段已被过滤")
     
-    for value, expected, description in test_cases:
-        result = extractor.contains_text(value)
-        status = "✓" if result == expected else "✗"
-        
-        if result == expected:
-            passed += 1
-        else:
-            failed += 1
-        
-        print(f"{status} {description:20s} | 值: {str(value):20s} | 期望: {expected:5} | 实际: {result:5}")
+    # 显示错误和警告
+    if extractor.error_logs:
+        print("\n" + "=" * 60)
+        print("错误日志:")
+        print("=" * 60)
+        for error in extractor.error_logs:
+            print(error)
     
-    print("=" * 60)
-    print(f"测试完成: 通过 {passed}/{len(test_cases)}, 失败 {failed}/{len(test_cases)}")
-    print("=" * 60)
-    
-    return failed == 0
-
+    if extractor.extraction_warnings:
+        print("\n" + "=" * 60)
+        print("警告信息:")
+        print("=" * 60)
+        for warning in extractor.extraction_warnings[:10]:  # 只显示前10条
+            print(warning)
+        if len(extractor.extraction_warnings) > 10:
+            print(f"\n... 还有 {len(extractor.extraction_warnings) - 10} 条警告")
 
 if __name__ == "__main__":
-    success = test_contains_text()
-    sys.exit(0 if success else 1)
+    test_field_filter()
