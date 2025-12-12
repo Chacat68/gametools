@@ -5,14 +5,30 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.36.8"
-__version_info__ = (1, 36, 8)
-__build_date__ = "2025-12-11"
+__version__ = "1.37.0"
+__version_info__ = (1, 37, 0)
+__build_date__ = "2025-12-12"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.37.0": {
+        "date": "2025-12-12",
+        "changes": [
+            "✨ 字段导出新增多语言分支支持：可选择中文、越南语、泰语目录",
+            "📝 JSON输出添加语言标记：包含language字段标识语言信息",
+            "🔧 输出文件带语言后缀：如field_extraction_result_zh.json",
+            "🎯 新增process_multi_language_directories批量处理方法"
+        ],
+        "fixes": [],
+        "technical": [
+            "ExcelFieldExtractor添加SUPPORTED_LANGUAGES语言配置常量",
+            "process_directory方法新增language参数",
+            "export_to_json方法支持语言标记输出",
+            "GUI界面改为多语言目录配置模式"
+        ]
+    },
     "1.36.8": {
         "date": "2025-12-11",
         "changes": [

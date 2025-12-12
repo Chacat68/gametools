@@ -448,32 +448,63 @@ class GameToolsUnified:
         # 配置网格
         field_frame.columnconfigure(0, weight=1)
         
-        # 目录选择区域
-        dir_frame = ttk.LabelFrame(field_frame, text="扫描设置（从物理行第5行提取字段名）", padding="10")
+        # 目录选择区域 - 多语言分支
+        dir_frame = ttk.LabelFrame(field_frame, text="多语言目录配置（从物理行第5行提取字段名）", padding="10")
         dir_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
         dir_frame.columnconfigure(1, weight=1)
         
-        # 扫描目录
-        ttk.Label(dir_frame, text="扫描目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.field_scan_dir_var = tk.StringVar()
-        self.field_scan_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_scan_dir_var, 
-                                             font=("Microsoft YaHei", 9))
-        self.field_scan_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        # 中文目录
+        ttk.Label(dir_frame, text="中文目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.field_zh_dir_var = tk.StringVar()
+        self.field_zh_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_zh_dir_var, 
+                                           font=("Microsoft YaHei", 9))
+        self.field_zh_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.field_scan_browse_button = ttk.Button(dir_frame, text="浏览目录", 
-                                                  command=self.browse_field_scan_directory)
-        self.field_scan_browse_button.grid(row=0, column=2, pady=(0, 8))
+        self.field_zh_browse_button = ttk.Button(dir_frame, text="浏览", 
+                                                command=lambda: self.browse_field_language_dir('zh'))
+        self.field_zh_browse_button.grid(row=0, column=2, pady=(0, 8))
+        
+        self.field_zh_check_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(dir_frame, text="导出", variable=self.field_zh_check_var).grid(row=0, column=3, padx=(5, 0), pady=(0, 8))
+        
+        # 越南语目录
+        ttk.Label(dir_frame, text="越南语目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.field_vn_dir_var = tk.StringVar()
+        self.field_vn_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_vn_dir_var, 
+                                           font=("Microsoft YaHei", 9))
+        self.field_vn_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.field_vn_browse_button = ttk.Button(dir_frame, text="浏览", 
+                                                command=lambda: self.browse_field_language_dir('vn'))
+        self.field_vn_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        self.field_vn_check_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(dir_frame, text="导出", variable=self.field_vn_check_var).grid(row=1, column=3, padx=(5, 0), pady=(0, 8))
+        
+        # 泰语目录
+        ttk.Label(dir_frame, text="泰语目录:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.field_th_dir_var = tk.StringVar()
+        self.field_th_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_th_dir_var, 
+                                           font=("Microsoft YaHei", 9))
+        self.field_th_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.field_th_browse_button = ttk.Button(dir_frame, text="浏览", 
+                                                command=lambda: self.browse_field_language_dir('th'))
+        self.field_th_browse_button.grid(row=2, column=2, pady=(0, 8))
+        
+        self.field_th_check_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(dir_frame, text="导出", variable=self.field_th_check_var).grid(row=2, column=3, padx=(5, 0), pady=(0, 8))
         
         # 输出文件夹
-        ttk.Label(dir_frame, text="输出目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(dir_frame, text="输出目录:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
         self.field_output_dir_var = tk.StringVar()
         self.field_output_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_output_dir_var, 
                                                font=("Microsoft YaHei", 9))
-        self.field_output_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.field_output_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         
         self.field_output_browse_button = ttk.Button(dir_frame, text="选择输出目录", 
                                                     command=self.browse_field_output_directory)
-        self.field_output_browse_button.grid(row=1, column=2)
+        self.field_output_browse_button.grid(row=3, column=2)
         
         # 选项设置区域
         options_frame = ttk.LabelFrame(field_frame, text="处理选项", padding="10")
@@ -503,7 +534,7 @@ class GameToolsUnified:
         
         # 说明信息
         info_label = ttk.Label(options_frame, 
-                              text="💡 输出标准JSON格式，方便其他工具读取", 
+                              text="💡 选择需要导出的语言分支，输出JSON带语言标记", 
                               style='Info.TLabel', foreground='blue')
         info_label.grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
         
@@ -1714,12 +1745,27 @@ class GameToolsUnified:
     
     # ==================== 表字段导出相关方法 ====================
     
+    def browse_field_language_dir(self, lang_code):
+        """浏览特定语言的目录"""
+        lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+        dir_path = filedialog.askdirectory(title=f"选择{lang_names.get(lang_code, '')}目录")
+        if dir_path:
+            if lang_code == 'zh':
+                self.field_zh_dir_var.set(dir_path)
+            elif lang_code == 'vn':
+                self.field_vn_dir_var.set(dir_path)
+            elif lang_code == 'th':
+                self.field_th_dir_var.set(dir_path)
+            # 如果输出目录为空，自动设置为该目录的父目录
+            if not self.field_output_dir_var.get():
+                self.field_output_dir_var.set(dir_path)
+    
     def browse_field_scan_directory(self):
-        """浏览字段提取扫描目录"""
+        """浏览字段提取扫描目录（兼容旧方法）"""
         dir_path = filedialog.askdirectory(title="选择扫描目录")
         if dir_path:
-            self.field_scan_dir_var.set(dir_path)
-            # 如果输出目录为空，自动设置为扫描目录
+            # 默认设置为中文目录
+            self.field_zh_dir_var.set(dir_path)
             if not self.field_output_dir_var.get():
                 self.field_output_dir_var.set(dir_path)
     
@@ -1731,20 +1777,32 @@ class GameToolsUnified:
     
     def start_field_extraction(self):
         """开始字段提取"""
-        scan_dir = self.field_scan_dir_var.get().strip()
+        # 收集选中的语言目录
+        directories = {}
+        if self.field_zh_check_var.get() and self.field_zh_dir_var.get().strip():
+            directories['zh'] = self.field_zh_dir_var.get().strip()
+        if self.field_vn_check_var.get() and self.field_vn_dir_var.get().strip():
+            directories['vn'] = self.field_vn_dir_var.get().strip()
+        if self.field_th_check_var.get() and self.field_th_dir_var.get().strip():
+            directories['th'] = self.field_th_dir_var.get().strip()
+        
         output_dir = self.field_output_dir_var.get().strip()
         
         # 验证输入
-        if not scan_dir:
-            messagebox.showerror("错误", "请选择扫描目录")
+        if not directories:
+            messagebox.showerror("错误", "请至少选择一个语言目录并勾选导出")
             return
         
-        if not os.path.exists(scan_dir):
-            messagebox.showerror("错误", "扫描目录不存在")
-            return
+        # 验证目录存在性
+        for lang, dir_path in directories.items():
+            if not os.path.exists(dir_path):
+                lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+                messagebox.showerror("错误", f"{lang_names[lang]}目录不存在: {dir_path}")
+                return
         
         if not output_dir:
-            output_dir = scan_dir
+            # 使用第一个有效目录作为输出目录
+            output_dir = list(directories.values())[0]
             self.field_output_dir_var.set(output_dir)
         
         # 在新线程中执行提取
@@ -1752,72 +1810,82 @@ class GameToolsUnified:
         self.status_var.set("正在提取表字段...")
         
         thread = threading.Thread(target=self._field_extraction_thread, 
-                                 args=(scan_dir, output_dir))
+                                 args=(directories, output_dir))
         thread.daemon = True
         thread.start()
     
-    def _field_extraction_thread(self, scan_dir, output_dir):
-        """字段提取线程"""
+    def _field_extraction_thread(self, directories, output_dir):
+        """字段提取线程 - 支持多语言"""
         try:
             # 清空结果存储
             self.root.after(0, lambda: self.clear_result('field_extractor'))
             self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "开始提取表字段信息...\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "开始提取多语言表字段信息...\n"))
             self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"扫描目录: {scan_dir}\n"))
+            
+            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            for lang, dir_path in directories.items():
+                self.root.after(0, lambda l=lang, d=dir_path: self.append_result(
+                    'field_extractor', f"{lang_names[l]}目录: {d}\n"))
+            
             self.root.after(0, lambda: self.append_result('field_extractor', f"输出目录: {output_dir}\n"))
             self.root.after(0, lambda: self.append_result('field_extractor', f"输出格式: {self.field_output_format_var.get().upper()}\n"))
             self.root.after(0, lambda: self.append_result('field_extractor', f"递归扫描: {'是' if self.field_recursive_var.get() else '否'}\n"))
             self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
             
-            # 执行提取
-            stats = self.field_extractor.process_directory(
-                directory_path=scan_dir,
+            # 执行多语言提取
+            all_stats = self.field_extractor.process_multi_language_directories(
+                directories=directories,
                 output_folder=output_dir,
                 output_format=self.field_output_format_var.get(),
                 recursive=self.field_recursive_var.get()
             )
             
-            # 保存输出文件路径和结果数据
-            self.results_storage['field_extractor'] = stats.get('output_file', '')
-            self.field_extraction_results = stats.get('results', [])
+            # 保存输出文件路径
+            self.results_storage['field_extractor'] = ', '.join(all_stats.get('output_files', []))
+            
+            # 收集所有结果
+            all_results = []
+            for lang_code, lang_data in all_stats['languages'].items():
+                if 'stats' in lang_data and 'results' in lang_data['stats']:
+                    all_results.extend(lang_data['stats']['results'])
+            self.field_extraction_results = all_results
             
             # 显示统计信息
             self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
             self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "提取完成!\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', "多语言提取完成!\n"))
             self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"扫描文件数: {stats['total_files']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"工作表数: {stats['total_sheets']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"提取字段数: {stats['total_fields']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"输出文件: {stats['output_file']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
             
-            # 如果是JSON格式，显示JSON预览
-            if self.field_output_format_var.get() == 'json' and self.field_extraction_results:
-                self.root.after(0, lambda: self.append_result('field_extractor', "JSON结果预览:\n"))
-                self.root.after(0, lambda: self.append_result('field_extractor', "-" * 60 + "\n"))
-                import json
-                json_data = [{
-                    "table_name": r['excel_file'],
-                    "sheet_name": r['sheet_name'],
-                    "fields": r['fields'],
-                    "field_count": r['field_count']
-                } for r in self.field_extraction_results]
-                json_str = json.dumps(json_data, ensure_ascii=False, indent=2)
-                self.root.after(0, lambda: self.append_result('field_extractor', json_str + "\n"))
-                self.root.after(0, lambda: self.append_result('field_extractor', "-" * 60 + "\n"))
-                self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
+            # 分语言显示统计
+            for lang_code, lang_data in all_stats['languages'].items():
+                stats = lang_data.get('stats', {})
+                self.root.after(0, lambda n=lang_data['name'], s=stats: self.append_result(
+                    'field_extractor', 
+                    f"\n【{n}】文件数: {s.get('total_files', 0)}, "
+                    f"工作表: {s.get('total_sheets', 0)}, "
+                    f"字段数: {s.get('total_fields', 0)}\n"
+                ))
+            
+            self.root.after(0, lambda: self.append_result('field_extractor', f"\n总文件数: {all_stats['total_files']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"总工作表数: {all_stats['total_sheets']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"总字段数: {all_stats['total_fields']}\n"))
+            self.root.after(0, lambda: self.append_result('field_extractor', f"\n输出文件:\n"))
+            for f in all_stats.get('output_files', []):
+                self.root.after(0, lambda file=f: self.append_result('field_extractor', f"  - {file}\n"))
             
             # 显示完成消息
             self.root.after(0, lambda: self.status_var.set("字段提取完成"))
+            
+            output_files_str = '\n'.join(all_stats.get('output_files', []))
             self.root.after(0, lambda: messagebox.showinfo(
                 "完成",
-                f"字段提取完成!\n\n"
-                f"扫描文件数: {stats['total_files']}\n"
-                f"工作表数: {stats['total_sheets']}\n"
-                f"提取字段数: {stats['total_fields']}\n\n"
-                f"结果已保存到:\n{stats['output_file']}"
+                f"多语言字段提取完成!\n\n"
+                f"处理语言数: {len(all_stats['languages'])}\n"
+                f"总文件数: {all_stats['total_files']}\n"
+                f"总工作表数: {all_stats['total_sheets']}\n"
+                f"总字段数: {all_stats['total_fields']}\n\n"
+                f"输出文件:\n{output_files_str}"
             ))
             
         except Exception as e:

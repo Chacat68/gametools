@@ -22,6 +22,13 @@ from openpyxl.utils import get_column_letter
 class ExcelFieldExtractor:
     """Excel表字段导出器"""
     
+    # 支持的语言配置
+    SUPPORTED_LANGUAGES = {
+        'zh': {'name': '中文', 'code': 'zh', 'suffix': '_zh'},
+        'vn': {'name': '越南语', 'code': 'vn', 'suffix': '_vn'},
+        'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'}
+    }
+    
     def __init__(self):
         self.supported_extensions = {'.xlsx', '.xls'}
         # 定义文本模式：只匹配中文、越南文、泰文
@@ -288,7 +295,7 @@ class ExcelFieldExtractor:
         
         return all_results
     
-    def export_to_json(self, results: List[Dict], output_file: Path):
+    def export_to_json(self, results: List[Dict], output_file: Path, language: str = None):
         """
         导出结果到JSON文件
         分为两部分：
@@ -298,6 +305,7 @@ class ExcelFieldExtractor:
         Args:
             results: 字段信息列表（已按 has_text 排序）
             output_file: 输出文件路径
+            language: 语言代码 ('zh', 'vn', 'th')，如果指定则添加语言标记
         """
         try:
             # 构建JSON结构
@@ -309,6 +317,14 @@ class ExcelFieldExtractor:
                 "no_text_tables": [],
                 "text_tables": []
             }
+            
+            # 添加语言标记（如果指定了语言）
+            if language and language in self.SUPPORTED_LANGUAGES:
+                lang_info = self.SUPPORTED_LANGUAGES[language]
+                json_output["language"] = {
+                    "code": lang_info['code'],
+                    "name": lang_info['name']
+                }
             
             # 无文本表：只包含表名信息
             for result in no_text_results:
@@ -330,7 +346,8 @@ class ExcelFieldExtractor:
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(json_output, f, ensure_ascii=False, indent=2)
             
-            print(f"结果已导出到: {output_file}")
+            lang_str = f" [{self.SUPPORTED_LANGUAGES[language]['name']}]" if language else ""
+            print(f"结果已导出到{lang_str}: {output_file}")
             print(f"  - 无文本表格: {len(no_text_results)} 个")
             print(f"  - 有文本表格: {len(text_results)} 个")
         
@@ -490,7 +507,8 @@ class ExcelFieldExtractor:
                          directory_path: str, 
                          output_folder: str = None,
                          output_format: str = 'json',
-                         recursive: bool = True) -> Dict:
+                         recursive: bool = True,
+                         language: str = None) -> Dict:
         """
         处理目录并导出结果
         
@@ -499,6 +517,7 @@ class ExcelFieldExtractor:
             output_folder: 输出文件夹（如果为None，使用扫描目录）
             output_format: 输出格式 ('json', 'csv' 或 'excel')
             recursive: 是否递归扫描
+            language: 语言代码 ('zh', 'vn', 'th')，用于输出文件命名和JSON语言标记
             
         Returns:
             Dict: 处理统计信息，包含results数据
@@ -513,7 +532,8 @@ class ExcelFieldExtractor:
         output_dir.mkdir(parents=True, exist_ok=True)
         
         # 扫描目录
-        print(f"开始扫描目录: {directory}")
+        lang_str = f" [{self.SUPPORTED_LANGUAGES[language]['name']}]" if language and language in self.SUPPORTED_LANGUAGES else ""
+        print(f"开始扫描目录{lang_str}: {directory}")
         results = self.scan_directory(directory, recursive=recursive)
 
         # 重新排序：无文本表优先，其次按文件名与工作表名
@@ -525,18 +545,22 @@ class ExcelFieldExtractor:
                 'total_files': 0,
                 'total_sheets': 0,
                 'total_fields': 0,
-                'results': []
+                'results': [],
+                'language': language
             }
+        
+        # 生成输出文件名（带语言后缀）
+        lang_suffix = self.SUPPORTED_LANGUAGES[language]['suffix'] if language and language in self.SUPPORTED_LANGUAGES else ""
         
         # 导出结果
         if output_format == 'json':
-            output_file = output_dir / "field_extraction_result.json"
-            self.export_to_json(results, output_file)
+            output_file = output_dir / f"field_extraction_result{lang_suffix}.json"
+            self.export_to_json(results, output_file, language=language)
         elif output_format == 'csv':
-            output_file = output_dir / "field_extraction_result.csv"
+            output_file = output_dir / f"field_extraction_result{lang_suffix}.csv"
             self.export_to_csv(results, output_file)
         else:
-            output_file = output_dir / "field_extraction_result.xlsx"
+            output_file = output_dir / f"field_extraction_result{lang_suffix}.xlsx"
             self.export_to_excel(results, output_file)
         
         # 统计信息
@@ -549,7 +573,8 @@ class ExcelFieldExtractor:
             'total_sheets': total_sheets,
             'total_fields': total_fields,
             'output_file': str(output_file),
-            'results': results
+            'results': results,
+            'language': language
         }
         
         print(f"\n处理完成!")
@@ -564,6 +589,90 @@ class ExcelFieldExtractor:
             print(f"警告日志数: {len(self.extraction_warnings)}")
         
         return stats
+    
+    def process_multi_language_directories(self, 
+                                           directories: Dict[str, str],
+                                           output_folder: str = None,
+                                           output_format: str = 'json',
+                                           recursive: bool = True) -> Dict:
+        """
+        批量处理多语言目录
+        
+        Args:
+            directories: 语言目录映射，格式为 {'zh': '/path/to/zh', 'vn': '/path/to/vn', 'th': '/path/to/th'}
+            output_folder: 输出文件夹（如果为None，使用第一个有效目录）
+            output_format: 输出格式 ('json', 'csv' 或 'excel')
+            recursive: 是否递归扫描
+            
+        Returns:
+            Dict: 包含各语言处理统计信息的字典
+        """
+        all_stats = {
+            'languages': {},
+            'total_files': 0,
+            'total_sheets': 0,
+            'total_fields': 0,
+            'output_files': []
+        }
+        
+        # 确定输出目录
+        if not output_folder:
+            for lang, dir_path in directories.items():
+                if dir_path and Path(dir_path).exists():
+                    output_folder = dir_path
+                    break
+        
+        if not output_folder:
+            print("错误: 未指定有效的输出目录")
+            return all_stats
+        
+        # 依次处理每个语言目录
+        for lang_code, dir_path in directories.items():
+            if not dir_path or not Path(dir_path).exists():
+                print(f"跳过语言 {lang_code}: 目录未指定或不存在")
+                continue
+            
+            if lang_code not in self.SUPPORTED_LANGUAGES:
+                print(f"跳过语言 {lang_code}: 不支持的语言代码")
+                continue
+            
+            lang_name = self.SUPPORTED_LANGUAGES[lang_code]['name']
+            print(f"\n{'='*60}")
+            print(f"开始处理 {lang_name} 目录...")
+            print(f"{'='*60}")
+            
+            # 处理该语言的目录
+            stats = self.process_directory(
+                directory_path=dir_path,
+                output_folder=output_folder,
+                output_format=output_format,
+                recursive=recursive,
+                language=lang_code
+            )
+            
+            # 汇总统计
+            all_stats['languages'][lang_code] = {
+                'name': lang_name,
+                'directory': dir_path,
+                'stats': stats
+            }
+            all_stats['total_files'] += stats['total_files']
+            all_stats['total_sheets'] += stats['total_sheets']
+            all_stats['total_fields'] += stats['total_fields']
+            if stats.get('output_file'):
+                all_stats['output_files'].append(stats['output_file'])
+        
+        # 输出总结
+        print(f"\n{'='*60}")
+        print("多语言处理完成汇总")
+        print(f"{'='*60}")
+        print(f"处理语言数: {len(all_stats['languages'])}")
+        print(f"总文件数: {all_stats['total_files']}")
+        print(f"总工作表数: {all_stats['total_sheets']}")
+        print(f"总字段数: {all_stats['total_fields']}")
+        print(f"输出文件: {all_stats['output_files']}")
+        
+        return all_stats
     
     def get_error_logs(self) -> List[str]:
         """
