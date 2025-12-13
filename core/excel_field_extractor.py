@@ -176,6 +176,7 @@ class ExcelFieldExtractor:
                             'sheet_name': sheet_name,
                             'fields': [],
                             'fields_with_examples': [],
+                            'field_column_letters': [],
                             'field_count': 0,
                             'text_columns': [],
                             'has_text': False
@@ -184,8 +185,8 @@ class ExcelFieldExtractor:
                     
                     # 从第5行提取字段名，从第6行提取字段类型
                     fields = []
-                    field_with_types = []  # 字段名+字段类型的组合列表
-                    field_columns = []     # 字段对应的列号（字母）
+                    field_with_types = []  # 字段名+字段类型+列字母的组合列表
+                    field_column_letters = []  # 列字母列表
                     field_row = 5  # 物理行第5行（字段名）
                     type_row = 6   # 物理行第6行（字段类型：策划、前端、后端、前后端）
                     
@@ -199,9 +200,11 @@ class ExcelFieldExtractor:
                             if field_name.lower() in self.excluded_field_names:
                                 continue
                             
-                            fields.append(field_name)
+                            # 获取列字母（如 A, B, F 等）
                             col_letter = get_column_letter(col_num)
-                            field_columns.append(col_letter)
+                            
+                            fields.append(field_name)
+                            field_column_letters.append(col_letter)
                             
                             # 提取第6行的字段类型
                             if sheet.max_row >= type_row:
@@ -220,6 +223,7 @@ class ExcelFieldExtractor:
                                     self.extraction_warnings.append(warning_msg)
                                     print(warning_msg)
                                 
+                                # 格式：字段名,字段类型,列字母
                                 field_with_type = f"{field_name},{field_type},{col_letter}"
                             else:
                                 # 表格行数不足6行
@@ -240,7 +244,7 @@ class ExcelFieldExtractor:
                         for col_num in sorted(text_columns):
                             col_letter = get_column_letter(col_num)
                             fields.append(f"列{col_num}")
-                            field_columns.append(col_letter)
+                            field_column_letters.append(col_letter)
                             field_with_types.append(f"列{col_num},,{col_letter}")
                     
                     if fields:
@@ -248,8 +252,8 @@ class ExcelFieldExtractor:
                             'excel_file': file_path.name,
                             'sheet_name': sheet_name,
                             'fields': fields,
-                            'fields_with_examples': field_with_types,  # 字段名+字段类型+列号列表
-                            'field_columns': field_columns,            # 字段对应的列号列表
+                            'fields_with_examples': field_with_types,  # 字段名+字段类型+列字母列表
+                            'field_column_letters': field_column_letters,  # 列字母列表
                             'field_count': len(fields),
                             'text_columns': sorted(text_columns),
                             'has_text': True
@@ -338,18 +342,14 @@ class ExcelFieldExtractor:
         
         # 有文本表：包含完整字段结构
         for result in text_results:
-            table_data = {
+            table_entry = {
                 "table_name": result['excel_file'],
                 "sheet_name": result['sheet_name'],
                 "fields_with_examples": result.get('fields_with_examples', []),
+                "field_column_letters": result.get('field_column_letters', []),
                 "field_count": result['field_count']
             }
-            
-            # 添加字段列号信息
-            if 'field_columns' in result:
-                table_data['field_columns'] = result['field_columns']
-                
-            json_output["text_tables"].append(table_data)
+            json_output["text_tables"].append(table_entry)
             
         return json_output
 
