@@ -59,12 +59,13 @@ class TableRangeTranslator:
         
         self.error_logs = []
     
-    def load_json_config(self, json_path: str) -> Dict:
+    def load_json_config(self, json_path: str, target_language: str = None) -> Dict:
         """
         加载JSON配置文件
         
         Args:
             json_path: JSON配置文件路径
+            target_language: 目标语言代码 ('zh', 'vn', 'th')，用于从合并的JSON中提取对应语言配置
             
         Returns:
             Dict: JSON配置内容（包含language字段信息）
@@ -74,6 +75,13 @@ class TableRangeTranslator:
                 config = json.load(f)
             
             logger.info(f"成功加载JSON配置: {json_path}")
+            
+            # 检查是否为合并的JSON结构（包含大写语言代码键）
+            if target_language:
+                lang_key = target_language.upper()
+                if lang_key in config:
+                    logger.info(f"检测到合并JSON结构，提取 {lang_key} 语言配置")
+                    config = config[lang_key]
             
             # 读取语言标记
             if 'language' in config:
@@ -119,24 +127,23 @@ class TableRangeTranslator:
             return lang_dirs[lang_code]
         return None
     
-    def parse_field_with_type(self, field_str: str) -> Tuple[str, str]:
+    def parse_field_with_type(self, field_str: str) -> Tuple[str, str, Optional[str]]:
         """
-        解析字段字符串，提取字段名和字段类型
-        格式: "field_name,field_type" 或 "field_name,"
+        解析字段字符串，提取字段名、字段类型和列号
+        格式: "field_name,field_type" 或 "field_name,field_type,col_letter"
         
         Args:
             field_str: 字段字符串
             
         Returns:
-            Tuple[str, str]: (字段名, 字段类型)
+            Tuple[str, str, Optional[str]]: (字段名, 字段类型, 列号字母)
         """
-        if ',' in field_str:
-            parts = field_str.split(',', 1)
-            field_name = parts[0].strip()
-            field_type = parts[1].strip() if len(parts) > 1 else ''
-            return field_name, field_type
-        else:
-            return field_str.strip(), ''
+        parts = [p.strip() for p in field_str.split(',')]
+        field_name = parts[0]
+        field_type = parts[1] if len(parts) > 1 else ''
+        col_letter = parts[2] if len(parts) > 2 else None
+        
+        return field_name, field_type, col_letter
     
     def is_exportable_field(self, field_type: str) -> bool:
         """
@@ -204,6 +211,21 @@ class TableRangeTranslator:
             col_num //= 26
         
         return result
+
+    def column_letter_to_index(self, col_letter: str) -> int:
+        """
+        将Excel列字母转换为列索引（A->0, B->1, ...）
+        
+        Args:
+            col_letter: Excel列字母
+            
+        Returns:
+            int: 列索引（从0开始）
+        """
+        result = 0
+        for char in col_letter.upper():
+            result = result * 26 + (ord(char) - ord('A') + 1)
+        return result - 1
 
     def _normalize_id_value(self, value) -> str:
         """规范化ID值，用于跨语言版本按ID对齐行。"""
@@ -281,22 +303,19 @@ class TableRangeTranslator:
             
             logger.info(f"开始提取表格: {table_name} - {sheet_name}")
             
-            # 解析字段信息，过滤出需要导出的字段
-            exportable_fields = []
+            # 预先计算可导出字段数量用于统计
+            exportable_count = 0
             for field_str in fields_with_examples:
-                field_name, field_type = self.parse_field_with_type(field_str)
+                _, field_type, _ = self.parse_field_with_type(field_str)
                 if self.is_exportable_field(field_type):
-                    exportable_fields.append((field_name, field_type))
-                else:
-                    self.processing_stats['skipped_fields'] += 1
-                    logger.debug(f"跳过字段: {field_name} (类型: {field_type})")
+                    exportable_count += 1
             
-            if not exportable_fields:
+            if exportable_count == 0:
                 logger.info(f"表格 {table_name} 没有需要导出的字段，跳过")
                 return []
             
-            logger.info(f"可导出字段: {len(exportable_fields)} 个")
-            self.processing_stats['exported_fields'] += len(exportable_fields)
+            logger.info(f"可导出字段: {exportable_count} 个")
+            self.processing_stats['exported_fields'] += exportable_count
             
             # 读取Excel文件
             df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
@@ -309,9 +328,29 @@ class TableRangeTranslator:
             extracted_rows = []
             
             # 遍历每个需要导出的字段
-            for field_name, field_type in exportable_fields:
-                # 查找字段对应的列索引
-                col_idx = self.find_column_index_by_name(df, field_name)
+            for field_str in fields_with_examples:
+                field_name, field_type, col_letter_hint = self.parse_field_with_type(field_str)
+                
+                if not self.is_exportable_field(field_type):
+                    self.processing_stats['skipped_fields'] += 1
+                    continue
+
+                # 优先使用列号定位
+                col_idx = None
+                if col_letter_hint:
+                    try:
+                        col_idx = self.column_letter_to_index(col_letter_hint)
+                        # 验证列索引是否有效
+                        if col_idx >= len(df.columns):
+                            logger.warning(f"字段 {field_name} 的列号 {col_letter_hint} 超出范围，尝试按名称查找")
+                            col_idx = None
+                    except Exception:
+                        logger.warning(f"字段 {field_name} 的列号 {col_letter_hint} 解析失败，尝试按名称查找")
+                        col_idx = None
+                
+                # 如果没有列号或列号无效，回退到按名称查找
+                if col_idx is None:
+                    col_idx = self.find_column_index_by_name(df, field_name)
                 
                 if col_idx is None:
                     logger.warning(f"未找到字段: {field_name}")
@@ -336,8 +375,8 @@ class TableRangeTranslator:
                     id_value = df.iloc[row_idx, 0] if len(df.columns) > 0 else ''
                     
                     # 生成Excel物理位置（如F8）
-                    col_letter = self.column_index_to_letter(col_idx)
-                    excel_position = f"{col_letter}{row_idx + 1}"
+                    current_col_letter = self.column_index_to_letter(col_idx)
+                    excel_position = f"{current_col_letter}{row_idx + 1}"
                     
                     extracted_rows.append({
                         'table_name': table_name,
