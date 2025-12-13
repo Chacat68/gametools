@@ -42,6 +42,13 @@ class TableRangeTranslator:
         self.vietnamese_pattern = re.compile(r'[\u00C0-\u1EF9]')
         self.thai_pattern = re.compile(r'[\u0E00-\u0E7F]')
         
+        # 非文本内容过滤模式（用于过滤{}、[]、数组、纯数字）
+        # 匹配: {}, [], {2,99}, [2,99], [{},{}], [{22},{333}], 纯数字等
+        self.empty_braces_pattern = re.compile(r'^\s*[\{\[]\s*[\}\]]\s*$')  # 空括号 {} 或 []
+        self.array_pattern = re.compile(r'^\s*[\[\{]\s*[\d\s,\.\-]*\s*[\]\}]\s*$')  # 数组格式 [2,99] 或 {2,99} 或 [] 或 {}
+        self.object_array_pattern = re.compile(r'^\s*\[\s*(\{\s*[\d\s,\.\-]*\s*\}\s*,?\s*)+\]\s*$')  # 对象数组 [{},{}] 或 [{22},{333}]
+        self.pure_number_pattern = re.compile(r'^\s*[\-]?[\d\.]+\s*$')  # 纯数字
+        
         # 需要导出的字段类型（忽略"策划"）
         self.exportable_field_types = {'前端', '后端', '前后端'}
         
@@ -145,6 +152,334 @@ class TableRangeTranslator:
         
         return field_name, field_type, col_letter
     
+    def load_merged_json_config(self, json_path: str) -> Dict:
+        """
+        加载合并的JSON配置文件（包含多语言配置）
+        
+        Args:
+            json_path: 合并的JSON配置文件路径
+            
+        Returns:
+            Dict: 完整的JSON配置（包含ZH/VN/TH等语言键）
+        """
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            logger.info(f"成功加载合并JSON配置: {json_path}")
+            
+            # 检测包含的语言
+            detected_langs = []
+            for lang_key in ['ZH', 'VN', 'TH']:
+                if lang_key in config:
+                    lang_data = config[lang_key]
+                    text_count = len(lang_data.get('text_tables', []))
+                    no_text_count = len(lang_data.get('no_text_tables', []))
+                    detected_langs.append(f"{lang_key}({text_count}表)")
+                    logger.info(f"  - {lang_key}: {text_count}个文本表, {no_text_count}个无文本表")
+            
+            logger.info(f"检测到语言: {', '.join(detected_langs)}")
+            
+            return config
+        
+        except Exception as e:
+            logger.error(f"加载合并JSON配置失败: {e}")
+            return {}
+    
+    def process_with_merged_json(self, json_path: str, lang_dirs: Dict[str, str],
+                                 progress_callback=None) -> List[Dict]:
+        """
+        根据合并的JSON配置文件处理多语言Excel文件
+        JSON结构: {"ZH": {...}, "VN": {...}, "TH": {...}}
+        每个语言配置包含 text_tables 列表，其中有 field_column_letters 用于精确定位
+        
+        Args:
+            json_path: 合并的JSON配置文件路径
+            lang_dirs: 语言目录字典 {'zh': 'path', 'vn': 'path', 'th': 'path'}
+            progress_callback: 进度回调函数
+            
+        Returns:
+            List[Dict]: 所有提取的数据
+        """
+        def log_progress(msg):
+            logger.info(msg)
+            if progress_callback:
+                progress_callback(msg)
+        
+        try:
+            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            
+            # 加载合并的JSON配置
+            merged_config = self.load_merged_json_config(json_path)
+            if not merged_config:
+                log_progress("✗ 加载JSON配置失败")
+                return []
+            
+            # 识别JSON中的语言配置
+            lang_configs = {}
+            for lang_key in ['ZH', 'VN', 'TH']:
+                if lang_key in merged_config:
+                    lang_code = lang_key.lower()
+                    lang_configs[lang_code] = merged_config[lang_key]
+                    log_progress(f"✓ 检测到{lang_names.get(lang_code, lang_code)}配置")
+            
+            if not lang_configs:
+                log_progress("✗ JSON中未找到有效的语言配置（ZH/VN/TH）")
+                return []
+            
+            # 合并所有语言的表格配置
+            # 以表名+工作表名为键，合并字段信息（包含列字母）
+            table_key_to_info: Dict[Tuple[str, str], Dict] = {}
+            
+            for lang_code, config in lang_configs.items():
+                text_tables = config.get('text_tables', [])
+                for table_info in text_tables:
+                    table_name = table_info.get('table_name', '')
+                    sheet_name = table_info.get('sheet_name', '')
+                    if not table_name or not sheet_name:
+                        continue
+                    
+                    key = (table_name, sheet_name)
+                    
+                    if key not in table_key_to_info:
+                        table_key_to_info[key] = {
+                            'table_name': table_name,
+                            'sheet_name': sheet_name,
+                            'fields_by_lang': {},
+                            'columns_by_lang': {}
+                        }
+                    
+                    # 存储该语言的字段信息和列字母
+                    fields = table_info.get('fields_with_examples', [])
+                    columns = table_info.get('field_column_letters', [])
+                    table_key_to_info[key]['fields_by_lang'][lang_code] = fields
+                    table_key_to_info[key]['columns_by_lang'][lang_code] = columns
+            
+            # 转为列表并排序
+            all_tables = sorted(table_key_to_info.values(), 
+                               key=lambda x: (x['table_name'], x['sheet_name']))
+            self.processing_stats['total_tables'] = len(all_tables)
+            
+            log_progress(f"\n📊 开始处理 {len(all_tables)} 个表格")
+            active_langs = [k for k in lang_dirs.keys() if k in lang_configs]
+            log_progress(f"🌐 活跃语言版本: {', '.join([lang_names.get(k, k) for k in active_langs])}")
+            log_progress("")
+            
+            all_data = []
+            
+            for idx, table_info in enumerate(all_tables, 1):
+                table_name = table_info['table_name']
+                sheet_name = table_info['sheet_name']
+                fields_by_lang = table_info['fields_by_lang']
+                columns_by_lang = table_info['columns_by_lang']
+                
+                log_progress(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                log_progress(f"📋 [{idx}/{len(all_tables)}] 处理表格: {table_name}")
+                log_progress(f"   工作表: {sheet_name}")
+                
+                # 合并所有语言的字段列表（使用第一个有效语言的字段作为基准）
+                base_lang = None
+                base_fields = []
+                base_columns = []
+                for lang in ['zh', 'vn', 'th']:
+                    if lang in fields_by_lang and fields_by_lang[lang]:
+                        base_lang = lang
+                        base_fields = fields_by_lang[lang]
+                        base_columns = columns_by_lang.get(lang, [])
+                        break
+                
+                if not base_fields:
+                    log_progress(f"   ⚠️ 没有可用的字段配置，跳过")
+                    continue
+                
+                # 解析字段信息，过滤出需要导出的字段
+                exportable_fields = []
+                skipped_count = 0
+                for i, field_str in enumerate(base_fields):
+                    field_name, field_type, col_letter = self.parse_field_with_type(field_str)
+                    # 如果JSON没有列字母在field_str中，尝试从columns列表获取
+                    if not col_letter and i < len(base_columns):
+                        col_letter = base_columns[i]
+                    
+                    if self.is_exportable_field(field_type):
+                        exportable_fields.append((field_name, field_type, col_letter))
+                    else:
+                        self.processing_stats['skipped_fields'] += 1
+                        skipped_count += 1
+                
+                if not exportable_fields:
+                    log_progress(f"   ⚠️ 没有需要导出的字段，跳过")
+                    continue
+                
+                log_progress(f"   ✓ 可导出字段: {len(exportable_fields)} 个")
+                if skipped_count > 0:
+                    log_progress(f"   • 跳过策划字段: {skipped_count} 个")
+                
+                self.processing_stats['exported_fields'] += len(exportable_fields)
+                
+                # 从各语言目录读取Excel数据
+                log_progress("   📁 读取语言版本文件:")
+                table_data_by_lang = {}
+                for lang, lang_dir in lang_dirs.items():
+                    if lang not in lang_configs:
+                        continue
+                    
+                    excel_path = os.path.join(lang_dir, table_name)
+                    lang_name = lang_names.get(lang, lang)
+                    
+                    if not os.path.exists(excel_path):
+                        log_progress(f"      ✗ {lang_name}: 文件不存在")
+                        continue
+                    
+                    try:
+                        df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
+                        if len(df) < 7:
+                            log_progress(f"      ✗ {lang_name}: 数据行不足")
+                            continue
+                        table_data_by_lang[lang] = df
+                        log_progress(f"      ✓ {lang_name}: {len(df)-6} 行数据")
+                    except Exception as e:
+                        log_progress(f"      ✗ {lang_name}: 读取失败 - {e}")
+                        continue
+                
+                if not table_data_by_lang:
+                    log_progress(f"   ⚠️ 所有语言版本都不可用，跳过")
+                    self.processing_stats['skipped_tables'] += 1
+                    continue
+                
+                # 提取并合并数据
+                log_progress(f"   🔍 提取字段数据:")
+                table_extracted_count = 0
+                
+                # 构建ID映射
+                id_to_row_by_lang = {lang: self._build_id_to_row_index(df) 
+                                    for lang, df in table_data_by_lang.items()}
+                
+                for field_name, field_type, col_letter in exportable_fields:
+                    # 使用列字母精确定位（交叉验证）
+                    col_idx_by_lang: Dict[str, Optional[int]] = {}
+                    
+                    for lang, df in table_data_by_lang.items():
+                        col_idx = None
+                        
+                        # 优先使用列字母定位
+                        if col_letter:
+                            try:
+                                col_idx = self.column_letter_to_index(col_letter)
+                                # 验证列索引有效性
+                                if col_idx >= len(df.columns):
+                                    col_idx = None
+                                else:
+                                    # 交叉验证：检查第5行的字段名是否匹配
+                                    if len(df) >= 5:
+                                        actual_field = df.iloc[4, col_idx]
+                                        if pd.notna(actual_field) and str(actual_field).strip() != field_name:
+                                            log_progress(f"      ⚠️ {lang_names.get(lang)}: 列{col_letter}字段名不匹配 (期望:{field_name}, 实际:{actual_field})")
+                                            # 回退到按名称查找
+                                            col_idx = self.find_column_index_by_name(df, field_name)
+                            except Exception:
+                                col_idx = None
+                        
+                        # 如果列字母定位失败，回退到按名称查找
+                        if col_idx is None:
+                            col_idx = self.find_column_index_by_name(df, field_name)
+                        
+                        col_idx_by_lang[lang] = col_idx
+                    
+                    if all(v is None for v in col_idx_by_lang.values()):
+                        log_progress(f"      ⚠️ {field_name} ({field_type}): 所有语言版本均未找到列")
+                        continue
+                    
+                    # 选择锚点语言
+                    anchor_lang = 'zh' if 'zh' in table_data_by_lang else list(table_data_by_lang.keys())[0]
+                    anchor_df = table_data_by_lang[anchor_lang]
+                    anchor_col_idx = col_idx_by_lang.get(anchor_lang)
+                    
+                    if anchor_col_idx is None:
+                        for lang, idx_val in col_idx_by_lang.items():
+                            if idx_val is not None:
+                                anchor_lang = lang
+                                anchor_df = table_data_by_lang[lang]
+                                anchor_col_idx = idx_val
+                                break
+                    
+                    excel_col = self.column_index_to_letter(anchor_col_idx)
+                    
+                    # 遍历数据行
+                    for anchor_row_idx in range(6, len(anchor_df)):
+                        anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
+                        
+                        lang_contents: Dict[str, str] = {}
+                        has_content = False
+                        
+                        for lang, df in table_data_by_lang.items():
+                            col_idx = col_idx_by_lang.get(lang)
+                            if col_idx is None:
+                                continue
+                            
+                            # 按ID对齐行
+                            target_row_idx = None
+                            if anchor_id:
+                                target_row_idx = id_to_row_by_lang.get(lang, {}).get(anchor_id)
+                            if target_row_idx is None:
+                                target_row_idx = anchor_row_idx if anchor_row_idx < len(df) else None
+                            
+                            if target_row_idx is None:
+                                continue
+                            
+                            cell_value = df.iloc[target_row_idx, col_idx]
+                            if pd.notna(cell_value) and str(cell_value).strip():
+                                lang_contents[lang] = str(cell_value).strip()
+                                has_content = True
+                        
+                        if not has_content:
+                            continue
+                        
+                        # 过滤掉非文本内容（{}、数组、纯数字）
+                        lang_contents = self.filter_lang_contents(lang_contents)
+                        if not lang_contents:
+                            continue
+                        
+                        excel_row = anchor_row_idx + 1
+                        excel_position = f"{excel_col}{excel_row}"
+                        
+                        row_data = {
+                            'table_name': table_name,
+                            'sheet_name': sheet_name,
+                            'field_name': field_name,
+                            'field_type': field_type,
+                            'excel_position': excel_position,
+                            'chinese': lang_contents.get('zh', ''),
+                            'vietnamese': lang_contents.get('vn', ''),
+                            'thai': lang_contents.get('th', '')
+                        }
+                        
+                        all_data.append(row_data)
+                        self.processing_stats['total_rows'] += 1
+                        table_extracted_count += 1
+                
+                log_progress(f"      ✓ 共提取 {table_extracted_count} 条数据")
+                log_progress("")
+                
+                self.processing_stats['processed_tables'] += 1
+            
+            self.translation_results = all_data
+            
+            log_progress("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            log_progress(f"✅ 处理完成！")
+            log_progress(f"   • 处理表格: {self.processing_stats['processed_tables']}/{self.processing_stats['total_tables']}")
+            log_progress(f"   • 导出字段: {self.processing_stats['exported_fields']} 个")
+            log_progress(f"   • 提取数据: {len(all_data)} 条")
+            log_progress("")
+            
+            return all_data
+        
+        except Exception as e:
+            logger.error(f"处理失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+    
     def is_exportable_field(self, field_type: str) -> bool:
         """
         判断字段类型是否需要导出
@@ -156,6 +491,55 @@ class TableRangeTranslator:
             bool: True表示需要导出
         """
         return field_type in self.exportable_field_types
+    
+    def is_valid_translation_text(self, text: str) -> bool:
+        """
+        判断文本是否为有效的翻译文本（非结构化数据）
+        过滤掉：空花括号{}、数组格式[2,99]/{2,99}、纯数字
+        
+        Args:
+            text: 待检测文本
+            
+        Returns:
+            bool: True表示是有效的翻译文本，False表示应该被过滤
+        """
+        if pd.isna(text):
+            return False
+        
+        text_str = str(text).strip()
+        if not text_str:
+            return False
+        
+        # 过滤空花括号 {}
+        if self.empty_braces_pattern.match(text_str):
+            return False
+        
+        # 过滤数组格式 [2, 99] 或 {2, 99}
+        if self.array_pattern.match(text_str):
+            return False
+        
+        # 过滤空对象数组 [{},{}]
+        if self.object_array_pattern.match(text_str):
+            return False
+        
+        # 过滤纯数字
+        if self.pure_number_pattern.match(text_str):
+            return False
+        
+        return True
+    
+    def filter_lang_contents(self, lang_contents: Dict[str, str]) -> Dict[str, str]:
+        """
+        过滤语言内容字典，移除非文本值
+        
+        Args:
+            lang_contents: 语言内容字典 {'zh': 'xxx', 'vn': 'xxx', 'th': 'xxx'}
+            
+        Returns:
+            Dict[str, str]: 过滤后的语言内容字典
+        """
+        return {lang: text for lang, text in lang_contents.items() 
+                if self.is_valid_translation_text(text)}
     
     def detect_language_type(self, text: str) -> str:
         """
@@ -762,6 +1146,11 @@ class TableRangeTranslator:
                         if not has_content:
                             continue
 
+                        # 过滤掉非文本内容（{}、数组、纯数字）
+                        lang_contents = self.filter_lang_contents(lang_contents)
+                        if not lang_contents:
+                            continue
+
                         excel_row = anchor_row_idx + 1
                         excel_position = f"{excel_col}{excel_row}"
 
@@ -959,6 +1348,11 @@ class TableRangeTranslator:
                         if not has_content:
                             continue
 
+                        # 过滤掉非文本内容（{}、数组、纯数字）
+                        lang_contents = self.filter_lang_contents(lang_contents)
+                        if not lang_contents:
+                            continue
+
                         excel_row = anchor_row_idx + 1
                         excel_position = f"{excel_col}{excel_row}"
 
@@ -1104,6 +1498,76 @@ class TableRangeTranslator:
             import traceback
             traceback.print_exc()
             return False
+    
+    def generate_translation_csv(self, output_path: str) -> bool:
+        """
+        生成多语言翻译CSV文件
+        列格式: 表名 | 工作表 | 字段名 | 字段类型 | Excel位置 | ZH | VN | TH
+        
+        Args:
+            output_path: 输出CSV文件路径
+            
+        Returns:
+            bool: 是否成功
+        """
+        try:
+            if not self.translation_results:
+                logger.warning("没有数据可导出")
+                return False
+            
+            logger.info(f"开始生成翻译CSV: {output_path}")
+            
+            # 创建DataFrame
+            df = pd.DataFrame(self.translation_results)
+            
+            # 重新排列列顺序
+            columns = ['table_name', 'sheet_name', 'field_name', 'field_type', 
+                      'excel_position', 'chinese', 'vietnamese', 'thai']
+            
+            # 确保所有列都存在
+            for col in columns:
+                if col not in df.columns:
+                    df[col] = ''
+            
+            df = df[columns]
+            
+            # 重命名列标题
+            df.columns = ['Table', 'Sheet', 'Field', 'Type', 'Position', 'ZH', 'VN', 'TH']
+            
+            # 保存CSV（使用UTF-8 BOM编码以便Excel正确识别中文）
+            df.to_csv(output_path, index=False, encoding='utf-8-sig')
+            
+            logger.info(f"翻译CSV已生成: {output_path}")
+            logger.info(f"  - 总数据行数: {len(self.translation_results)}")
+            
+            return True
+        
+        except Exception as e:
+            logger.error(f"生成翻译CSV失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    @staticmethod
+    def generate_output_filename(output_dir: str = None) -> str:
+        """
+        自动生成输出文件名
+        格式: 翻译提取_YYYYMMDD_HHMMSS.csv
+        
+        Args:
+            output_dir: 输出目录，如果为None则使用当前目录
+            
+        Returns:
+            str: 完整的输出文件路径
+        """
+        from datetime import datetime
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"翻译提取_{timestamp}.csv"
+        
+        if output_dir:
+            return os.path.join(output_dir, filename)
+        return filename
     
     def get_processing_report(self) -> str:
         """

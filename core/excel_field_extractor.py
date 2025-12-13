@@ -36,8 +36,16 @@ class ExcelFieldExtractor:
         # 越南文：\u00C0-\u1EF9 (包含带音标的拉丁字母)
         # 泰文：\u0E00-\u0E7F
         self.text_pattern = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\u00C0-\u1EF9\u0E00-\u0E7F]')
-        # 要过滤的字段名列表（这些字段通常包含代码、标识符或纯数字）
-        self.excluded_field_names = {'name', 'model', 'id', 'code', 'type'}
+        
+        # 非文本内容过滤模式（用于过滤{}、[]、数组、纯数字）
+        # 与 table_range_translator.py 保持一致
+        self.empty_braces_pattern = re.compile(r'^\s*[\{\[]\s*[\}\]]\s*$')  # 空括号 {} 或 []
+        self.array_pattern = re.compile(r'^\s*[\[\{]\s*[\d\s,\.\-]*\s*[\]\}]\s*$')  # 数组格式 [2,99] 或 {2,99} 或 [] 或 {}
+        self.object_array_pattern = re.compile(r'^\s*\[\s*(\{\s*[\d\s,\.\-]*\s*\}\s*,?\s*)+\]\s*$')  # 对象数组 [{},{}] 或 [{22},{333}]
+        self.pure_number_pattern = re.compile(r'^\s*[\-]?[\d\.]+\s*$')  # 纯数字
+        
+        # 曾用于过滤字段名的列表（已废弃，因为即使字段名是 name 等，数据仍可能包含中文需要翻译）
+        # self.excluded_field_names = {'name', 'model', 'id', 'code', 'type'}
         # 错误日志列表
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
@@ -57,7 +65,7 @@ class ExcelFieldExtractor:
     def contains_text(self, value) -> bool:
         """
         检查值是否包含本地化文本内容（仅限中文、越南文、泰文）
-        排除：纯数字、英文代码、配置项等
+        排除：纯数字、英文代码、配置项、数组、对象等
         
         Args:
             value: 要检查的值
@@ -74,12 +82,29 @@ class ExcelFieldExtractor:
         if not value_str:
             return False
         
-        # 排除纯数字（包括小数、负数、科学计数法）
-        if value_str.replace('.', '').replace('-', '').replace('+', '').replace('e', '').replace('E', '').isdigit():
+        # 使用正则表达式过滤（与 table_range_translator.py 保持一致）
+        # 排除空括号 {} 或 []
+        if self.empty_braces_pattern.match(value_str):
+            return False
+        
+        # 排除数组格式 [2,99] 或 {2,99} 或 [] 或 {}
+        if self.array_pattern.match(value_str):
+            return False
+        
+        # 排除空对象数组 [{},{}]
+        if self.object_array_pattern.match(value_str):
+            return False
+        
+        # 排除纯数字
+        if self.pure_number_pattern.match(value_str):
+            return False
+        
+        # 排除常见的配置关键字
+        if value_str in ('null', 'None', 'true', 'false', 'True', 'False'):
             return False
         
         # 排除看起来像代码或配置的内容（包含特殊符号但不含目标文字）
-        # 例如：ID_001, CONFIG_NAME, true, false, null 等
+        # 例如：ID_001, CONFIG_NAME 等
         if not self.text_pattern.search(value_str):
             return False
         
@@ -155,19 +180,34 @@ class ExcelFieldExtractor:
                     start_col, end_col = column_range
                     
                     # 检测包含本地化文本内容的列
-                    text_columns = set()
+                    # 使用计数器统计每列包含文本的行数
+                    text_column_counts = {}  # {列号: 文本行计数}
+                    total_data_rows = 0
                     
                     # 只扫描数据行（从第7行开始），忽略表头和字段行
                     # 这样可以过滤掉ID、配置列等纯代码/数字列
                     data_start_row = 7  # 第7行开始是数据
                     
                     if sheet.max_row >= data_start_row:
+                        total_data_rows = sheet.max_row - data_start_row + 1
                         # 只扫描指定列范围内的单元格
                         for row in sheet.iter_rows(min_row=data_start_row, max_row=sheet.max_row, 
                                                    min_col=start_col, max_col=end_col):
                             for cell in row:
                                 if cell.value is not None and self.contains_text(cell.value):
-                                    text_columns.add(cell.column)
+                                    col_num = cell.column
+                                    text_column_counts[col_num] = text_column_counts.get(col_num, 0) + 1
+                    
+                    # 筛选真正的文本列：要求至少有3行包含文本，或者文本行占比超过10%
+                    # 这样可以过滤掉偶尔有一两个特殊值的数字列
+                    min_text_rows = 3  # 最少文本行数
+                    min_text_ratio = 0.10  # 最小文本占比 10%
+                    
+                    text_columns = set()
+                    for col_num, count in text_column_counts.items():
+                        # 满足任一条件即可：至少3行文本，或者文本占比超过10%
+                        if count >= min_text_rows or (total_data_rows > 0 and count / total_data_rows >= min_text_ratio):
+                            text_columns.add(col_num)
                     
                     if not text_columns:
                         # 未检测到本地化文本列：仍然加入结果，标记 has_text=False，字段为空
@@ -196,9 +236,9 @@ class ExcelFieldExtractor:
                             field_cell = sheet.cell(row=field_row, column=col_num)
                             field_name = str(field_cell.value) if field_cell.value is not None else f"列{col_num}"
                             
-                            # 过滤掉指定的字段名（通常包含代码、标识符或纯数字）
-                            if field_name.lower() in self.excluded_field_names:
-                                continue
+                            # 注意：不再基于字段名过滤，因为即使字段名是 name、id 等，
+                            # 只要该列的数据包含中文/越南文/泰文，就应该被提取
+                            # 之前的过滤逻辑会导致 name 字段（包含中文名称）被错误跳过
                             
                             # 获取列字母（如 A, B, F 等）
                             col_letter = get_column_letter(col_num)
