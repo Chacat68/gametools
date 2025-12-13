@@ -295,6 +295,52 @@ class ExcelFieldExtractor:
         
         return all_results
     
+    def _format_json_data(self, results: List[Dict], language: str = None) -> Dict:
+        """
+        格式化JSON数据
+        
+        Args:
+            results: 字段信息列表
+            language: 语言代码
+            
+        Returns:
+            Dict: 格式化后的JSON数据
+        """
+        # 分组：无文本表与有文本表
+        no_text_results = [r for r in results if not r.get('has_text', True)]
+        text_results = [r for r in results if r.get('has_text', True)]
+        
+        json_output = {
+            "no_text_tables": [],
+            "text_tables": []
+        }
+        
+        # 添加语言标记（如果指定了语言）
+        if language and language in self.SUPPORTED_LANGUAGES:
+            lang_info = self.SUPPORTED_LANGUAGES[language]
+            json_output["language"] = {
+                "code": lang_info['code'],
+                "name": lang_info['name']
+            }
+        
+        # 无文本表：只包含表名信息
+        for result in no_text_results:
+            json_output["no_text_tables"].append({
+                "table_name": result['excel_file'],
+                "sheet_name": result['sheet_name']
+            })
+        
+        # 有文本表：包含完整字段结构
+        for result in text_results:
+            json_output["text_tables"].append({
+                "table_name": result['excel_file'],
+                "sheet_name": result['sheet_name'],
+                "fields_with_examples": result.get('fields_with_examples', []),
+                "field_count": result['field_count']
+            })
+            
+        return json_output
+
     def export_to_json(self, results: List[Dict], output_file: Path, language: str = None):
         """
         导出结果到JSON文件
@@ -309,38 +355,7 @@ class ExcelFieldExtractor:
         """
         try:
             # 构建JSON结构
-            # 分组：无文本表与有文本表
-            no_text_results = [r for r in results if not r.get('has_text', True)]
-            text_results = [r for r in results if r.get('has_text', True)]
-            
-            json_output = {
-                "no_text_tables": [],
-                "text_tables": []
-            }
-            
-            # 添加语言标记（如果指定了语言）
-            if language and language in self.SUPPORTED_LANGUAGES:
-                lang_info = self.SUPPORTED_LANGUAGES[language]
-                json_output["language"] = {
-                    "code": lang_info['code'],
-                    "name": lang_info['name']
-                }
-            
-            # 无文本表：只包含表名信息
-            for result in no_text_results:
-                json_output["no_text_tables"].append({
-                    "table_name": result['excel_file'],
-                    "sheet_name": result['sheet_name']
-                })
-            
-            # 有文本表：包含完整字段结构
-            for result in text_results:
-                json_output["text_tables"].append({
-                    "table_name": result['excel_file'],
-                    "sheet_name": result['sheet_name'],
-                    "fields_with_examples": result.get('fields_with_examples', []),
-                    "field_count": result['field_count']
-                })
+            json_output = self._format_json_data(results, language)
             
             # 写入JSON文件
             with open(output_file, 'w', encoding='utf-8') as f:
@@ -348,8 +363,12 @@ class ExcelFieldExtractor:
             
             lang_str = f" [{self.SUPPORTED_LANGUAGES[language]['name']}]" if language else ""
             print(f"结果已导出到{lang_str}: {output_file}")
-            print(f"  - 无文本表格: {len(no_text_results)} 个")
-            print(f"  - 有文本表格: {len(text_results)} 个")
+            
+            # 统计数量
+            no_text_count = len(json_output["no_text_tables"])
+            text_count = len(json_output["text_tables"])
+            print(f"  - 无文本表格: {no_text_count} 个")
+            print(f"  - 有文本表格: {text_count} 个")
         
         except Exception as e:
             print(f"导出到JSON时出错: {e}")
@@ -508,7 +527,8 @@ class ExcelFieldExtractor:
                          output_folder: str = None,
                          output_format: str = 'json',
                          recursive: bool = True,
-                         language: str = None) -> Dict:
+                         language: str = None,
+                         write_output: bool = True) -> Dict:
         """
         处理目录并导出结果
         
@@ -518,6 +538,7 @@ class ExcelFieldExtractor:
             output_format: 输出格式 ('json', 'csv' 或 'excel')
             recursive: 是否递归扫描
             language: 语言代码 ('zh', 'vn', 'th')，用于输出文件命名和JSON语言标记
+            write_output: 是否写入输出文件
             
         Returns:
             Dict: 处理统计信息，包含results数据
@@ -529,7 +550,8 @@ class ExcelFieldExtractor:
         else:
             output_dir = directory
         
-        output_dir.mkdir(parents=True, exist_ok=True)
+        if write_output:
+            output_dir.mkdir(parents=True, exist_ok=True)
         
         # 扫描目录
         lang_str = f" [{self.SUPPORTED_LANGUAGES[language]['name']}]" if language and language in self.SUPPORTED_LANGUAGES else ""
@@ -539,6 +561,7 @@ class ExcelFieldExtractor:
         # 重新排序：无文本表优先，其次按文件名与工作表名
         results.sort(key=lambda r: (0 if not r.get('has_text', True) else 1, r['excel_file'], r['sheet_name']))
         
+        output_file = None
         if not results:
             print("未找到包含文本内容的Excel表格")
             return {
@@ -553,15 +576,16 @@ class ExcelFieldExtractor:
         lang_suffix = self.SUPPORTED_LANGUAGES[language]['suffix'] if language and language in self.SUPPORTED_LANGUAGES else ""
         
         # 导出结果
-        if output_format == 'json':
-            output_file = output_dir / f"field_extraction_result{lang_suffix}.json"
-            self.export_to_json(results, output_file, language=language)
-        elif output_format == 'csv':
-            output_file = output_dir / f"field_extraction_result{lang_suffix}.csv"
-            self.export_to_csv(results, output_file)
-        else:
-            output_file = output_dir / f"field_extraction_result{lang_suffix}.xlsx"
-            self.export_to_excel(results, output_file)
+        if write_output:
+            if output_format == 'json':
+                output_file = output_dir / f"field_extraction_result{lang_suffix}.json"
+                self.export_to_json(results, output_file, language=language)
+            elif output_format == 'csv':
+                output_file = output_dir / f"field_extraction_result{lang_suffix}.csv"
+                self.export_to_csv(results, output_file)
+            else:
+                output_file = output_dir / f"field_extraction_result{lang_suffix}.xlsx"
+                self.export_to_excel(results, output_file)
         
         # 统计信息
         total_files = len(set(r['excel_file'] for r in results))
@@ -572,7 +596,7 @@ class ExcelFieldExtractor:
             'total_files': total_files,
             'total_sheets': total_sheets,
             'total_fields': total_fields,
-            'output_file': str(output_file),
+            'output_file': str(output_file) if output_file else None,
             'results': results,
             'language': language
         }
@@ -625,6 +649,11 @@ class ExcelFieldExtractor:
         if not output_folder:
             print("错误: 未指定有效的输出目录")
             return all_stats
+            
+        output_dir_path = Path(output_folder)
+        output_dir_path.mkdir(parents=True, exist_ok=True)
+        
+        merged_json_data = {}
         
         # 依次处理每个语言目录
         for lang_code, dir_path in directories.items():
@@ -641,14 +670,24 @@ class ExcelFieldExtractor:
             print(f"开始处理 {lang_name} 目录...")
             print(f"{'='*60}")
             
+            # 如果是JSON格式，暂时不写入单个文件，而是收集数据合并
+            should_write = (output_format != 'json')
+            
             # 处理该语言的目录
             stats = self.process_directory(
                 directory_path=dir_path,
                 output_folder=output_folder,
                 output_format=output_format,
                 recursive=recursive,
-                language=lang_code
+                language=lang_code,
+                write_output=should_write
             )
+            
+            # 如果是JSON格式，收集数据
+            if output_format == 'json':
+                formatted_data = self._format_json_data(stats['results'], lang_code)
+                # 使用大写语言代码作为Key
+                merged_json_data[lang_code.upper()] = formatted_data
             
             # 汇总统计
             all_stats['languages'][lang_code] = {
@@ -661,6 +700,17 @@ class ExcelFieldExtractor:
             all_stats['total_fields'] += stats['total_fields']
             if stats.get('output_file'):
                 all_stats['output_files'].append(stats['output_file'])
+        
+        # 如果是JSON格式，写入合并后的文件
+        if output_format == 'json' and merged_json_data:
+            merged_output_file = output_dir_path / "field_extraction_result_merged.json"
+            try:
+                with open(merged_output_file, 'w', encoding='utf-8') as f:
+                    json.dump(merged_json_data, f, ensure_ascii=False, indent=2)
+                print(f"\n合并结果已导出到: {merged_output_file}")
+                all_stats['output_files'].append(str(merged_output_file))
+            except Exception as e:
+                print(f"导出合并JSON时出错: {e}")
         
         # 输出总结
         print(f"\n{'='*60}")
