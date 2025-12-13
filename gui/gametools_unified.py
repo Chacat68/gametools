@@ -572,69 +572,103 @@ class GameToolsUnified:
         # 配置网格
         trt_frame.columnconfigure(0, weight=1)
         
-        # 文件选择区域
-        file_frame = ttk.LabelFrame(trt_frame, text="文件配置（提取多语言翻译内容）", padding="10")
+        # 文件选择区域 - 多语言JSON配置
+        file_frame = ttk.LabelFrame(trt_frame, text="多语言配置（JSON中包含语言标记，自动匹配目录）", padding="10")
         file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
         file_frame.columnconfigure(1, weight=1)
         
-        # JSON配置文件
-        ttk.Label(file_frame, text="JSON配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_json_var = tk.StringVar()
-        self.trt_json_entry = ttk.Entry(file_frame, textvariable=self.trt_json_var, 
-                                       font=("Microsoft YaHei", 9))
-        self.trt_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        # 中文JSON配置
+        ttk.Label(file_frame, text="中文JSON:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_zh_json_var = tk.StringVar()
+        self.trt_zh_json_entry = ttk.Entry(file_frame, textvariable=self.trt_zh_json_var, 
+                                          font=("Microsoft YaHei", 9))
+        self.trt_zh_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.trt_json_browse_button = ttk.Button(file_frame, text="浏览JSON", 
-                                                command=self.browse_trt_json_file)
-        self.trt_json_browse_button.grid(row=0, column=2, pady=(0, 8))
+        self.trt_zh_json_browse_button = ttk.Button(file_frame, text="浏览", 
+                                                   command=lambda: self.browse_trt_lang_json('zh'))
+        self.trt_zh_json_browse_button.grid(row=0, column=2, pady=(0, 8))
         
-        # 越南文目录（默认，无后缀）
-        ttk.Label(file_frame, text="越南文目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        # 越南语JSON配置
+        ttk.Label(file_frame, text="越南语JSON:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_vn_json_var = tk.StringVar()
+        self.trt_vn_json_entry = ttk.Entry(file_frame, textvariable=self.trt_vn_json_var, 
+                                          font=("Microsoft YaHei", 9))
+        self.trt_vn_json_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_vn_json_browse_button = ttk.Button(file_frame, text="浏览", 
+                                                   command=lambda: self.browse_trt_lang_json('vn'))
+        self.trt_vn_json_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        # 泰语JSON配置
+        ttk.Label(file_frame, text="泰语JSON:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_th_json_var = tk.StringVar()
+        self.trt_th_json_entry = ttk.Entry(file_frame, textvariable=self.trt_th_json_var, 
+                                          font=("Microsoft YaHei", 9))
+        self.trt_th_json_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_th_json_browse_button = ttk.Button(file_frame, text="浏览", 
+                                                   command=lambda: self.browse_trt_lang_json('th'))
+        self.trt_th_json_browse_button.grid(row=2, column=2, pady=(0, 8))
+        
+        # 目录选择区域（保留兼容旧变量名）
+        dir_frame = ttk.LabelFrame(trt_frame, text="对应语言目录", padding="10")
+        dir_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        dir_frame.columnconfigure(1, weight=1)
+        
+        # 中文目录
+        ttk.Label(dir_frame, text="中文目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_zh_dir_var = tk.StringVar()
+        self.trt_zh_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_zh_dir_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.trt_zh_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_zh_browse_button = ttk.Button(dir_frame, text="浏览目录", 
+                                              command=self.browse_trt_zh_directory)
+        self.trt_zh_browse_button.grid(row=0, column=2, pady=(0, 8))
+        
+        # 越南文目录
+        ttk.Label(dir_frame, text="越南语目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
         self.trt_vn_dir_var = tk.StringVar()
-        self.trt_vn_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_vn_dir_var, 
+        self.trt_vn_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_vn_dir_var, 
                                          font=("Microsoft YaHei", 9))
         self.trt_vn_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.trt_vn_browse_button = ttk.Button(file_frame, text="浏览目录", 
+        self.trt_vn_browse_button = ttk.Button(dir_frame, text="浏览目录", 
                                               command=self.browse_trt_vn_directory)
         self.trt_vn_browse_button.grid(row=1, column=2, pady=(0, 8))
         
-        # 中文目录（_zh后缀）
-        ttk.Label(file_frame, text="中文目录:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_zh_dir_var = tk.StringVar()
-        self.trt_zh_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_zh_dir_var, 
-                                         font=("Microsoft YaHei", 9))
-        self.trt_zh_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
-        
-        self.trt_zh_browse_button = ttk.Button(file_frame, text="浏览目录", 
-                                              command=self.browse_trt_zh_directory)
-        self.trt_zh_browse_button.grid(row=2, column=2, pady=(0, 8))
-        
-        # 泰文目录（_th后缀）
-        ttk.Label(file_frame, text="泰文目录:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        # 泰文目录
+        ttk.Label(dir_frame, text="泰语目录:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
         self.trt_th_dir_var = tk.StringVar()
-        self.trt_th_dir_entry = ttk.Entry(file_frame, textvariable=self.trt_th_dir_var, 
+        self.trt_th_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_th_dir_var, 
                                          font=("Microsoft YaHei", 9))
-        self.trt_th_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        self.trt_th_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.trt_th_browse_button = ttk.Button(file_frame, text="浏览目录", 
+        self.trt_th_browse_button = ttk.Button(dir_frame, text="浏览目录", 
                                               command=self.browse_trt_th_directory)
-        self.trt_th_browse_button.grid(row=3, column=2, pady=(0, 8))
+        self.trt_th_browse_button.grid(row=2, column=2, pady=(0, 8))
         
         # 输出文件
-        ttk.Label(file_frame, text="输出文件:").grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
-        self.trt_output_var = tk.StringVar()
-        self.trt_output_entry = ttk.Entry(file_frame, textvariable=self.trt_output_var, 
-                                         font=("Microsoft YaHei", 9))
-        self.trt_output_entry.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        output_frame = ttk.LabelFrame(trt_frame, text="输出设置", padding="10")
+        output_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        output_frame.columnconfigure(1, weight=1)
         
-        self.trt_output_browse_button = ttk.Button(file_frame, text="选择保存位置", 
+        ttk.Label(output_frame, text="输出文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        self.trt_output_var = tk.StringVar()
+        self.trt_output_entry = ttk.Entry(output_frame, textvariable=self.trt_output_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.trt_output_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        self.trt_output_browse_button = ttk.Button(output_frame, text="选择保存位置", 
                                                   command=self.browse_trt_output_file)
-        self.trt_output_browse_button.grid(row=4, column=2)
+        self.trt_output_browse_button.grid(row=0, column=2)
+        
+        # 兼容旧变量（单JSON模式）
+        self.trt_json_var = self.trt_zh_json_var
         
         # 操作按钮区域
         button_frame = ttk.Frame(trt_frame)
-        button_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
+        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
         # 主要操作按钮
         self.trt_process_button = ttk.Button(button_frame, text="🚀 开始提取", 
@@ -662,11 +696,11 @@ class GameToolsUnified:
         batch_frame.columnconfigure(0, weight=1)
         
         # 文件选择区域
-        file_frame = ttk.LabelFrame(batch_frame, text="文件配置（根据映射表批量修改Excel）", padding="10")
+        file_frame = ttk.LabelFrame(batch_frame, text="文件配置（JSON中包含语言标记，自动匹配对应目录）", padding="10")
         file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
         file_frame.columnconfigure(1, weight=1)
         
-        # JSON配置文件（必需 - 定义表和字段）
+        # JSON配置文件（必需 - 定义表和字段，包含语言标记）
         ttk.Label(file_frame, text="JSON配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
         self.batch_json_var = tk.StringVar()
         self.batch_json_entry = ttk.Entry(file_frame, textvariable=self.batch_json_var, 
@@ -681,6 +715,10 @@ class GameToolsUnified:
         self.batch_json_preview_button = ttk.Button(json_btn_frame, text="预览", 
                                                    command=self.preview_batch_json_config)
         self.batch_json_preview_button.pack(side=tk.LEFT)
+        
+        # JSON语言标记显示
+        self.batch_json_lang_label = ttk.Label(file_frame, text="", foreground='blue')
+        self.batch_json_lang_label.grid(row=0, column=3, padx=(10, 0), pady=(0, 8))
         
         # 映射表文件（如 p9-3t_分页.xlsx）
         ttk.Label(file_frame, text="映射表文件:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
@@ -2017,8 +2055,23 @@ class GameToolsUnified:
     
     # ==================== 多语言翻译提取相关方法 ====================
     
+    def browse_trt_lang_json(self, lang_code):
+        """浏览特定语言的JSON配置文件"""
+        lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+        file_path = filedialog.askopenfilename(
+            title=f"选择{lang_names.get(lang_code, '')}JSON配置文件",
+            filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            if lang_code == 'zh':
+                self.trt_zh_json_var.set(file_path)
+            elif lang_code == 'vn':
+                self.trt_vn_json_var.set(file_path)
+            elif lang_code == 'th':
+                self.trt_th_json_var.set(file_path)
+    
     def browse_trt_json_file(self):
-        """浏览JSON配置文件"""
+        """浏览JSON配置文件（兼容旧方法）"""
         file_path = filedialog.askopenfilename(
             title="选择JSON配置文件",
             filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
@@ -2056,18 +2109,41 @@ class GameToolsUnified:
     
     def start_table_range_translation(self):
         """开始多语言翻译提取"""
-        json_path = self.trt_json_var.get().strip()
-        vn_dir = self.trt_vn_dir_var.get().strip()
+        # 收集多语言JSON配置
+        zh_json = self.trt_zh_json_var.get().strip()
+        vn_json = self.trt_vn_json_var.get().strip()
+        th_json = self.trt_th_json_var.get().strip()
+        
+        # 收集语言目录
         zh_dir = self.trt_zh_dir_var.get().strip()
+        vn_dir = self.trt_vn_dir_var.get().strip()
         th_dir = self.trt_th_dir_var.get().strip()
         output_file = self.trt_output_var.get().strip()
         
+        # 构建JSON配置字典
+        json_configs = {}
+        if zh_json:
+            json_configs['zh'] = zh_json
+        if vn_json:
+            json_configs['vn'] = vn_json
+        if th_json:
+            json_configs['th'] = th_json
+        
         # 验证输入
-        if not json_path:
-            messagebox.showerror("错误", "请选择JSON配置文件")
+        if not json_configs:
+            messagebox.showerror("错误", "请至少选择一个语言的JSON配置文件")
             return
         
-        if not vn_dir and not zh_dir and not th_dir:
+        # 构建语言目录字典
+        lang_dirs = {}
+        if zh_dir:
+            lang_dirs['zh'] = zh_dir
+        if vn_dir:
+            lang_dirs['vn'] = vn_dir
+        if th_dir:
+            lang_dirs['th'] = th_dir
+        
+        if not lang_dirs:
             messagebox.showerror("错误", "请至少选择一个语言目录")
             return
         
@@ -2075,43 +2151,31 @@ class GameToolsUnified:
             messagebox.showerror("错误", "请选择输出文件位置")
             return
         
-        if not os.path.exists(json_path):
-            messagebox.showerror("错误", "JSON配置文件不存在")
-            return
+        # 验证JSON文件存在性
+        for lang, json_path in json_configs.items():
+            if not os.path.exists(json_path):
+                lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+                messagebox.showerror("错误", f"{lang_names[lang]}JSON配置文件不存在")
+                return
         
         # 验证目录存在性
-        if vn_dir and not os.path.exists(vn_dir):
-            messagebox.showerror("错误", "越南文目录不存在")
-            return
-        
-        if zh_dir and not os.path.exists(zh_dir):
-            messagebox.showerror("错误", "中文目录不存在")
-            return
-        
-        if th_dir and not os.path.exists(th_dir):
-            messagebox.showerror("错误", "泰文目录不存在")
-            return
-        
-        # 构建语言目录字典
-        lang_dirs = {}
-        if vn_dir:
-            lang_dirs['vn'] = vn_dir
-        if zh_dir:
-            lang_dirs['zh'] = zh_dir
-        if th_dir:
-            lang_dirs['th'] = th_dir
+        for lang, dir_path in lang_dirs.items():
+            if not os.path.exists(dir_path):
+                lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+                messagebox.showerror("错误", f"{lang_names[lang]}目录不存在")
+                return
         
         # 在新线程中执行提取
         self.trt_process_button.config(state="disabled")
         self.status_var.set("正在提取翻译内容...")
         
         thread = threading.Thread(target=self._table_range_translation_thread, 
-                                 args=(json_path, lang_dirs, output_file))
+                                 args=(json_configs, lang_dirs, output_file))
         thread.daemon = True
         thread.start()
     
-    def _table_range_translation_thread(self, json_path, lang_dirs, output_file):
-        """多语言翻译提取线程"""
+    def _table_range_translation_thread(self, json_configs, lang_dirs, output_file):
+        """多语言翻译提取线程 - 支持多JSON配置"""
         try:
             # 清空结果
             self.root.after(0, self.clear_trt_results)
@@ -2120,16 +2184,20 @@ class GameToolsUnified:
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 "=" * 70 + "\n"))
             self.root.after(0, lambda: self.append_result('table_range_translator', 
-                "开始多语言翻译提取...\n"))
+                "开始多语言翻译提取（基于语言标记匹配）...\n"))
             self.root.after(0, lambda: self.append_result('table_range_translator', 
                 "=" * 70 + "\n"))
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                f"JSON配置: {json_path}\n"))
+            
+            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            
+            # 显示各语言JSON配置
+            for lang, json_path in json_configs.items():
+                self.root.after(0, lambda ln=lang_names.get(lang, lang), jp=json_path: 
+                    self.append_result('table_range_translator', f"{ln}JSON: {jp}\n"))
             
             # 显示各语言目录
             for lang, dir_path in lang_dirs.items():
-                lang_name = {'vn': '越南文', 'zh': '中文', 'th': '泰文'}.get(lang, lang)
-                self.root.after(0, lambda ln=lang_name, dp=dir_path: 
+                self.root.after(0, lambda ln=lang_names.get(lang, lang), dp=dir_path: 
                     self.append_result('table_range_translator', f"{ln}目录: {dp}\n"))
             
             self.root.after(0, lambda: self.append_result('table_range_translator', 
@@ -2142,9 +2210,9 @@ class GameToolsUnified:
                 """进度回调，将消息显示到界面"""
                 self.root.after(0, lambda m=msg: self.append_result('table_range_translator', m + "\n"))
             
-            # 处理数据
-            results = self.table_range_translator.process_with_json_config_multi_lang(
-                json_path, lang_dirs, progress_callback=progress_callback)
+            # 使用新的多JSON多目录处理方法
+            results = self.table_range_translator.process_with_multi_json_configs(
+                json_configs, lang_dirs, progress_callback=progress_callback)
             
             if results:
                 self.root.after(0, lambda: self.append_result('table_range_translator', 
@@ -2270,6 +2338,24 @@ class GameToolsUnified:
         )
         if file_path:
             self.batch_json_var.set(file_path)
+            # 读取JSON并显示语言标记
+            self._update_batch_json_language_label(file_path)
+    
+    def _update_batch_json_language_label(self, json_path):
+        """更新批量改表JSON语言标记显示"""
+        try:
+            import json
+            with open(json_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            if 'language' in config and isinstance(config['language'], dict):
+                lang_name = config['language'].get('name', '')
+                lang_code = config['language'].get('code', '')
+                self.batch_json_lang_label.config(text=f"📌 {lang_name} ({lang_code})")
+            else:
+                self.batch_json_lang_label.config(text="⚠️ 无语言标记")
+        except Exception as e:
+            self.batch_json_lang_label.config(text=f"⚠️ 读取失败")
     
     def browse_batch_excel_directory(self):
         """浏览要修改的Excel文件目录"""
@@ -2431,6 +2517,20 @@ Excel目录: {excel_dir}
                 "=" * 70 + "\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"JSON配置: {json_file}\n"))
+            
+            # 读取并显示JSON语言标记
+            try:
+                import json as json_module
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    json_config = json_module.load(f)
+                if 'language' in json_config and isinstance(json_config['language'], dict):
+                    lang_name = json_config['language'].get('name', '')
+                    lang_code = json_config['language'].get('code', '')
+                    self.root.after(0, lambda ln=lang_name, lc=lang_code: self.append_result('batch_modifier', 
+                        f"JSON语言标记: {ln} ({lc})\n"))
+            except:
+                pass
+            
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"映射表: {mapping_file}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 

@@ -31,6 +31,13 @@ logger = logging.getLogger(__name__)
 class BatchExcelModifier:
     """批量Excel修改器（使用 xlwings 引擎）"""
     
+    # 支持的语言配置（与 ExcelFieldExtractor 保持一致）
+    SUPPORTED_LANGUAGES = {
+        'zh': {'name': '中文', 'code': 'zh', 'suffix': '_zh'},
+        'vn': {'name': '越南语', 'code': 'vn', 'suffix': '_vn'},
+        'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'}
+    }
+    
     def __init__(self):
         """
         初始化批量修改器
@@ -61,6 +68,9 @@ class BatchExcelModifier:
         
         # JSON配置中的字段信息
         self.field_config = {}
+        
+        # JSON中的语言标记
+        self.json_language = None
         
         # 进度回调
         self.progress_callback = None
@@ -141,6 +151,13 @@ class BatchExcelModifier:
             logger.info(f"成功加载JSON配置: {json_path}")
             logger.info(f"  - 包含 {len(text_tables)} 个表的字段配置")
             
+            # 读取并保存语言标记
+            if 'language' in config:
+                self.json_language = config['language']
+                logger.info(f"  - 语言标记: {self.json_language.get('name', '')} ({self.json_language.get('code', '')})")
+            else:
+                self.json_language = None
+            
             return field_config
         
         except Exception as e:
@@ -148,6 +165,43 @@ class BatchExcelModifier:
             logger.error(error_msg)
             self.error_logs.append(error_msg)
             return {}
+    
+    def get_json_language(self) -> Optional[str]:
+        """
+        获取JSON配置中的语言代码
+        
+        Returns:
+            str or None: 语言代码 ('zh', 'vn', 'th') 或 None
+        """
+        if self.json_language and isinstance(self.json_language, dict):
+            return self.json_language.get('code')
+        return None
+    
+    def get_json_language_name(self) -> str:
+        """
+        获取JSON配置中的语言名称
+        
+        Returns:
+            str: 语言名称，如 '中文'、'越南语'、'泰语'
+        """
+        if self.json_language and isinstance(self.json_language, dict):
+            return self.json_language.get('name', '')
+        return ''
+    
+    def match_directory_by_language(self, lang_dirs: Dict[str, str]) -> Optional[str]:
+        """
+        根据JSON中的语言标记匹配对应的目录
+        
+        Args:
+            lang_dirs: 语言目录映射 {'zh': '/path/to/zh', 'vn': '/path/to/vn', 'th': '/path/to/th'}
+            
+        Returns:
+            str or None: 匹配的目录路径
+        """
+        lang_code = self.get_json_language()
+        if lang_code and lang_code in lang_dirs:
+            return lang_dirs[lang_code]
+        return None
     
     def get_table_fields(self, table_name: str) -> List[str]:
         """
