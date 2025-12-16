@@ -103,7 +103,55 @@ class BatchExcelModifier:
             self.progress_callback(message, percentage)
         logger.info(message)
     
-    def load_json_config(self, json_path: str) -> Dict:
+    def get_available_languages_from_json(self, json_path: str) -> List[Dict[str, str]]:
+        """
+        获取JSON配置文件中所有可用的语言
+        
+        Args:
+            json_path: JSON配置文件路径
+            
+        Returns:
+            List[Dict]: 语言列表，每项包含 {'code': 'vn', 'name': '越南语', 'key': 'VN'}
+        """
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            languages = []
+            lang_code_keys = ['ZH', 'VN', 'TH', 'EN', 'JP', 'KR', 'TW', 'CN', 
+                             'zh', 'vn', 'th', 'en', 'jp', 'kr', 'tw', 'cn']
+            lang_names = {
+                'zh': '中文', 'cn': '中文', 'vn': '越南语', 'th': '泰语',
+                'en': '英语', 'jp': '日语', 'kr': '韩语', 'tw': '繁体中文'
+            }
+            
+            # 检测格式3（多个语言作为顶层key）
+            for key in config.keys():
+                if key.upper() in [k.upper() for k in lang_code_keys] and isinstance(config.get(key), dict):
+                    lang_code = key.lower()
+                    languages.append({
+                        'code': lang_code,
+                        'name': lang_names.get(lang_code, key),
+                        'key': key
+                    })
+            
+            # 如果找到了语言key，返回
+            if languages:
+                return languages
+            
+            # 格式1或2：检查language字段
+            if 'language' in config and isinstance(config['language'], dict):
+                lang_code = config['language'].get('code', '')
+                lang_name = config['language'].get('name', '')
+                if lang_code:
+                    return [{'code': lang_code, 'name': lang_name, 'key': None}]
+            
+            return []
+        except Exception as e:
+            logger.error(f"获取JSON语言列表失败: {e}")
+            return []
+    
+    def load_json_config(self, json_path: str, target_lang_code: str = None) -> Dict:
         """
         加载JSON配置文件，提取字段信息
         
@@ -128,14 +176,14 @@ class BatchExcelModifier:
         
         格式3（语言代码作为顶层key）:
         {
-            "ZH": {
-                "no_text_tables": [...],
-                "text_tables": [...]
-            }
+            "ZH": {"text_tables": [...]},
+            "VN": {"text_tables": [...]},
+            "TH": {"text_tables": [...]}
         }
         
         Args:
             json_path: JSON配置文件路径
+            target_lang_code: 目标语言代码（如'vn', 'zh'），用于格式3
             
         Returns:
             Dict: 表名到字段信息的映射
@@ -148,13 +196,28 @@ class BatchExcelModifier:
             # 格式3：语言代码作为顶层key（如 "ZH", "VN", "TH"）
             lang_code_keys = ['ZH', 'VN', 'TH', 'EN', 'JP', 'KR', 'TW', 'CN', 
                              'zh', 'vn', 'th', 'en', 'jp', 'kr', 'tw', 'cn']
-            detected_lang_key = None
+            available_lang_keys = []
             for key in config.keys():
-                if key.upper() in [k.upper() for k in lang_code_keys]:
-                    detected_lang_key = key
-                    break
+                if key.upper() in [k.upper() for k in lang_code_keys] and isinstance(config.get(key), dict):
+                    available_lang_keys.append(key)
             
-            if detected_lang_key and isinstance(config.get(detected_lang_key), dict):
+            detected_lang_key = None
+            if available_lang_keys:
+                # 格式3：有多个语言key
+                if target_lang_code:
+                    # 根据用户指定的语言代码选择
+                    for key in available_lang_keys:
+                        if key.lower() == target_lang_code.lower():
+                            detected_lang_key = key
+                            break
+                
+                # 如果没有指定或没找到，使用第一个
+                if not detected_lang_key:
+                    detected_lang_key = available_lang_keys[0]
+                    if target_lang_code:
+                        logger.warning(f"未找到语言 '{target_lang_code}'，使用 '{detected_lang_key}'")
+            
+            if detected_lang_key:
                 # 格式3：提取语言配置
                 lang_code = detected_lang_key.lower()
                 lang_names = {
@@ -165,6 +228,8 @@ class BatchExcelModifier:
                 
                 self.json_language = {'code': lang_code, 'name': lang_name}
                 logger.info(f"  - 检测到格式3（语言代码顶层key）: {lang_name} ({lang_code})")
+                if len(available_lang_keys) > 1:
+                    logger.info(f"  - 可用语言: {', '.join(available_lang_keys)}")
                 
                 # 提取该语言下的配置
                 lang_config = config[detected_lang_key]
@@ -332,6 +397,56 @@ class BatchExcelModifier:
         patterns = suffix_patterns.get(lang_lower, [f'_{lang_lower}', lang_lower])
         return patterns
     
+    def detect_language_from_mapping_columns(self, mapping_columns: List[str]) -> Optional[str]:
+        """
+        从映射表的列名中检测语言代码
+        
+        Args:
+            mapping_columns: 映射表的列名列表
+            
+        Returns:
+            Optional[str]: 检测到的语言代码（如'vn', 'zh', 'th'），未检测到返回None
+        """
+        # 定义所有支持的语言及其可能的列名
+        language_patterns = {
+            'zh': ['Support-CH', 'Polish-CH', 'CH', 'CN', 'ZH', 'Chinese', '中文', 'ch'],
+            'vn': ['VN', 'VI', 'Vietnamese', '越南语', '越南', 'VN.1'],
+            'th': ['TH', 'Thai', '泰语', '泰文'],
+            'en': ['EN', 'English', '英语', '英文'],
+            'jp': ['JP', 'JA', 'Japanese', '日语', '日文'],
+            'kr': ['KR', 'KO', 'Korean', '韩语', '韩文'],
+            'tw': ['TW', 'TC', 'Traditional', '繁体', '繁体中文'],
+        }
+        
+        # 按优先级检测（优先检测越南语、泰语等常用语言）
+        priority_order = ['vn', 'th', 'zh', 'en', 'jp', 'kr', 'tw']
+        
+        for lang_code in priority_order:
+            patterns = language_patterns.get(lang_code, [])
+            for pattern in patterns:
+                # 不区分大小写匹配
+                for col in mapping_columns:
+                    if col.strip().upper() == pattern.upper():
+                        logger.info(f"  - 从映射表列名检测到语言: {lang_code} (列名: {col})")
+                        return lang_code
+        
+        # 如果没有匹配到，尝试模糊匹配
+        for col in mapping_columns:
+            col_upper = col.strip().upper()
+            # 检查是否包含语言标识
+            if 'VN' in col_upper or 'VIET' in col_upper:
+                logger.info(f"  - 从映射表列名模糊匹配到语言: vn (列名: {col})")
+                return 'vn'
+            elif 'TH' in col_upper or 'THAI' in col_upper:
+                logger.info(f"  - 从映射表列名模糊匹配到语言: th (列名: {col})")
+                return 'th'
+            elif ('CH' in col_upper or 'ZH' in col_upper or 'CN' in col_upper) and 'CLASSIFICATION' not in col_upper:
+                logger.info(f"  - 从映射表列名模糊匹配到语言: zh (列名: {col})")
+                return 'zh'
+        
+        logger.warning("  - 未能从映射表列名检测到语言")
+        return None
+    
     def get_mapping_column_for_language(self, lang_code: str) -> List[str]:
         """
         获取语言代码对应的映射表列名候选列表
@@ -344,13 +459,13 @@ class BatchExcelModifier:
         """
         # 语言代码到映射表列名的映射
         column_patterns = {
-            'zh': ['Support-CH', 'Polish-CH', 'CH', 'CN', 'ZH', 'Chinese', 'cn', 'zh', 'ch'],
-            'vn': ['VN', 'VI', 'Vietnamese', 'vn', 'vi', 'VN.1'],
-            'th': ['TH', 'Thai', 'th'],
-            'en': ['EN', 'English', 'en'],
-            'jp': ['JP', 'JA', 'Japanese', 'jp', 'ja'],
-            'kr': ['KR', 'KO', 'Korean', 'kr', 'ko'],
-            'tw': ['TW', 'TC', 'Traditional', 'tw', 'tc'],
+            'zh': ['Support-CH', 'Polish-CH', 'CH', 'CN', 'ZH', 'Chinese', 'cn', 'zh', 'ch', '中文'],
+            'vn': ['VN', 'VI', 'Vietnamese', 'vn', 'vi', 'VN.1', '越南语', '越南'],
+            'th': ['TH', 'Thai', 'th', '泰语', '泰文'],
+            'en': ['EN', 'English', 'en', '英语', '英文'],
+            'jp': ['JP', 'JA', 'Japanese', 'jp', 'ja', '日语', '日文'],
+            'kr': ['KR', 'KO', 'Korean', 'kr', 'ko', '韩语', '韩文'],
+            'tw': ['TW', 'TC', 'Traditional', 'tw', 'tc', '繁体', '繁体中文'],
         }
         
         lang_lower = lang_code.lower()

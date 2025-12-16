@@ -1,0 +1,26 @@
+{
+    "ZH": {
+        "text_tables": [
+            {
+                "table_name": "armor.xlsx",
+                "fields": ["des_zh", "name_zh", "title_zh"]
+            }
+        ]
+    },
+    "VN": {
+        "text_tables": [
+            {
+                "table_name": "armor.xlsx",
+                "fields": ["des_vn", "name_vn", "title_vn"]
+            }
+        ]
+    },
+    "TH": {
+        "text_tables": [
+            {
+                "table_name": "armor.xlsx",
+                "fields": ["des_th", "name_th", "title_th"]
+            }
+        ]
+    }
+}

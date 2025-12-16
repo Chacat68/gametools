@@ -754,7 +754,7 @@ class GameToolsUnified:
         # 自动匹配选项
         self.batch_auto_match_var = tk.BooleanVar(value=True)
         self.batch_auto_match_check = ttk.Checkbutton(column_frame, 
-                                                      text="根据JSON语言代码自动匹配", 
+                                                      text="自动检测语言（从映射表列名识别）", 
                                                       variable=self.batch_auto_match_var,
                                                       command=self.toggle_batch_language_selection)
         self.batch_auto_match_check.grid(row=0, column=0, sticky=tk.W, padx=(0, 20), pady=(0, 5))
@@ -775,7 +775,7 @@ class GameToolsUnified:
         self.batch_refresh_lang_button.grid(row=0, column=3, padx=(5, 0), pady=(0, 5))
         
         # 使用说明
-        ttk.Label(column_frame, text="自动模式：根据JSON中language字段匹配映射表语言列和Excel字段", 
+        ttk.Label(column_frame, text="自动模式：根据映射表列名（VN/TH/CH等）自动加载对应语言的JSON配置", 
                  style='Info.TLabel', foreground='green').grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(0, 5))
         
         # 隐藏的变量（保持代码兼容性）
@@ -2637,10 +2637,40 @@ Excel目录: {excel_dir}
             
             self.batch_modifier.set_progress_callback(progress_callback)
             
+            # 从映射表中自动检测语言
+            self.root.after(0, lambda: self.append_result('batch_modifier', 
+                "正在检测映射表语言...\n"))
+            
+            target_lang_code = None
+            try:
+                # 读取映射表的列名
+                df, mapping_columns = self.batch_modifier.load_mapping_table(mapping_file)
+                if mapping_columns:
+                    # 从列名中检测语言
+                    detected_lang = self.batch_modifier.detect_language_from_mapping_columns(mapping_columns)
+                    if detected_lang:
+                        target_lang_code = detected_lang
+                        lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语', 
+                                     'en': '英语', 'jp': '日语', 'kr': '韩语', 'tw': '繁体中文'}
+                        lang_name = lang_names.get(detected_lang, detected_lang.upper())
+                        self.root.after(0, lambda ln=lang_name, lc=detected_lang: self.append_result('batch_modifier', 
+                            f"✓ 检测到映射表语言: {ln} ({lc})\n"))
+                    else:
+                        self.root.after(0, lambda: self.append_result('batch_modifier', 
+                            "⚠️ 未能从映射表检测到语言，将使用JSON中的第一个语言\n"))
+            except Exception as e:
+                self.root.after(0, lambda err=str(e): self.append_result('batch_modifier', 
+                    f"⚠️ 检测映射表语言失败: {err}，将使用JSON中的第一个语言\n"))
+            
             # 加载JSON配置
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 "正在加载JSON配置...\n"))
-            field_config = self.batch_modifier.load_json_config(json_file)
+            
+            if target_lang_code:
+                self.root.after(0, lambda lc=target_lang_code: self.append_result('batch_modifier', 
+                    f"  - 根据映射表检测结果，加载语言配置: {lc}\n"))
+            
+            field_config = self.batch_modifier.load_json_config(json_file, target_lang_code=target_lang_code)
             
             if not field_config:
                 self.root.after(0, lambda: self.append_result('batch_modifier', 
