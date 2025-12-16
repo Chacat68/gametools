@@ -1,223 +1,291 @@
-# 测试文件夹
+# GameTools 测试文件夹
 
-## 概述
+> 版本: v1.39.6 | 最后更新: 2025-12-16
 
-此文件夹是 GameTools 项目的**集中测试目录**，所有测试文件应放在此处。
+## 📋 概述
 
-## 文件夹结构
+本文件夹包含 GameTools 项目的所有**功能测试**和**测试数据生成工具**。
+
+## 📁 目录结构
 
 ```
 test/
 ├── README.md (此文件)
-├── 缓存系统测试
-│   ├── test_cache_basic.py          # 缓存基本功能测试
-│   ├── test_cache_performance.py    # 缓存性能对比测试
 │
-├── 功能模块测试
-│   ├── test_new_column_names.py            # 新列名兼容性测试
-│   ├── test_fixed_compatibility.py         # 兼容性修复测试
-│   ├── test_cross_project_redesigned.py    # 跨项目翻译设计测试
+├── 🧪 功能测试脚本 (15个)
+│   ├── test_batch_modifier.py              # 批量改表工具测试
+│   ├── test_cache_basic.py                 # 缓存系统基本功能
+│   ├── test_cache_performance.py           # 缓存性能对比
+│   ├── test_config_sync.py                 # 配置同步测试
+│   ├── test_cross_project_redesigned.py    # 跨项目翻译测试
+│   ├── test_error_logging.py               # 错误日志功能
+│   ├── test_excel_position.py              # Excel位置验证
+│   ├── test_field_extraction_filtered.py   # 字段提取过滤
+│   ├── test_field_extractor.py             # 字段导出工具
+│   ├── test_field_extractor_json.py        # 字段导出JSON格式
+│   ├── test_field_filter.py                # 字段过滤规则
+│   ├── test_json_format.py                 # JSON格式验证
+│   ├── test_language_detection.py          # 语言检测功能
+│   ├── test_layout.py                      # GUI布局测试
+│   ├── test_multi_lang_folders.py          # 多语言文件夹
+│   ├── test_multilang_json.py              # 多语言JSON配置
+│   ├── test_phase2_integration.py          # Phase2集成测试
+│   └── test_phase2_units.py                # Phase2单元测试
 │
-├── 测试数据生成工具
-│   ├── create_test_excel.py         # 创建测试 Excel 文件
-│   ├── create_test_mapping_file.py  # 创建测试映射文件
-│   ├── check_mixed_test.py          # 混合文本检测测试
+├── 🛠️ 测试数据生成 (6个)
+│   ├── create_test_excel.py                # 创建基础测试Excel
+│   ├── create_test_excel_for_field_extractor.py  # 字段导出测试数据
+│   ├── create_test_field_type_excel.py     # 字段类型测试数据
+│   ├── create_test_mapping_file.py         # 映射文件测试数据
+│   ├── create_test_table_range.py          # 表范围翻译测试数据
+│   └── create_filter_test_excel.py         # 过滤功能测试数据
 │
-└── GUI 测试
-    └── test_layout.py                # GUI 布局测试
+├── 🚀 测试执行
+│   ├── run_all_tests.py                    # 运行所有测试
+│   └── run_tests.bat                       # Windows批处理脚本
+│
+├── 📊 测试数据目录
+│   ├── test_excel_files/                   # Excel测试文件
+│   ├── test_config_sync/                   # 配置同步测试数据
+│   ├── test_multi_lang/                    # 多语言测试数据
+│   ├── test_table_range/                   # 表范围翻译测试数据
+│   └── test_output/                        # 测试输出结果
+│
+└── .gitkeep
 ```
 
-## 测试文件说明
+---
+
+## 🧪 测试分类
+
+### 1️⃣ 核心功能测试
+
+#### 字段导出工具 (Field Extractor)
+- `test_field_extractor.py` - 基本功能测试
+- `test_field_extractor_json.py` - JSON格式输出
+- `test_field_extraction_filtered.py` - 带过滤的提取
+- `test_field_filter.py` - 过滤规则测试
+
+#### 多语言翻译 (Multi-Language)
+- `test_multilang_json.py` - JSON配置格式
+- `test_multi_lang_folders.py` - 多语言文件夹结构
+- `test_language_detection.py` - 语言检测
+
+#### 表范围翻译 (Table Range Translator)
+- `test_excel_position.py` - Excel位置验证
+- `test_cross_project_redesigned.py` - 跨项目翻译
+
+#### 批量改表 (Batch Modifier)
+- `test_batch_modifier.py` - 批量修改测试
+- `test_config_sync.py` - 配置同步
+
+### 2️⃣ 性能和缓存测试
+
+- `test_cache_basic.py` - 缓存基本功能
+- `test_cache_performance.py` - 性能对比（有缓存 vs 无缓存）
+
+### 3️⃣ 集成测试
+
+- `test_phase2_integration.py` - Phase 2功能集成测试
+- `test_phase2_units.py` - Phase 2单元测试套件
+
+### 4️⃣ 其他
+
+- `test_error_logging.py` - 错误日志系统
+- `test_json_format.py` - JSON格式验证
+- `test_layout.py` - GUI布局
+
+---
+
+## 🚀 快速开始
+
+### 运行所有测试
+
+```bash
+# 方式1：Python脚本
+cd d:\dev\gametools
+python test/run_all_tests.py
+
+# 方式2：Windows批处理
+cd d:\dev\gametools\test
+run_tests.bat
+
+# 方式3：单个测试
+python test/test_cache_basic.py
+python test/test_field_extractor.py
+```
+
+### 生成测试数据
+
+```bash
+# 创建所有测试数据
+cd d:\dev\gametools
+python test/create_test_excel.py
+python test/create_test_mapping_file.py
+python test/create_test_table_range.py
+```
+
+---
+
+## 📊 测试数据目录说明
+
+### test_excel_files/
+用于字段导出、过滤等功能的测试Excel文件
+```
+生成方式: python test/create_test_excel_for_field_extractor.py
+输出: test_excel_files/
+```
+
+### test_config_sync/
+Excel配置同步测试数据
+```
+结构:
+  source/              # 源文件
+  target1/             # 目标文件集1
+  target2/             # 目标文件集2
+```
+
+### test_multi_lang/
+多语言提取测试数据
+```
+生成方式: python test/create_test_table_range.py
+输出: test_table_range/ (主要数据)
+     test_multi_lang/ (配置)
+```
+
+### test_table_range/
+表范围翻译测试数据
+```
+包含: 中文/越南文/泰文配置文件和测试数据
+用于: TABLE_RANGE_TRANSLATOR 功能测试
+```
+
+### test_output/
+测试执行的输出结果
+```
+包含: CSV、JSON、Excel等格式的测试输出
+注意: 此目录会被测试脚本覆盖
+```
+
+---
+
+## 📝 测试执行流程
+
+### 1. 前置条件
+```bash
+# 确保环境已配置
+cd d:\dev\gametools
+pip install -r core/requirements.txt
+```
+
+### 2. 生成测试数据
+```bash
+# 创建测试数据（按需执行）
+python test/create_test_excel.py
+python test/create_test_table_range.py
+```
+
+### 3. 运行测试
+```bash
+# 运行所有测试
+python test/run_all_tests.py
+
+# 或运行特定测试
+python test/test_cache_basic.py
+python test/test_field_extractor.py
+```
+
+### 4. 查看结果
+```
+✓ 成功: test passed
+✗ 失败: test failed
+结果输出: test_output/
+```
+
+---
+
+## ✅ 测试覆盖范围
+
+| 功能模块 | 测试文件 | 覆盖率 |
+|---------|---------|--------|
+| 字段导出 (Field Extractor) | test_field_extractor*.py | ✓ 完整 |
+| 多语言翻译 | test_multilang*.py, test_language_detection.py | ✓ 完整 |
+| 表范围翻译 | test_excel_position.py | ✓ 完整 |
+| 批量改表 | test_batch_modifier.py, test_config_sync.py | ✓ 完整 |
+| 缓存系统 | test_cache_*.py | ✓ 完整 |
+| 跨项目翻译 | test_cross_project_redesigned.py | ✓ 完整 |
+| 错误处理 | test_error_logging.py | ✓ 完整 |
+| GUI布局 | test_layout.py | ✓ 基础 |
+
+---
+
+## 🔧 运行特定测试模块
 
 ### 缓存系统测试
-
-#### `test_cache_basic.py`
-- **用途**: 验证缓存系统的基本功能
-- **测试内容**:
-  - 内存缓存（LRU）功能
-  - 文件缓存（Pickle）功能
-  - 统一缓存管理器
-  - 增强版翻译工具集成
-- **运行方式**: `python test/test_cache_basic.py`
-- **预期结果**: ✓ 所有功能测试通过
-
-#### `test_cache_performance.py`
-- **用途**: 对比带缓存和不带缓存的性能差异
-- **测试内容**:
-  - 创建测试数据和文件
-  - 无缓存翻译对应性能测试
-  - 缓存版冷启动性能测试
-  - 缓存版热启动性能测试
-  - 生成性能对比报告
-- **运行方式**: `python test/test_cache_performance.py`
-- **预期结果**: 缓存版本比无缓存版本快 7-10 倍
-
-### 功能模块测试
-
-#### `test_new_column_names.py`
-- **用途**: 测试新列名的兼容性处理
-- **运行方式**: `python test/test_new_column_names.py`
-
-#### `test_fixed_compatibility.py`
-- **用途**: 测试修复的兼容性问题
-- **运行方式**: `python test/test_fixed_compatibility.py`
-
-#### `test_cross_project_redesigned.py`
-- **用途**: 测试重新设计的跨项目翻译功能
-- **运行方式**: `python test/test_cross_project_redesigned.py`
-
-### 测试数据生成工具
-
-#### `create_test_excel.py`
-- **用途**: 生成用于测试的 Excel 文件
-- **使用方式**: `python test/create_test_excel.py`
-
-#### `create_test_mapping_file.py`
-- **用途**: 生成用于测试的映射文件
-- **使用方式**: `python test/create_test_mapping_file.py`
-
-#### `check_mixed_test.py`
-- **用途**: 测试混合文本检测功能
-- **使用方式**: `python test/check_mixed_test.py`
-
-### GUI 测试
-
-#### `test_layout.py`
-- **用途**: 测试 GUI 界面布局
-- **运行方式**: `python test/test_layout.py`
-
-## 规约与最佳实践
-
-### 命名规范
-- ✅ 测试文件必须以 `test_` 开头
-- ✅ 数据生成工具以 `create_test_` 开头
-- ✅ 辅助检测工具以 `check_` 开头
-- ✅ 文件名全小写，用下划线分隔
-
-### 文件结构
-每个测试文件应包含：
-```python
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-模块说明
-简短描述此测试的目的
-"""
-
-import sys
-from pathlib import Path
-
-# 添加模块路径 - 这个很关键！
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# 导入需要测试的模块
-# ...
-
-# 测试函数和逻辑
-# ...
+```bash
+python test/test_cache_basic.py           # 基本功能
+python test/test_cache_performance.py     # 性能对比
 ```
 
-### 导入路径配置
-由于测试文件位于 `test/` 子目录，必须正确配置导入路径：
-```python
-# ✅ 正确做法：指向项目根目录
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-# 然后导入模块
-from core.cache_manager import CacheManager
-from core.cross_project_translator import CrossProjectTranslator
+### 字段导出工具
+```bash
+python test/test_field_extractor.py       # 基本功能
+python test/test_field_extractor_json.py  # JSON输出
+python test/test_field_filter.py          # 过滤规则
 ```
 
-### 资源清理
-每个测试应清理生成的临时文件：
-```python
-# 例如清理测试缓存
-import shutil
-if Path(".test_cache").exists():
-    shutil.rmtree(".test_cache")
+### 多语言功能
+```bash
+python test/test_multilang_json.py        # JSON配置
+python test/test_multi_lang_folders.py    # 文件夹结构
+python test/test_language_detection.py    # 语言检测
 ```
 
-## 运行所有测试
+### Phase 2集成
+```bash
+python test/test_phase2_units.py          # 单元测试
+python test/test_phase2_integration.py    # 集成测试
+```
 
-### 单个测试运行
+---
+
+## 📌 注意事项
+
+1. **测试数据生成** - 运行测试前可能需要先生成测试数据
+2. **依赖项** - 确保已安装 `requirements.txt` 中的所有依赖
+3. **输出文件** - 测试生成的文件存储在 `test_output/` 目录
+4. **清理策略** - 旧的演示和验证文件已被删除，保留核心功能测试
+5. **相对路径** - 所有测试应从项目根目录运行 `python test/test_xxx.py`
+
+---
+
+## 🐛 故障排除
+
+### Q: 找不到模块
+**A:** 确保在项目根目录运行测试
 ```bash
 cd d:\dev\gametools
-python test\test_cache_basic.py
-python test\test_cache_performance.py
+python test/test_cache_basic.py
 ```
 
-### 批量运行所有测试
+### Q: 找不到测试数据文件
+**A:** 先生成测试数据
 ```bash
-cd d:\dev\gametools
-for($file in Get-ChildItem test\test_*.py) { python $file.FullName }
+python test/create_test_excel.py
+python test/create_test_table_range.py
 ```
 
-### 使用 pytest (推荐用于大型项目)
-```bash
-pip install pytest
-pytest test\
-```
-
-## 版本兼容性
-
-- **Python**: 3.7 及以上
-- **依赖项**: 参见 `core/requirements.txt`
-  - pandas
-  - openpyxl
-  - (其他依赖...)
-
-## CI/CD 集成
-
-这个测试文件夹已为 CI/CD 集成做好准备：
-
-```yaml
-# 示例 GitHub Actions 工作流
-- name: Run Tests
-  run: |
-    cd gametools
-    python -m pytest test/ -v
-```
-
-## 常见问题
-
-### Q: 导入错误 "ModuleNotFoundError"
-A: 确保在测试文件开头添加了:
-```python
-sys.path.insert(0, str(Path(__file__).parent.parent))
-```
-
-### Q: 测试文件生成的临时数据未清理
-A: 检查测试结束时是否有清理代码，例如:
-```python
-if Path(".test_cache").exists():
-    import shutil
-    shutil.rmtree(".test_cache")
-```
-
-### Q: 测试在新环境运行失败
-A: 确保已安装所有依赖:
+### Q: 某些测试失败
+**A:** 检查是否有必需的依赖未安装
 ```bash
 pip install -r core/requirements.txt
 ```
 
-## 添加新测试
-
-新增测试时，请遵循以下步骤：
-
-1. **创建文件**: `test/test_新功能.py`
-2. **编写测试**: 包含清晰的测试逻辑和注释
-3. **添加路径**: 在文件顶部配置 `sys.path`
-4. **清理资源**: 测试完成后清理临时文件
-5. **验证运行**: 确保测试能独立运行成功
-6. **更新本文档**: 在相应部分添加说明
-
-## 相关文档
-
-- [缓存系统指南](../docs/CACHE_SYSTEM_GUIDE.md)
-- [缓存实现说明](../docs/CACHE_IMPLEMENTATION.md)
-- [项目 README](../README.md)
-
 ---
 
-**最后更新**: 2025-10-17
-**项目版本**: v1.19.0
+## 📞 相关文档
+
+- **项目文档** - [../docs/README.md](../docs/README.md)
+- **版本信息** - [../version.py](../version.py)
+- **构建报告** - [../docs/BUILD_REPORT.md](../docs/BUILD_REPORT.md)
+
