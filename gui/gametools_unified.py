@@ -686,29 +686,20 @@ class GameToolsUnified:
         batch_frame.columnconfigure(0, weight=1)
         
         # 文件选择区域
-        file_frame = ttk.LabelFrame(batch_frame, text="文件配置（JSON中包含语言标记，自动匹配对应目录）", padding="10")
+        file_frame = ttk.LabelFrame(batch_frame, text="文件配置", padding="10")
         file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
         file_frame.columnconfigure(1, weight=1)
         
-        # JSON配置文件（必需 - 定义表和字段，包含语言标记）
+        # JSON配置文件（必需 - 定义表和字段）
         ttk.Label(file_frame, text="JSON配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
         self.batch_json_var = tk.StringVar()
         self.batch_json_entry = ttk.Entry(file_frame, textvariable=self.batch_json_var, 
                                          font=("Microsoft YaHei", 9))
         self.batch_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        json_btn_frame = ttk.Frame(file_frame)
-        json_btn_frame.grid(row=0, column=2, pady=(0, 8))
-        self.batch_json_browse_button = ttk.Button(json_btn_frame, text="浏览JSON", 
+        self.batch_json_browse_button = ttk.Button(file_frame, text="浏览", 
                                                   command=self.browse_batch_json_file)
-        self.batch_json_browse_button.pack(side=tk.LEFT, padx=(0, 5))
-        self.batch_json_preview_button = ttk.Button(json_btn_frame, text="预览", 
-                                                   command=self.preview_batch_json_config)
-        self.batch_json_preview_button.pack(side=tk.LEFT)
-        
-        # JSON语言标记显示
-        self.batch_json_lang_label = ttk.Label(file_frame, text="", foreground='blue')
-        self.batch_json_lang_label.grid(row=0, column=3, padx=(10, 0), pady=(0, 8))
+        self.batch_json_browse_button.grid(row=0, column=2, pady=(0, 8))
         
         # 映射表文件（如 p9-3t_分页.xlsx）
         ttk.Label(file_frame, text="映射表文件:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
@@ -717,9 +708,26 @@ class GameToolsUnified:
                                             font=("Microsoft YaHei", 9))
         self.batch_mapping_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.batch_mapping_browse_button = ttk.Button(file_frame, text="浏览文件", 
+        self.batch_mapping_browse_button = ttk.Button(file_frame, text="浏览", 
                                                      command=self.browse_batch_mapping_file)
         self.batch_mapping_browse_button.grid(row=1, column=2, pady=(0, 8))
+        
+        # 目标语言选择（放在映射表同一行右侧）
+        ttk.Label(file_frame, text="语言:").grid(row=1, column=3, sticky=tk.W, padx=(20, 5), pady=(0, 8))
+        self.batch_language_var = tk.StringVar(value="VN")
+        default_languages = ['VN', 'Support-CH', 'TH', 'EN', 'Polish-CH', 'VN.1']
+        self.batch_language_combo = ttk.Combobox(file_frame, textvariable=self.batch_language_var, 
+                                                 width=12, values=default_languages, state='readonly')
+        self.batch_language_combo.grid(row=1, column=4, sticky=tk.W, pady=(0, 8))
+        self.batch_language_combo.bind('<<ComboboxSelected>>', self._on_batch_language_changed)
+        
+        self.batch_refresh_lang_button = ttk.Button(file_frame, text="刷新", 
+                                                   command=self.refresh_batch_languages, width=5)
+        self.batch_refresh_lang_button.grid(row=1, column=5, padx=(5, 0), pady=(0, 8))
+        
+        # JSON语言标记显示（放在JSON配置同一行右侧）
+        self.batch_json_lang_label = ttk.Label(file_frame, text="", foreground='blue')
+        self.batch_json_lang_label.grid(row=0, column=3, columnspan=3, padx=(20, 0), pady=(0, 8), sticky=tk.W)
         
         # 映射表工作表选择（隐藏，保留变量兼容性）
         self.batch_sheet_var = tk.StringVar()
@@ -731,7 +739,7 @@ class GameToolsUnified:
                                               font=("Microsoft YaHei", 9))
         self.batch_excel_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         
-        self.batch_excel_dir_browse_button = ttk.Button(file_frame, text="浏览目录", 
+        self.batch_excel_dir_browse_button = ttk.Button(file_frame, text="浏览", 
                                                        command=self.browse_batch_excel_directory)
         self.batch_excel_dir_browse_button.grid(row=2, column=2, pady=(0, 8))
         
@@ -742,50 +750,19 @@ class GameToolsUnified:
                                            font=("Microsoft YaHei", 9))
         self.batch_report_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         
-        self.batch_report_browse_button = ttk.Button(file_frame, text="选择位置", 
+        self.batch_report_browse_button = ttk.Button(file_frame, text="浏览", 
                                                     command=self.browse_batch_report_file)
         self.batch_report_browse_button.grid(row=3, column=2)
         
-        # 列配置区域
-        column_frame = ttk.LabelFrame(batch_frame, text="语言选择", padding="10")
-        column_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
-        column_frame.columnconfigure(1, weight=1)
-        
-        # 自动匹配选项
-        self.batch_auto_match_var = tk.BooleanVar(value=True)
-        self.batch_auto_match_check = ttk.Checkbutton(column_frame, 
-                                                      text="自动检测语言（从映射表列名识别）", 
-                                                      variable=self.batch_auto_match_var,
-                                                      command=self.toggle_batch_language_selection)
-        self.batch_auto_match_check.grid(row=0, column=0, sticky=tk.W, padx=(0, 20), pady=(0, 5))
-        
-        # 目标语言选择
-        ttk.Label(column_frame, text="手动选择语言:").grid(row=0, column=1, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.batch_language_var = tk.StringVar(value="VN")
-        # 默认语言选项
-        default_languages = ['VN', 'Support-CH', 'TH', 'EN', 'Polish-CH', 'VN.1']
-        self.batch_language_combo = ttk.Combobox(column_frame, textvariable=self.batch_language_var, 
-                                                 width=15, values=default_languages, state='disabled')
-        self.batch_language_combo.grid(row=0, column=2, sticky=tk.W, pady=(0, 5))
-        
-        # 刷新语言列表按钮
-        self.batch_refresh_lang_button = ttk.Button(column_frame, text="刷新", 
-                                                   command=self.refresh_batch_languages,
-                                                   state='disabled')
-        self.batch_refresh_lang_button.grid(row=0, column=3, padx=(5, 0), pady=(0, 5))
-        
-        # 使用说明
-        ttk.Label(column_frame, text="自动模式：根据映射表列名（VN/TH/CH等）自动加载对应语言的JSON配置", 
-                 style='Info.TLabel', foreground='green').grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(0, 5))
-        
         # 隐藏的变量（保持代码兼容性）
+        self.batch_auto_match_var = tk.BooleanVar(value=False)  # 默认关闭自动匹配
         self.batch_table_col_var = tk.StringVar(value="")
         self.batch_id_col_var = tk.StringVar(value="ID")
         self.batch_field_col_var = tk.StringVar(value="Classification")
         
         # 选项设置区域
         options_frame = ttk.LabelFrame(batch_frame, text="处理选项", padding="10")
-        options_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
         
         # 备份选项
         self.batch_backup_var = tk.BooleanVar(value=True)
@@ -800,7 +777,7 @@ class GameToolsUnified:
         
         # 操作按钮区域
         button_frame = ttk.Frame(batch_frame)
-        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
+        button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
         self.batch_process_button = ttk.Button(button_frame, text="🚀 开始修改", 
                                               command=self.start_batch_modification, 
@@ -2311,20 +2288,7 @@ class GameToolsUnified:
     def refresh_batch_sheets(self):
         """刷新映射表的工作表列表（保留兼容性，实际调用刷新语言）"""
         self.refresh_batch_languages()
-    
-    def toggle_batch_language_selection(self):
-        """切换语言选择状态（自动/手动）"""
-        if self.batch_auto_match_var.get():
-            # 自动模式：禁用手动选择
-            self.batch_language_combo.config(state='disabled')
-            self.batch_refresh_lang_button.config(state='disabled')
-        else:
-            # 手动模式：启用手动选择
-            self.batch_language_combo.config(state='normal')
-            self.batch_refresh_lang_button.config(state='normal')
-            # 自动刷新语言列表
-            self.refresh_batch_languages()
-    
+
     def refresh_batch_languages(self):
         """刷新可用的语言列表"""
         mapping_file = self.batch_mapping_var.get().strip()
@@ -2363,10 +2327,31 @@ class GameToolsUnified:
                     current = self.batch_language_var.get()
                     if current not in lang_cols:
                         self.batch_language_combo.set(lang_cols[0])
+                    # 更新JSON语言标签以反映当前选择的语言
+                    self._update_batch_json_language_for_selected_lang()
                 else:
                     messagebox.showwarning("警告", f"工作表 '{data_sheet}' 中未找到语言列")
         except Exception as e:
             messagebox.showerror("错误", f"获取语言列表失败: {e}")
+    
+    def _update_batch_json_language_for_selected_lang(self):
+        """根据选择的语言更新JSON语言标签"""
+        selected_lang = self.batch_language_var.get().strip()
+        if selected_lang:
+            # 语言名称映射
+            lang_names = {
+                'VN': '越南语', 'TH': '泰语', 'EN': '英语', 'ZH': '中文', 'CN': '中文',
+                'JP': '日语', 'KR': '韩语', 'TW': '繁体中文', 'Support-CH': '中文(Support)',
+                'Polish-CH': '中文(Polish)', 'VN.1': '越南语(VN.1)'
+            }
+            lang_name = lang_names.get(selected_lang, selected_lang)
+            self.batch_json_lang_label.config(text=f"🎯 {lang_name} ({selected_lang})")
+        else:
+            self.batch_json_lang_label.config(text="")
+    
+    def _on_batch_language_changed(self, event=None):
+        """当语言选择变化时更新JSON语言标签"""
+        self._update_batch_json_language_for_selected_lang()
     
     def browse_batch_json_file(self):
         """浏览批量改表JSON配置文件"""
@@ -2497,7 +2482,6 @@ class GameToolsUnified:
         excel_dir = self.batch_excel_dir_var.get().strip()
         report_file = self.batch_report_var.get().strip()
         target_language = self.batch_language_var.get().strip()
-        auto_match = self.batch_auto_match_var.get()
         
         # 验证必要参数
         if not json_file:
@@ -2524,27 +2508,9 @@ class GameToolsUnified:
             messagebox.showerror("错误", "Excel文件目录不存在")
             return
         
-        # 如果不是自动匹配模式，需要选择目标语言
-        if not auto_match and not target_language:
+        if not target_language:
             messagebox.showerror("错误", "请选择目标语言")
             return
-        
-        # 构建确认信息
-        if auto_match:
-            # 读取JSON中的语言信息用于显示
-            lang_info = "自动匹配（根据JSON中的language字段）"
-            try:
-                import json as json_module
-                with open(json_file, 'r', encoding='utf-8') as f:
-                    json_config = json_module.load(f)
-                if 'language' in json_config and isinstance(json_config['language'], dict):
-                    lang_name = json_config['language'].get('name', '')
-                    lang_code = json_config['language'].get('code', '')
-                    lang_info = f"自动匹配: {lang_name} ({lang_code})"
-            except:
-                pass
-        else:
-            lang_info = target_language
         
         # 确认操作
         confirm_msg = f"""确认开始批量修改？
@@ -2552,7 +2518,7 @@ class GameToolsUnified:
 JSON配置: {os.path.basename(json_file)}
 映射表: {os.path.basename(mapping_file)}
 Excel目录: {excel_dir}
-语言模式: {lang_info}
+目标语言: {target_language}
 
 自动识别:
 - 工作表名 = Excel文件名
@@ -2570,12 +2536,12 @@ Excel目录: {excel_dir}
         
         thread = threading.Thread(target=self._batch_modification_thread, 
                                  args=(mapping_file, excel_dir, report_file, 
-                                       json_file, target_language, auto_match))
+                                       json_file, target_language))
         thread.daemon = True
         thread.start()
     
     def _batch_modification_thread(self, mapping_file, excel_dir, report_file, 
-                                   json_file, target_language, auto_match=True):
+                                   json_file, target_language):
         """批量修改处理线程"""
         try:
             # 清空结果
@@ -2593,35 +2559,12 @@ Excel目录: {excel_dir}
                 "=" * 70 + "\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"JSON配置: {json_file}\n"))
-            
-            # 读取并显示JSON语言标记
-            json_lang_name = ""
-            json_lang_code = ""
-            try:
-                import json as json_module
-                with open(json_file, 'r', encoding='utf-8') as f:
-                    json_config = json_module.load(f)
-                if 'language' in json_config and isinstance(json_config['language'], dict):
-                    json_lang_name = json_config['language'].get('name', '')
-                    json_lang_code = json_config['language'].get('code', '')
-                    self.root.after(0, lambda ln=json_lang_name, lc=json_lang_code: self.append_result('batch_modifier', 
-                        f"JSON语言标记: {ln} ({lc})\n"))
-            except:
-                pass
-            
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"映射表: {mapping_file}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"Excel目录: {excel_dir}\n"))
-            
-            # 显示匹配模式
-            if auto_match:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"语言匹配模式: 自动匹配（根据JSON语言代码 {json_lang_code}）\n"))
-            else:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"目标语言列: {target_language}\n"))
-            
+            self.root.after(0, lambda tl=target_language: self.append_result('batch_modifier', 
+                f"目标语言列: {tl}\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"自动识别: 工作表名=文件名, ID列=ID, 字段列=Classification\n"))
             self.root.after(0, lambda: self.append_result('batch_modifier', 
@@ -2637,40 +2580,11 @@ Excel目录: {excel_dir}
             
             self.batch_modifier.set_progress_callback(progress_callback)
             
-            # 从映射表中自动检测语言
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "正在检测映射表语言...\n"))
-            
-            target_lang_code = None
-            try:
-                # 读取映射表的列名
-                df, mapping_columns = self.batch_modifier.load_mapping_table(mapping_file)
-                if mapping_columns:
-                    # 从列名中检测语言
-                    detected_lang = self.batch_modifier.detect_language_from_mapping_columns(mapping_columns)
-                    if detected_lang:
-                        target_lang_code = detected_lang
-                        lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语', 
-                                     'en': '英语', 'jp': '日语', 'kr': '韩语', 'tw': '繁体中文'}
-                        lang_name = lang_names.get(detected_lang, detected_lang.upper())
-                        self.root.after(0, lambda ln=lang_name, lc=detected_lang: self.append_result('batch_modifier', 
-                            f"✓ 检测到映射表语言: {ln} ({lc})\n"))
-                    else:
-                        self.root.after(0, lambda: self.append_result('batch_modifier', 
-                            "⚠️ 未能从映射表检测到语言，将使用JSON中的第一个语言\n"))
-            except Exception as e:
-                self.root.after(0, lambda err=str(e): self.append_result('batch_modifier', 
-                    f"⚠️ 检测映射表语言失败: {err}，将使用JSON中的第一个语言\n"))
-            
             # 加载JSON配置
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 "正在加载JSON配置...\n"))
             
-            if target_lang_code:
-                self.root.after(0, lambda lc=target_lang_code: self.append_result('batch_modifier', 
-                    f"  - 根据映射表检测结果，加载语言配置: {lc}\n"))
-            
-            field_config = self.batch_modifier.load_json_config(json_file, target_lang_code=target_lang_code)
+            field_config = self.batch_modifier.load_json_config(json_file)
             
             if not field_config:
                 self.root.after(0, lambda: self.append_result('batch_modifier', 
@@ -2681,29 +2595,15 @@ Excel目录: {excel_dir}
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"✓ 已加载 {len(field_config)//2} 个表的字段配置\n\n"))
             
-            # 根据匹配模式选择处理方法
-            if auto_match:
-                # 使用新的自动匹配方法
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    "使用自动匹配模式：根据JSON语言代码匹配映射表列和Excel字段...\n\n"))
-                stats = self.batch_modifier.process_batch_modification_by_json_language(
-                    mapping_path=mapping_file,
-                    excel_directory=excel_dir,
-                    id_col=None,  # 自动检测
-                    field_col=None,  # 自动检测
-                    target_language=None,  # 从JSON中自动获取
-                    backup=self.batch_backup_var.get()
-                )
-            else:
-                # 使用传统的手动指定语言列方式
-                stats = self.batch_modifier.process_batch_modification_by_language(
-                    mapping_path=mapping_file,
-                    excel_directory=excel_dir,
-                    id_col="ID",  # 自动检测
-                    target_language=target_language,
-                    field_col=None,  # 自动检测
-                    backup=self.batch_backup_var.get()
-                )
+            # 使用手动指定语言列方式
+            stats = self.batch_modifier.process_batch_modification_by_language(
+                mapping_path=mapping_file,
+                excel_directory=excel_dir,
+                id_col="ID",
+                target_language=target_language,
+                field_col=None,  # 自动检测
+                backup=self.batch_backup_var.get()
+            )
             
             # 显示统计信息
             summary = self.batch_modifier.get_stats_summary()
