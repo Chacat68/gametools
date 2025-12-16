@@ -5,14 +5,58 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.38.2"
-__version_info__ = (1, 38, 2)
-__build_date__ = "2025-12-13"
+__version__ = "1.39.4"
+__version_info__ = (1, 39, 4)
+__build_date__ = "2025-12-16"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.39.4": {
+        "date": "2025-12-16",
+        "changes": [
+            "🐛 修复GUI中JSON语言标记显示：支持格式3（语言代码作为顶层key）",
+            "✨ GUI能正确识别并显示{\"ZH\": {...}}等格式的语言标记"
+        ]
+    },
+    "1.39.3": {
+        "date": "2025-12-16",
+        "changes": [
+            "✨ 改进字段匹配逻辑：没有Classification列时智能选择字段",
+            "✨ 支持双向字段匹配：Classification='des'可匹配'des_zh'等",
+            "✨ 多字段时优先选择name/title/desc等常见字段",
+            "📝 增加调试日志：显示跳过的行数和字段匹配详情",
+            "🔍 完善代码检查，确保所有边界情况处理正确"
+        ]
+    },
+    "1.39.2": {
+        "date": "2025-12-15",
+        "changes": [
+            "🐛 修复XLWINGS_AVAILABLE未定义导致的错误",
+            "✨ 改进语言字段匹配逻辑：更精确地匹配带语言后缀的字段",
+            "✨ 完善字段导出JSON格式的兼容性",
+            "📝 增加字段匹配的日志输出，便于调试"
+        ]
+    },
+    "1.39.1": {
+        "date": "2025-12-15",
+        "changes": [
+            "✨ 批量改表支持格式3：语言代码作为JSON顶层key（如 {\"ZH\": {...}}）",
+            "✨ 自动检测JSON格式类型，无需手动指定语言标记"
+        ]
+    },
+    "1.39.0": {
+        "date": "2025-12-15",
+        "changes": [
+            "✨ 批量改表支持新JSON格式：fields_by_language按语言组织字段",
+            "✨ 新增自动匹配模式：根据JSON中的language字段自动匹配映射表语言列和Excel字段",
+            "✨ 新增方法get_table_fields_by_language()：根据语言代码获取对应字段",
+            "✨ 新增方法get_language_suffix_patterns()：获取语言代码对应的字段后缀模式",
+            "✨ 新增方法get_mapping_column_for_language()：获取语言代码对应的映射表列名",
+            "✨ GUI增加自动匹配选项：可选择自动或手动指定目标语言"
+        ]
+    },
     "1.38.2": {
         "date": "2025-12-13",
         "changes": [

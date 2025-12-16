@@ -12,8 +12,23 @@ import copy
 from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 import pandas as pd
-import xlwings as xw
 import logging
+
+# 尝试导入xlwings
+try:
+    import xlwings as xw
+    XLWINGS_AVAILABLE = True
+except ImportError:
+    XLWINGS_AVAILABLE = False
+    xw = None
+
+# 尝试导入openpyxl（备用引擎）
+try:
+    from openpyxl import load_workbook, Workbook
+    from openpyxl.styles import PatternFill, Font, Alignment
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
 
 # 辅助函数：列号转列字母
 def get_column_letter(col_num: int) -> str:
@@ -92,16 +107,31 @@ class BatchExcelModifier:
         """
         加载JSON配置文件，提取字段信息
         
-        JSON格式示例:
+        支持三种JSON格式：
+        
+        格式1（传统格式）:
         {
+            "language": {"code": "vn", "name": "越南语"},
+            "text_tables": [...]
+        }
+        
+        格式2（新格式 - 按语言组织字段）:
+        {
+            "language": {"code": "vn", "name": "越南语"},
             "text_tables": [
                 {
                     "table_name": "armor_ancient.xlsx",
-                    "sheet_name": "armor_ancient",
-                    "fields": ["c_armor_ancient", "level_id", ...],
-                    "fields_with_examples": ["c_armor_ancient,前后端", "level_id,前端", ...]
+                    "fields_by_language": {"zh": [...], "vn": [...]}
                 }
             ]
+        }
+        
+        格式3（语言代码作为顶层key）:
+        {
+            "ZH": {
+                "no_text_tables": [...],
+                "text_tables": [...]
+            }
         }
         
         Args:
@@ -114,49 +144,118 @@ class BatchExcelModifier:
             with open(json_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             
+            # 检测JSON格式类型
+            # 格式3：语言代码作为顶层key（如 "ZH", "VN", "TH"）
+            lang_code_keys = ['ZH', 'VN', 'TH', 'EN', 'JP', 'KR', 'TW', 'CN', 
+                             'zh', 'vn', 'th', 'en', 'jp', 'kr', 'tw', 'cn']
+            detected_lang_key = None
+            for key in config.keys():
+                if key.upper() in [k.upper() for k in lang_code_keys]:
+                    detected_lang_key = key
+                    break
+            
+            if detected_lang_key and isinstance(config.get(detected_lang_key), dict):
+                # 格式3：提取语言配置
+                lang_code = detected_lang_key.lower()
+                lang_names = {
+                    'zh': '中文', 'cn': '中文', 'vn': '越南语', 'th': '泰语',
+                    'en': '英语', 'jp': '日语', 'kr': '韩语', 'tw': '繁体中文'
+                }
+                lang_name = lang_names.get(lang_code, detected_lang_key)
+                
+                self.json_language = {'code': lang_code, 'name': lang_name}
+                logger.info(f"  - 检测到格式3（语言代码顶层key）: {lang_name} ({lang_code})")
+                
+                # 提取该语言下的配置
+                lang_config = config[detected_lang_key]
+                text_tables = lang_config.get('text_tables', [])
+                no_text_tables = lang_config.get('no_text_tables', [])
+            else:
+                # 格式1或格式2：传统格式
+                if 'language' in config:
+                    self.json_language = config['language']
+                    logger.info(f"  - 语言标记: {self.json_language.get('name', '')} ({self.json_language.get('code', '')})")
+                else:
+                    self.json_language = None
+                
+                text_tables = config.get('text_tables', [])
+                no_text_tables = config.get('no_text_tables', [])
+            
+            # 获取当前语言代码
+            current_lang_code = self.get_json_language()
+            
             # 构建表名到字段的映射
             field_config = {}
             
             # 处理text_tables
-            text_tables = config.get('text_tables', [])
             for table_info in text_tables:
                 table_name = table_info.get('table_name', '')
                 sheet_name = table_info.get('sheet_name', '')
                 fields = table_info.get('fields', [])
                 fields_with_examples = table_info.get('fields_with_examples', [])
+                fields_by_language = table_info.get('fields_by_language', {})
                 
                 # 解析fields_with_examples获取字段类型
                 field_types = {}
+                all_fields_from_examples = []
                 for field_str in fields_with_examples:
                     if ',' in field_str:
                         parts = field_str.split(',', 1)
                         field_name = parts[0].strip()
                         field_type = parts[1].strip() if len(parts) > 1 else ''
                         field_types[field_name] = field_type
+                        all_fields_from_examples.append(field_name)
+                    else:
+                        all_fields_from_examples.append(field_str.strip())
+                
+                # 合并所有字段来源
+                all_fields = set(fields)
+                all_fields.update(all_fields_from_examples)
+                
+                # 如果有按语言组织的字段，也加入
+                for lang_fields in fields_by_language.values():
+                    all_fields.update(lang_fields)
                 
                 # 使用完整表名作为key
                 field_config[table_name] = {
                     'table_name': table_name,
                     'sheet_name': sheet_name,
-                    'fields': fields,
+                    'fields': list(all_fields),
                     'fields_with_examples': fields_with_examples,
-                    'field_types': field_types
+                    'field_types': field_types,
+                    'fields_by_language': fields_by_language
                 }
                 
                 # 同时用不含扩展名的表名作为key（兼容）
                 table_key = Path(table_name).stem
                 field_config[table_key] = field_config[table_name]
             
+            # 也处理no_text_tables（用于识别哪些表不需要处理）
+            for table_info in no_text_tables:
+                table_name = table_info.get('table_name', '')
+                sheet_name = table_info.get('sheet_name', '')
+                
+                # 标记为无文本表
+                field_config[table_name] = {
+                    'table_name': table_name,
+                    'sheet_name': sheet_name,
+                    'fields': [],
+                    'fields_with_examples': [],
+                    'field_types': {},
+                    'fields_by_language': {},
+                    'is_no_text_table': True
+                }
+                
+                table_key = Path(table_name).stem
+                field_config[table_key] = field_config[table_name]
+            
             self.field_config = field_config
             logger.info(f"成功加载JSON配置: {json_path}")
-            logger.info(f"  - 包含 {len(text_tables)} 个表的字段配置")
+            logger.info(f"  - 包含 {len(text_tables)} 个有文本表, {len(no_text_tables)} 个无文本表")
+            if current_lang_code:
+                logger.info(f"  - 当前语言代码: {current_lang_code}")
             
-            # 读取并保存语言标记
-            if 'language' in config:
-                self.json_language = config['language']
-                logger.info(f"  - 语言标记: {self.json_language.get('name', '')} ({self.json_language.get('code', '')})")
-            else:
-                self.json_language = None
+            return field_config
             
             return field_config
         
@@ -203,6 +302,147 @@ class BatchExcelModifier:
             return lang_dirs[lang_code]
         return None
     
+    def get_language_suffix_patterns(self, lang_code: str) -> List[str]:
+        """
+        获取语言代码对应的字段后缀模式列表
+        
+        Args:
+            lang_code: 语言代码 ('zh', 'vn', 'th', 'en' 等)
+            
+        Returns:
+            List[str]: 可能的字段后缀列表
+        """
+        # 语言代码到可能的后缀映射
+        suffix_patterns = {
+            'zh': ['_zh', '_cn', '_ch', '_chinese', 'cn', 'ch', 'zh'],
+            'vn': ['_vn', '_vi', '_vietnamese', 'vn', 'vi'],
+            'th': ['_th', '_thai', 'th'],
+            'en': ['_en', '_english', 'en'],
+            'jp': ['_jp', '_ja', '_japanese', 'jp', 'ja'],
+            'kr': ['_kr', '_ko', '_korean', 'kr', 'ko'],
+            'tw': ['_tw', '_tc', '_traditional', 'tw', 'tc'],
+            'ru': ['_ru', '_russian', 'ru'],
+            'de': ['_de', '_german', 'de'],
+            'fr': ['_fr', '_french', 'fr'],
+            'es': ['_es', '_spanish', 'es'],
+            'pt': ['_pt', '_portuguese', 'pt'],
+        }
+        
+        lang_lower = lang_code.lower()
+        patterns = suffix_patterns.get(lang_lower, [f'_{lang_lower}', lang_lower])
+        return patterns
+    
+    def get_mapping_column_for_language(self, lang_code: str) -> List[str]:
+        """
+        获取语言代码对应的映射表列名候选列表
+        
+        Args:
+            lang_code: 语言代码 ('zh', 'vn', 'th', 'en' 等)
+            
+        Returns:
+            List[str]: 可能的映射表列名列表
+        """
+        # 语言代码到映射表列名的映射
+        column_patterns = {
+            'zh': ['Support-CH', 'Polish-CH', 'CH', 'CN', 'ZH', 'Chinese', 'cn', 'zh', 'ch'],
+            'vn': ['VN', 'VI', 'Vietnamese', 'vn', 'vi', 'VN.1'],
+            'th': ['TH', 'Thai', 'th'],
+            'en': ['EN', 'English', 'en'],
+            'jp': ['JP', 'JA', 'Japanese', 'jp', 'ja'],
+            'kr': ['KR', 'KO', 'Korean', 'kr', 'ko'],
+            'tw': ['TW', 'TC', 'Traditional', 'tw', 'tc'],
+        }
+        
+        lang_lower = lang_code.lower()
+        columns = column_patterns.get(lang_lower, [lang_code.upper(), lang_code.lower()])
+        return columns
+    
+    def get_table_fields_by_language(self, table_name: str, lang_code: str = None) -> List[str]:
+        """
+        根据语言代码获取指定表的对应语言字段列表
+        
+        优先级:
+        1. 如果有 fields_by_language，直接使用对应语言的字段列表
+        2. 否则从所有字段中筛选包含语言后缀的字段
+        3. 如果都没有，返回所有字段
+        
+        Args:
+            table_name: 表名（可以带或不带扩展名）
+            lang_code: 语言代码（如 'zh', 'vn', 'th'），为 None 时使用 JSON 中的语言代码
+            
+        Returns:
+            List[str]: 匹配该语言的字段名列表
+        """
+        # 获取语言代码
+        if not lang_code:
+            lang_code = self.get_json_language()
+        
+        if not lang_code:
+            # 没有语言代码，返回所有字段
+            return self.get_table_fields(table_name)
+        
+        table_config = None
+        
+        # 尝试直接匹配
+        if table_name in self.field_config:
+            table_config = self.field_config[table_name]
+        else:
+            # 尝试不带扩展名匹配
+            table_key = Path(table_name).stem
+            if table_key in self.field_config:
+                table_config = self.field_config[table_key]
+        
+        if not table_config:
+            return []
+        
+        # 优先使用 fields_by_language
+        fields_by_language = table_config.get('fields_by_language', {})
+        if lang_code in fields_by_language:
+            return fields_by_language[lang_code]
+        
+        # 也尝试小写匹配
+        lang_lower = lang_code.lower()
+        for key, fields in fields_by_language.items():
+            if key.lower() == lang_lower:
+                return fields
+        
+        # 从所有字段中筛选包含语言后缀的字段
+        all_fields = self.get_table_fields(table_name)
+        suffix_patterns = self.get_language_suffix_patterns(lang_code)
+        
+        matched_fields = []
+        for field in all_fields:
+            field_lower = field.lower()
+            # 精确匹配：字段名以语言后缀结尾
+            for pattern in suffix_patterns:
+                # 优先匹配下划线开头的后缀（如 _vn, _zh）
+                if pattern.startswith('_') and field_lower.endswith(pattern):
+                    matched_fields.append(field)
+                    break
+                # 其次匹配非下划线后缀（如 vn, zh），但要确保是完整单词
+                elif not pattern.startswith('_'):
+                    # 检查是否以后缀结尾且前面有分隔符或大写字母
+                    if field_lower.endswith('_' + pattern) or field_lower.endswith(pattern):
+                        # 确保不是部分匹配（如 avnx 不应匹配 vn）
+                        if field_lower.endswith('_' + pattern):
+                            matched_fields.append(field)
+                            break
+                        # 检查是否有驼峰命名（如 nameVn）
+                        elif len(field) >= len(pattern) + 1:
+                            before_pattern = field[-(len(pattern)+1):-len(pattern)]
+                            if before_pattern.isupper() or before_pattern == '_':
+                                matched_fields.append(field)
+                                break
+        
+        # 如果匹配到了字段，返回匹配结果
+        if matched_fields:
+            logger.info(f"为表 {table_name} 匹配到 {len(matched_fields)} 个 {lang_code} 语言字段: {matched_fields[:5]}...")
+            return matched_fields
+        
+        # 如果没有匹配到任何字段，记录警告并返回所有字段
+        logger.warning(f"表 {table_name} 未找到 {lang_code} 语言的字段，返回所有字段")
+        return all_fields
+
     def get_table_fields(self, table_name: str) -> List[str]:
         """
         获取指定表的字段列表
@@ -744,6 +984,312 @@ class BatchExcelModifier:
         
         return self.processing_stats
 
+    def process_batch_modification_by_json_language(self, mapping_path: str, 
+                                                     excel_directory: str,
+                                                     id_col: str = None,
+                                                     field_col: str = None,
+                                                     target_language: str = None,
+                                                     backup: bool = True) -> Dict:
+        """
+        根据JSON中的语言代码自动匹配并执行批量修改
+        
+        工作流程:
+        1. 从JSON配置中获取语言代码（如 'vn', 'zh', 'th'）
+        2. 根据语言代码自动匹配映射表中的语言列（如 'VN', 'Support-CH', 'TH'）
+        3. 根据语言代码自动匹配Excel中的目标字段（如 'name_vn', 'desc_cn'）
+        4. 如果JSON中有 fields_by_language，直接使用对应语言的字段列表
+        
+        映射表结构:
+        - 每个工作表名 = 目标Excel文件名（不含扩展名）
+        - Classification列: 字段名（可选，如果没有则自动匹配）
+        - ID列: 数据ID
+        - 语言列: 根据JSON语言代码自动匹配
+        
+        Args:
+            mapping_path: 映射表路径
+            excel_directory: Excel文件所在目录
+            id_col: 映射表中的ID列名（可选，自动检测）
+            field_col: 字段名列名（可选，自动检测）
+            target_language: 目标语言列名（可选，从JSON语言代码自动匹配）
+            backup: 是否创建备份
+            
+        Returns:
+            Dict: 处理结果统计
+        """
+        # 重置统计
+        self.processing_stats = {
+            'total_rows': 0,
+            'processed_rows': 0,
+            'modified_files': 0,
+            'modified_cells': 0,
+            'skipped_rows': 0,
+            'skipped_no_config': 0,
+            'skipped_no_file': 0,
+            'errors': 0
+        }
+        self.error_logs = []
+        self.modification_logs = []
+        
+        # 获取JSON中的语言代码
+        json_lang_code = self.get_json_language()
+        json_lang_name = self.get_json_language_name()
+        
+        if not json_lang_code:
+            error_msg = "JSON配置中未找到语言标记（language字段）"
+            self._report_progress(f"错误: {error_msg}")
+            self.error_logs.append(error_msg)
+            return self.processing_stats
+        
+        self._report_progress(f"JSON语言标记: {json_lang_name} ({json_lang_code})")
+        
+        # 获取所有工作表
+        try:
+            xl = pd.ExcelFile(mapping_path)
+            sheet_names = xl.sheet_names
+            self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
+        except Exception as e:
+            error_msg = f"无法读取映射表: {e}"
+            self._report_progress(error_msg)
+            self.error_logs.append(error_msg)
+            return self.processing_stats
+        
+        # 自动检测映射表中的语言列（如果没有指定）
+        detected_lang_column = target_language
+        if not detected_lang_column:
+            possible_columns = self.get_mapping_column_for_language(json_lang_code)
+            
+            # 读取第一个数据工作表来检测列
+            skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+            for sheet in sheet_names:
+                if sheet not in skip_sheets:
+                    try:
+                        df_sample = pd.read_excel(mapping_path, sheet_name=sheet, nrows=0)
+                        columns = df_sample.columns.tolist()
+                        
+                        for col in possible_columns:
+                            if col in columns:
+                                detected_lang_column = col
+                                break
+                        
+                        if detected_lang_column:
+                            break
+                    except:
+                        continue
+            
+            if detected_lang_column:
+                self._report_progress(f"自动检测到语言列: {detected_lang_column}")
+            else:
+                error_msg = f"无法在映射表中找到语言 '{json_lang_code}' 对应的列"
+                self._report_progress(f"错误: {error_msg}")
+                self.error_logs.append(error_msg)
+                return self.processing_stats
+        
+        # 跳过汇总信息等非数据工作表
+        skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+        data_sheets = [s for s in sheet_names if s not in skip_sheets]
+        
+        self._report_progress(f"将处理 {len(data_sheets)} 个数据工作表")
+        
+        total_sheets = len(data_sheets)
+        processed_sheets = 0
+        
+        for sheet_name in data_sheets:
+            # 工作表名就是目标Excel文件名
+            table_name = sheet_name
+            excel_filename = f"{table_name}.xlsx"
+            excel_path = os.path.join(excel_directory, excel_filename)
+            
+            # 检查文件是否存在
+            if not os.path.exists(excel_path):
+                # 尝试其他扩展名
+                excel_path_xls = os.path.join(excel_directory, f"{table_name}.xls")
+                if os.path.exists(excel_path_xls):
+                    excel_path = excel_path_xls
+                else:
+                    self.processing_stats['skipped_no_file'] += 1
+                    continue
+            
+            # 获取该表对应语言的字段列表
+            lang_fields = self.get_table_fields_by_language(table_name, json_lang_code)
+            if not lang_fields:
+                # 也尝试带扩展名
+                lang_fields = self.get_table_fields_by_language(excel_filename, json_lang_code)
+            
+            if not lang_fields:
+                self.processing_stats['skipped_no_config'] += 1
+                continue
+            
+            # 读取该工作表的数据
+            try:
+                df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+            except Exception as e:
+                error_msg = f"读取工作表 {sheet_name} 失败: {e}"
+                self.error_logs.append(error_msg)
+                continue
+            
+            if df.empty:
+                continue
+            
+            columns = df.columns.tolist()
+            self.processing_stats['total_rows'] += len(df)
+            
+            # 自动检测ID列
+            actual_id_col = id_col
+            if not actual_id_col or actual_id_col not in columns:
+                for possible_id in ['ID', 'id', 'Id', 'ID列', '编号']:
+                    if possible_id in columns:
+                        actual_id_col = possible_id
+                        break
+            
+            # 验证必要的列存在
+            if actual_id_col not in columns:
+                error_msg = f"工作表 {sheet_name} 中未找到ID列"
+                self.error_logs.append(error_msg)
+                continue
+            
+            if detected_lang_column not in columns:
+                # 跳过没有该语言列的工作表
+                continue
+            
+            # 确定字段列（Classification 或类似）
+            actual_field_col = field_col
+            if not actual_field_col:
+                # 自动检测字段列
+                for possible_col in ['Classification', 'classification', 'Field', 'field', '字段', '字段名']:
+                    if possible_col in columns:
+                        actual_field_col = possible_col
+                        break
+            
+            # 收集该工作表的所有修改
+            modifications = []
+            skipped_no_field = 0
+            
+            for idx, row in df.iterrows():
+                id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
+                lang_value = row[detected_lang_column] if pd.notna(row[detected_lang_column]) else ''
+                
+                if not id_value or not lang_value:
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                # 确定目标字段
+                target_field = None
+                
+                # 如果有Classification列，使用它
+                if actual_field_col and actual_field_col in columns:
+                    field_from_mapping = str(row[actual_field_col]).strip() if pd.notna(row[actual_field_col]) else None
+                    if field_from_mapping:
+                        # 先直接检查该字段是否在语言字段列表中
+                        if field_from_mapping in lang_fields:
+                            target_field = field_from_mapping
+                        else:
+                            # 尝试匹配带语言后缀的字段
+                            suffix_patterns = self.get_language_suffix_patterns(json_lang_code)
+                            for lang_field in lang_fields:
+                                field_base = field_from_mapping.lower()
+                                lang_field_lower = lang_field.lower()
+                                # 检查是否是同一个字段的语言版本
+                                # 例如：Classification='des', lang_field='des_zh'
+                                for pattern in suffix_patterns:
+                                    if lang_field_lower == f"{field_base}{pattern}" or \
+                                       lang_field_lower == f"{field_base.replace('_', '')}{pattern}":
+                                        target_field = lang_field
+                                        break
+                                if target_field:
+                                    break
+                            
+                            # 如果还没找到，尝试去掉语言后缀后匹配
+                            if not target_field:
+                                for lang_field in lang_fields:
+                                    # 从lang_field中去掉语言后缀，看是否匹配field_from_mapping
+                                    for pattern in suffix_patterns:
+                                        if pattern.startswith('_') and lang_field.lower().endswith(pattern):
+                                            base_name = lang_field[:-len(pattern)]
+                                            if base_name.lower() == field_from_mapping.lower():
+                                                target_field = lang_field
+                                                break
+                                    if target_field:
+                                        break
+                            
+                            # 如果还是没找到，直接使用Classification中的字段名
+                            if not target_field:
+                                target_field = field_from_mapping
+                                logger.debug(f"使用Classification字段名: {field_from_mapping}")
+                else:
+                    # 没有Classification列，尝试智能匹配
+                    # 如果只有一个语言字段，直接使用
+                    if len(lang_fields) == 1:
+                        target_field = lang_fields[0]
+                    elif len(lang_fields) > 1:
+                        # 多个字段时，尝试根据映射表列名推断
+                        # 例如：映射表列名是'VN'，可能对应'name_vn'或'desc_vn'
+                        # 优先选择包含常见名称字段（name, title, text等）
+                        common_name_fields = ['name', 'title', 'text', 'label', 'des', 'desc']
+                        for common in common_name_fields:
+                            for field in lang_fields:
+                                if common in field.lower():
+                                    target_field = field
+                                    break
+                            if target_field:
+                                break
+                        
+                        # 如果还没找到，使用第一个字段
+                        if not target_field:
+                            target_field = lang_fields[0]
+                            logger.debug(f"没有Classification列，使用第一个语言字段: {target_field}")
+                
+                if target_field:
+                    modifications.append({
+                        'id': id_value,
+                        'modify_values': {target_field: str(lang_value).strip()}
+                    })
+                else:
+                    skipped_no_field += 1
+            
+            if skipped_no_field > 0:
+                logger.warning(f"工作表 {sheet_name}: 有 {skipped_no_field} 行因未找到目标字段而跳过")
+            
+            if not modifications:
+                continue
+            
+            # 创建备份
+            if backup:
+                backup_path = excel_path + '.bak'
+                try:
+                    import shutil
+                    shutil.copy2(excel_path, backup_path)
+                except Exception as e:
+                    logger.warning(f"创建备份失败: {e}")
+            
+            self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改，语言字段: {lang_fields[:3]}...)")
+            
+            # 修改文件
+            modified_count, errors = self.modify_excel_file(
+                excel_path, 
+                modifications, 
+                field_mapping=None
+            )
+            
+            if modified_count > 0:
+                self.processing_stats['modified_files'] += 1
+                self.processing_stats['modified_cells'] += modified_count
+            
+            self.processing_stats['processed_rows'] += len(modifications)
+            
+            if errors:
+                self.error_logs.extend(errors)
+                self.processing_stats['errors'] += len(errors)
+            
+            processed_sheets += 1
+            progress = (processed_sheets / total_sheets) * 100
+            self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
+        
+        # 关闭 xlwings Excel 应用
+        self._close_excel_app()
+        
+        self._report_progress("批量修改完成！", 100)
+        
+        return self.processing_stats
     def process_batch_modification(self, mapping_path: str, 
                                   excel_directory: str,
                                   table_col: str,

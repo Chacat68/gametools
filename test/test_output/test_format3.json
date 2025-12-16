@@ -1,0 +1,20 @@
+{
+  "ZH": {
+    "no_text_tables": [
+      {
+        "table_name": "test1.xlsx",
+        "sheet_name": "test1"
+      }
+    ],
+    "text_tables": [
+      {
+        "table_name": "test2.xlsx",
+        "sheet_name": "test2",
+        "fields_with_examples": [
+          "name,前端",
+          "desc,后端"
+        ]
+      }
+    ]
+  }
+}
