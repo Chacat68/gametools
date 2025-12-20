@@ -778,11 +778,30 @@ class GameToolsUnified:
                                 foreground="green")
         engine_label.pack(side=tk.LEFT)
         
-        # 第二行：定位模式说明
+        # 第二行：数据起始行设置（防止修改表头）
         row2_frame = ttk.Frame(options_frame)
-        row2_frame.grid(row=1, column=0, sticky=(tk.W, tk.E))
+        row2_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
         
-        mode_label = ttk.Label(row2_frame, 
+        ttk.Label(row2_frame, text="数据起始行:").pack(side=tk.LEFT, padx=(0, 5))
+        self.batch_data_start_row_var = tk.StringVar(value="7")
+        self.batch_data_start_row_entry = ttk.Entry(row2_frame, textvariable=self.batch_data_start_row_var, 
+                                                   width=5, font=("Microsoft YaHei", 9))
+        self.batch_data_start_row_entry.pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Label(row2_frame, text="⚠️ 小于此行号的将不会被修改（保护表头）", 
+                 foreground="orange").pack(side=tk.LEFT, padx=(0, 20))
+        
+        ttk.Label(row2_frame, text="字段行:").pack(side=tk.LEFT, padx=(0, 5))
+        self.batch_field_row_var = tk.StringVar(value="5")
+        self.batch_field_row_entry = ttk.Entry(row2_frame, textvariable=self.batch_field_row_var, 
+                                              width=5, font=("Microsoft YaHei", 9))
+        self.batch_field_row_entry.pack(side=tk.LEFT)
+        
+        # 第三行：定位模式说明
+        row3_frame = ttk.Frame(options_frame)
+        row3_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        
+        mode_label = ttk.Label(row3_frame, 
                               text="💡 定位模式：有Position列→直接定位单元格 | 无Position列→ID作为行号", 
                               foreground="blue")
         mode_label.pack(side=tk.LEFT)
@@ -2646,6 +2665,20 @@ Excel目录: {excel_dir}
             self.root.after(0, lambda: self.append_result('batch_modifier', 
                 f"✓ 已加载 {len(field_config)//2} 个表的字段配置\n\n"))
             
+            # 获取字段行和数据起始行配置
+            try:
+                field_row = int(self.batch_field_row_var.get().strip())
+            except ValueError:
+                field_row = 5
+            
+            try:
+                data_start_row = int(self.batch_data_start_row_var.get().strip())
+            except ValueError:
+                data_start_row = 7
+            
+            self.root.after(0, lambda fr=field_row, dsr=data_start_row: self.append_result('batch_modifier', 
+                f"字段行: {fr}, 数据起始行: {dsr} (小于此行号的将被跳过)\n\n"))
+            
             # 使用手动指定语言列方式
             stats = self.batch_modifier.process_batch_modification_by_language(
                 mapping_path=mapping_file,
@@ -2653,7 +2686,9 @@ Excel目录: {excel_dir}
                 id_col="ID",
                 target_language=target_language,
                 field_col=None,  # 自动检测
-                backup=self.batch_backup_var.get()
+                backup=self.batch_backup_var.get(),
+                field_row=field_row,
+                data_start_row=data_start_row
             )
             
             # 显示统计信息
@@ -2670,6 +2705,16 @@ Excel目录: {excel_dir}
             if stats.get('skipped_no_file', 0) > 0:
                 self.root.after(0, lambda: self.append_result('batch_modifier', 
                     f"⚠️ 跳过了 {stats['skipped_no_file']} 个工作表（对应Excel文件不存在）\n"))
+            
+            # 显示字段不匹配的跳过数（CSV字段不在JSON配置中）
+            if stats.get('skipped_field_mismatch', 0) > 0:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    f"⚠️ 跳过了 {stats['skipped_field_mismatch']} 行（CSV字段名不在JSON配置中）\n"))
+            
+            # 显示值相同跳过的数量
+            if stats.get('skipped_same_value', 0) > 0:
+                self.root.after(0, lambda: self.append_result('batch_modifier', 
+                    f"✓ 跳过了 {stats['skipped_same_value']} 处（原值与新值相同，无需修改）\n"))
             
             # 生成报告
             if report_file:

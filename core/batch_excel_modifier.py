@@ -854,7 +854,7 @@ class BatchExcelModifier:
                          id_col: int = 1, 
                          field_row: int = 5,
                          data_start_row: int = 7,
-                         use_position: bool = False) -> Tuple[int, List[str]]:
+                         use_position: bool = False) -> Tuple[int, List[str], int]:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
@@ -870,11 +870,11 @@ class BatchExcelModifier:
             field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
             id_col: 保留参数，不再使用
             field_row: 字段名所在行
-            data_start_row: 保留参数，不再使用
+            data_start_row: 数据起始行（保护表头）
             use_position: 是否使用Position直接定位
             
         Returns:
-            Tuple[int, List[str]]: (修改的单元格数, 错误列表)
+            Tuple[int, List[str], int]: (修改的单元格数, 错误列表, 跳过的相同值数量)
         """
         return self._modify_excel_file_xlwings(
             excel_path, modifications, field_mapping, 
@@ -886,7 +886,7 @@ class BatchExcelModifier:
                                    id_col: int = 1, 
                                    field_row: int = 5,
                                    data_start_row: int = 7,
-                                   use_position: bool = False) -> Tuple[int, List[str]]:
+                                   use_position: bool = False) -> Tuple[int, List[str], int]:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
@@ -894,19 +894,25 @@ class BatchExcelModifier:
         - Position模式：从"B7"提取列B和行7，直接定位单元格
         - 行号模式：ID值直接作为Excel行号（如ID=7表示第7行）
         
+        修改范围限制：
+        - Position模式：检查行号 >= data_start_row
+        - 行号模式：检查行号 >= data_start_row
+        - 避免修改表头区域（data_start_row 之前的行）
+        
         Args:
             excel_path: Excel文件路径
             modifications: 修改列表
             field_mapping: 列名到字段名的映射
-            id_col: 保留参数，已废弃
+            id_col: 保留参数
             field_row: 字段名所在行
-            data_start_row: 保留参数，已废弃
+            data_start_row: 数据起始行（修改范围的最小行号，小于此行号的将被跳过）
             use_position: True=Position模式，False=行号模式
             
         Returns:
-            Tuple[int, List[str]]: (修改的单元格数, 错误列表)
+            Tuple[int, List[str], int]: (修改的单元格数, 错误列表, 跳过的相同值数量)
         """
         modified_count = 0
+        skipped_same_value = 0  # 跳过的相同值数量
         errors = []
         
         wb = None
@@ -943,6 +949,13 @@ class BatchExcelModifier:
                     target_row = int(match.group(2))
                     col_num = get_column_number(col_letter)
                     
+                    # 检查行号是否在允许的修改范围内（防止修改表头）
+                    if target_row < data_start_row:
+                        error_msg = f"跳过表头区域: Position {position_str} (行号{target_row} < 数据起始行{data_start_row})"
+                        errors.append(error_msg)
+                        logger.warning(error_msg)
+                        continue
+                    
                     # modify_values应该只有一个值（对应Position所在的单元格）
                     for col_name, new_value in modify_values.items():
                         # 读取旧值
@@ -955,6 +968,7 @@ class BatchExcelModifier:
                         
                         if old_str == new_str:
                             # 值相同，跳过修改
+                            skipped_same_value += 1
                             continue
                         
                         # 修改单元格
@@ -998,8 +1012,14 @@ class BatchExcelModifier:
                         errors.append(error_msg)
                         continue
                     
-                    # 检查行号是否在有效范围内
-                    if target_row < 1 or target_row > max_row:
+                    # 检查行号是否在有效范围内（防止修改表头）
+                    if target_row < data_start_row:
+                        error_msg = f"跳过表头区域: 行号 {target_row} < 数据起始行 {data_start_row}"
+                        errors.append(error_msg)
+                        logger.warning(error_msg)
+                        continue
+                    
+                    if target_row > max_row:
                         error_msg = f"行号超出范围: {target_row} (最大: {max_row})"
                         errors.append(error_msg)
                         continue
@@ -1031,6 +1051,7 @@ class BatchExcelModifier:
                         
                         if old_str == new_str:
                             # 值相同，跳过修改
+                            skipped_same_value += 1
                             continue
                         
                         # 修改单元格
@@ -1051,9 +1072,9 @@ class BatchExcelModifier:
             # 保存文件 - 只有实际发生修改时才保存
             if modified_count > 0:
                 wb.save()
-                logger.info(f"[xlwings] 已修改并保存: {excel_path} ({modified_count} 处修改)")
+                logger.info(f"[xlwings] 已修改并保存: {excel_path} ({modified_count} 处修改, {skipped_same_value} 处跳过-值相同)")
             else:
-                logger.info(f"[xlwings] 无需修改: {excel_path} (数据未变化)")
+                logger.info(f"[xlwings] 无需修改: {excel_path} (数据未变化, {skipped_same_value} 处跳过-值相同)")
             
         except Exception as e:
             error_msg = f"修改文件失败 {excel_path}: {e}"
@@ -1066,7 +1087,7 @@ class BatchExcelModifier:
                 except:
                     pass
         
-        return modified_count, errors
+        return modified_count, errors, skipped_same_value
     
     def process_batch_modification_with_json(self, mapping_path: str, 
                                              excel_directory: str,
@@ -1259,17 +1280,21 @@ class BatchExcelModifier:
             fields_to_modify = list(first_mod.get('modify_values', {}).keys())
             self._report_progress(f"处理: {table_name} (字段: {', '.join(fields_to_modify)})")
             
-            # 修改文件 - 传递use_position参数
-            modified_count, errors = self.modify_excel_file(
+            # 修改文件 - 传递use_position参数和data_start_row保护表头
+            modified_count, errors, skipped_same = self.modify_excel_file(
                 excel_path, 
                 modifications, 
                 field_mapping=None,  # 字段名已经是正确的
+                data_start_row=7,  # 默认数据起始行，保护表头
                 use_position=use_position_mode  # 使用检测到的模式
             )
             
             if modified_count > 0:
                 self.processing_stats['modified_files'] += 1
                 self.processing_stats['modified_cells'] += modified_count
+            
+            if skipped_same > 0:
+                self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
             
             self.processing_stats['processed_rows'] += len(modifications)
             
@@ -1624,17 +1649,21 @@ class BatchExcelModifier:
             
             self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改，语言字段: {lang_fields[:3]}...)")
             
-            # 修改文件
-            modified_count, errors = self.modify_excel_file(
+            # 修改文件（添加data_start_row保护表头）
+            modified_count, errors, skipped_same = self.modify_excel_file(
                 excel_path, 
                 modifications, 
                 field_mapping=None,
+                data_start_row=7,  # 默认数据起始行，保护表头
                 use_position=use_position_mode  # 使用检测到的模式
             )
             
             if modified_count > 0:
                 self.processing_stats['modified_files'] += 1
                 self.processing_stats['modified_cells'] += modified_count
+            
+            if skipped_same > 0:
+                self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
             
             self.processing_stats['processed_rows'] += len(modifications)
             
@@ -1743,16 +1772,20 @@ class BatchExcelModifier:
                 except Exception as e:
                     logger.warning(f"创建备份失败: {e}")
             
-            # 修改文件
-            modified_count, errors = self.modify_excel_file(
+            # 修改文件（添加data_start_row保护表头）
+            modified_count, errors, skipped_same = self.modify_excel_file(
                 excel_path, 
                 modifications, 
-                field_mapping
+                field_mapping,
+                data_start_row=7  # 默认数据起始行，保护表头
             )
             
             if modified_count > 0:
                 self.processing_stats['modified_files'] += 1
                 self.processing_stats['modified_cells'] += modified_count
+            
+            if skipped_same > 0:
+                self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
             
             self.processing_stats['processed_rows'] += len(modifications)
             
@@ -1963,7 +1996,9 @@ class BatchExcelModifier:
                                                id_col: str,
                                                target_language: str,
                                                field_col: str = None,
-                                               backup: bool = True) -> Dict:
+                                               backup: bool = True,
+                                               field_row: int = 5,
+                                               data_start_row: int = 7) -> Dict:
         """
         按语言执行批量修改（每个工作表对应一个Excel文件）
         
@@ -1980,6 +2015,8 @@ class BatchExcelModifier:
             target_language: 目标语言列名（如 'VN', 'EN', 'TH'）
             field_col: 字段名列名（如 'Classification'），可选
             backup: 是否创建备份
+            field_row: 目标Excel的字段名所在行（默认5）
+            data_start_row: 数据起始行，小于此行号的将被跳过（默认7，保护表头）
             
         Returns:
             Dict: 处理结果统计
@@ -1993,6 +2030,8 @@ class BatchExcelModifier:
             'skipped_rows': 0,
             'skipped_no_config': 0,
             'skipped_no_file': 0,
+            'skipped_field_mismatch': 0,  # CSV字段不在JSON配置中
+            'skipped_same_value': 0,  # 值相同跳过的数量
             'errors': 0
         }
         self.error_logs = []
@@ -2139,6 +2178,7 @@ class BatchExcelModifier:
             
             # 收集该工作表的所有修改
             modifications = []
+            skipped_field_mismatch = 0  # 记录因字段不匹配而跳过的行数
             
             for idx, row in df.iterrows():
                 id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
@@ -2157,7 +2197,13 @@ class BatchExcelModifier:
                 # 在JSON配置的字段列表中查找与目标语言对应的字段
                 target_field = None
                 if field_name:
-                    # 有Classification列，直接使用
+                    # 有Classification列，校验字段是否在JSON配置中
+                    if table_fields and field_name not in table_fields:
+                        # 字段不在JSON配置中，跳过此行
+                        skipped_field_mismatch += 1
+                        self.processing_stats['skipped_rows'] += 1
+                        self.processing_stats['skipped_field_mismatch'] += 1
+                        continue
                     target_field = field_name
                 else:
                     # 没有Classification列，尝试匹配语言字段
@@ -2184,6 +2230,12 @@ class BatchExcelModifier:
                             modification_item['position'] = str(position_value).strip()
                     modifications.append(modification_item)
             
+            # 输出字段不匹配的警告
+            if skipped_field_mismatch > 0:
+                warn_msg = f"  ⚠️ {table_name}: 跳过 {skipped_field_mismatch} 行（CSV字段不在JSON配置中）"
+                self._report_progress(warn_msg)
+                logger.warning(warn_msg)
+            
             if not modifications:
                 continue
             
@@ -2198,17 +2250,22 @@ class BatchExcelModifier:
             
             self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改){'[Position模式]' if use_position_mode else ''}")
             
-            # 修改文件
-            modified_count, errors = self.modify_excel_file(
+            # 修改文件（传递field_row和data_start_row以保护表头）
+            modified_count, errors, skipped_same = self.modify_excel_file(
                 excel_path, 
                 modifications, 
                 field_mapping=None,
+                field_row=field_row,
+                data_start_row=data_start_row,
                 use_position=use_position_mode  # 使用检测到的模式
             )
             
             if modified_count > 0:
                 self.processing_stats['modified_files'] += 1
                 self.processing_stats['modified_cells'] += modified_count
+            
+            if skipped_same > 0:
+                self.processing_stats['skipped_same_value'] += skipped_same
             
             self.processing_stats['processed_rows'] += len(modifications)
             
