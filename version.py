@@ -5,14 +5,26 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.40.2"
-__version_info__ = (1, 40, 2)
+__version__ = "1.40.3"
+__version_info__ = (1, 40, 3)
 __build_date__ = "2025-12-20"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.40.3": {
+        "date": "2025-12-20",
+        "changes": [
+            "🔧 修复批量改表Position定位错误",
+            "✨ 新增Position直接定位模式（无需ID匹配）",
+            "🎯 Position列（如B7）直接定位到Excel单元格",
+            "🔄 自动检测CSV是否有Position列并切换模式",
+            "📝 新增列字母↔列号转换函数",
+            "✅ 支持翻译提取CSV精确位置修改",
+            "📚 新增POSITION_MODE_FIX.md详细说明文档"
+        ]
+    },
     "1.40.2": {
         "date": "2025-12-20",
         "changes": [

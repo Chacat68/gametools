@@ -858,14 +858,20 @@ class BatchExcelModifier:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
+        两种定位模式：
+        1. Position模式（use_position=True）：使用Position列（如"B7"）直接定位单元格
+        2. 行号模式（use_position=False）：使用ID列的值直接作为Excel行号
+        
         Args:
             excel_path: Excel文件路径
-            modifications: 修改列表，每项包含 {id, modify_values} 或 {position, modify_values}
+            modifications: 修改列表
+                - Position模式：{position: "B7", modify_values: {...}}
+                - 行号模式：{id: 7, modify_values: {...}}  # id直接作为行号
             field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
-            id_col: ID所在列（use_position=False时使用）
-            field_row: 字段名所在行（use_position=False时使用）
-            data_start_row: 数据起始行（use_position=False时使用）
-            use_position: 是否使用Position直接定位（True时忽略id_col等参数）
+            id_col: 保留参数，不再使用
+            field_row: 字段名所在行
+            data_start_row: 保留参数，不再使用
+            use_position: 是否使用Position直接定位
             
         Returns:
             Tuple[int, List[str]]: (修改的单元格数, 错误列表)
@@ -884,14 +890,18 @@ class BatchExcelModifier:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
+        定位逻辑：
+        - Position模式：从"B7"提取列B和行7，直接定位单元格
+        - 行号模式：ID值直接作为Excel行号（如ID=7表示第7行）
+        
         Args:
             excel_path: Excel文件路径
-            modifications: 修改列表，每项包含 {id, modify_values} 或 {position, modify_values}
-            field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
-            id_col: ID所在列（use_position=False时使用）
-            field_row: 字段名所在行（use_position=False时使用）
-            data_start_row: 数据起始行（use_position=False时使用）
-            use_position: 是否使用Position直接定位
+            modifications: 修改列表
+            field_mapping: 列名到字段名的映射
+            id_col: 保留参数，已废弃
+            field_row: 字段名所在行
+            data_start_row: 保留参数，已废弃
+            use_position: True=Position模式，False=行号模式
             
         Returns:
             Tuple[int, List[str]]: (修改的单元格数, 错误列表)
@@ -961,10 +971,7 @@ class BatchExcelModifier:
                         
                         modified_count += 1
             else:
-                # 传统ID匹配模式
-                # 缓存字段列号
-                field_columns = {}
-                
+                # 行号直接定位模式：ID直接作为Excel行号使用
                 # 读取字段行（用于查找列号）
                 field_row_values = ws.range((field_row, 1), (field_row, max_col)).value
                 if not isinstance(field_row_values, list):
@@ -976,23 +983,6 @@ class BatchExcelModifier:
                     if field_val:
                         field_to_col[str(field_val).strip()] = col_idx
                 
-                # 读取 ID 列数据（用于查找行号）
-                id_column_values = ws.range((data_start_row, id_col), (max_row, id_col)).value
-                if not isinstance(id_column_values, list):
-                    id_column_values = [id_column_values]
-                
-                # 构建 ID 到行号的映射
-                id_to_row = {}
-                for row_offset, id_val in enumerate(id_column_values):
-                    if id_val is not None:
-                        id_str = str(id_val).strip()
-                        id_to_row[id_str] = data_start_row + row_offset
-                        # 也尝试数字格式
-                        try:
-                            id_to_row[str(int(float(id_str)))] = data_start_row + row_offset
-                        except:
-                            pass
-                
                 for mod in modifications:
                     id_value = mod.get('id')
                     modify_values = mod.get('modify_values', {})
@@ -1000,19 +990,17 @@ class BatchExcelModifier:
                     if not id_value or not modify_values:
                         continue
                     
-                    # 查找ID对应的行
-                    id_str = str(id_value).strip()
-                    target_row = id_to_row.get(id_str)
+                    # 直接使用ID作为行号
+                    try:
+                        target_row = int(float(id_value))
+                    except (ValueError, TypeError):
+                        error_msg = f"无效的行号: {id_value}"
+                        errors.append(error_msg)
+                        continue
                     
-                    # 尝试数字格式
-                    if target_row is None:
-                        try:
-                            target_row = id_to_row.get(str(int(float(id_str))))
-                        except:
-                            pass
-                    
-                    if target_row is None:
-                        error_msg = f"未找到ID: {id_value}"
+                    # 检查行号是否在有效范围内
+                    if target_row < 1 or target_row > max_row:
+                        error_msg = f"行号超出范围: {target_row} (最大: {max_row})"
                         errors.append(error_msg)
                         continue
                     
@@ -1051,7 +1039,7 @@ class BatchExcelModifier:
                         # 记录修改日志
                         self.modification_logs.append({
                             'file': os.path.basename(excel_path),
-                            'id': id_value,
+                            'row': target_row,
                             'field': field_name,
                             'position': f"{get_column_letter(col_num)}{target_row}",
                             'old_value': old_value,
