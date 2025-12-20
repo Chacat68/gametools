@@ -39,6 +39,14 @@ def get_column_letter(col_num: int) -> str:
         result = chr(65 + remainder) + result
     return result
 
+def get_column_number(col_letter: str) -> int:
+    """将Excel列字母转换为列号（从1开始）"""
+    col_letter = col_letter.upper()
+    result = 0
+    for char in col_letter:
+        result = result * 26 + (ord(char) - ord('A') + 1)
+    return result
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -103,6 +111,63 @@ class BatchExcelModifier:
         if self.progress_callback:
             self.progress_callback(message, percentage)
         logger.info(message)
+    
+    def _convert_csv_format_if_needed(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        检测CSV格式并转换（如果需要）
+        
+        支持两种格式：
+        1. 标准格式：Table,Classification,ID,VN,TH...
+        2. 翻译提取格式：Table,Sheet,Field,Type,Position,ZH,VN,TH...
+        
+        如果是翻译提取格式，自动转换为标准格式
+        
+        Args:
+            df: 原始DataFrame
+            
+        Returns:
+            pd.DataFrame: 转换后的DataFrame
+        """
+        columns = df.columns.tolist()
+        
+        # 检测是否为翻译提取格式
+        is_translation_format = ('Position' in columns and 'Field' in columns and 'Sheet' in columns)
+        
+        if not is_translation_format:
+            logger.info("检测到标准批量改表格式")
+            return df
+        
+        logger.info("检测到翻译提取格式，开始转换...")
+        
+        try:
+            # 保留Position列用于直接定位单元格
+            # Position格式如 "B7", "E24" 等，包含了完整的列和行信息
+            
+            # Field列作为Classification
+            df['Classification'] = df['Field']
+            
+            # 创建一个虚拟的ID列（使用行索引），虽然实际定位会用Position
+            df['ID'] = range(1, len(df) + 1)
+            
+            # 删除不需要的列（保留Position）
+            columns_to_drop = ['Sheet', 'Field', 'Type', 'ZH']
+            df = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
+            
+            # 重新排列列顺序：Table, Classification, ID, Position, 然后是语言列
+            lang_cols = [col for col in df.columns if col not in ['Table', 'Classification', 'ID', 'Position']]
+            new_columns = ['Table', 'Classification', 'ID', 'Position'] + lang_cols
+            df = df[new_columns]
+            
+            logger.info(f"格式转换完成！")
+            logger.info(f"  - 转换后列名: {df.columns.tolist()}")
+            logger.info(f"  - 转换后行数: {len(df)}")
+            
+            return df
+            
+        except Exception as e:
+            logger.error(f"格式转换失败: {e}")
+            logger.warning("将使用原始格式继续处理")
+            return df
     
     def get_available_languages_from_json(self, json_path: str) -> List[Dict[str, str]]:
         """
@@ -605,12 +670,11 @@ class BatchExcelModifier:
         """
         加载映射表文件（支持Excel和CSV）
         
-        映射表格式:
-        A列: 表名（如 act_20206_shilian_0.xlsx）
-        B列: Classification (如 des)
-        C列: ID
-        D列: VN（越南文内容）
-        E列及之后: 其他语言列
+        支持两种CSV格式：
+        1. 标准批量改表格式：
+           Table,Classification,ID,VN,TH,EN...
+        2. 翻译提取格式（自动转换）：
+           Table,Sheet,Field,Type,Position,ZH,VN,TH...
         
         Args:
             mapping_path: 映射表文件路径（.xlsx/.xls/.csv）
@@ -637,6 +701,9 @@ class BatchExcelModifier:
                     # 如果所有编码都失败，使用默认编码并忽略错误
                     df = pd.read_csv(mapping_path, header=0, encoding='utf-8', errors='ignore')
                     logger.warning(f"使用默认编码读取CSV，可能存在字符问题")
+                
+                # 检测CSV格式类型并转换
+                df = self._convert_csv_format_if_needed(df)
             else:
                 # 读取Excel文件
                 if sheet_name:
@@ -786,41 +853,45 @@ class BatchExcelModifier:
                          field_mapping: Dict[str, str] = None,
                          id_col: int = 1, 
                          field_row: int = 5,
-                         data_start_row: int = 7) -> Tuple[int, List[str]]:
+                         data_start_row: int = 7,
+                         use_position: bool = False) -> Tuple[int, List[str]]:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
         Args:
             excel_path: Excel文件路径
-            modifications: 修改列表，每项包含 {id, modify_values}
+            modifications: 修改列表，每项包含 {id, modify_values} 或 {position, modify_values}
             field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
-            id_col: ID所在列
-            field_row: 字段名所在行
-            data_start_row: 数据起始行
+            id_col: ID所在列（use_position=False时使用）
+            field_row: 字段名所在行（use_position=False时使用）
+            data_start_row: 数据起始行（use_position=False时使用）
+            use_position: 是否使用Position直接定位（True时忽略id_col等参数）
             
         Returns:
             Tuple[int, List[str]]: (修改的单元格数, 错误列表)
         """
         return self._modify_excel_file_xlwings(
             excel_path, modifications, field_mapping, 
-            id_col, field_row, data_start_row
+            id_col, field_row, data_start_row, use_position
         )
     
     def _modify_excel_file_xlwings(self, excel_path: str, modifications: List[Dict], 
                                    field_mapping: Dict[str, str] = None,
                                    id_col: int = 1, 
                                    field_row: int = 5,
-                                   data_start_row: int = 7) -> Tuple[int, List[str]]:
+                                   data_start_row: int = 7,
+                                   use_position: bool = False) -> Tuple[int, List[str]]:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
         Args:
             excel_path: Excel文件路径
-            modifications: 修改列表，每项包含 {id, modify_values}
+            modifications: 修改列表，每项包含 {id, modify_values} 或 {position, modify_values}
             field_mapping: 列名到字段名的映射 {映射表列名: Excel字段名}
-            id_col: ID所在列
-            field_row: 字段名所在行
-            data_start_row: 数据起始行
+            id_col: ID所在列（use_position=False时使用）
+            field_row: 字段名所在行（use_position=False时使用）
+            data_start_row: 数据起始行（use_position=False时使用）
+            use_position: 是否使用Position直接定位
             
         Returns:
             Tuple[int, List[str]]: (修改的单元格数, 错误列表)
@@ -840,103 +911,154 @@ class BatchExcelModifier:
             max_row = used_range.last_cell.row
             max_col = used_range.last_cell.column
             
-            # 缓存字段列号
-            field_columns = {}
-            
-            # 读取字段行（用于查找列号）
-            field_row_values = ws.range((field_row, 1), (field_row, max_col)).value
-            if not isinstance(field_row_values, list):
-                field_row_values = [field_row_values]
-            
-            # 构建字段名到列号的映射
-            field_to_col = {}
-            for col_idx, field_val in enumerate(field_row_values, start=1):
-                if field_val:
-                    field_to_col[str(field_val).strip()] = col_idx
-            
-            # 读取 ID 列数据（用于查找行号）
-            id_column_values = ws.range((data_start_row, id_col), (max_row, id_col)).value
-            if not isinstance(id_column_values, list):
-                id_column_values = [id_column_values]
-            
-            # 构建 ID 到行号的映射
-            id_to_row = {}
-            for row_offset, id_val in enumerate(id_column_values):
-                if id_val is not None:
-                    id_str = str(id_val).strip()
-                    id_to_row[id_str] = data_start_row + row_offset
-                    # 也尝试数字格式
-                    try:
-                        id_to_row[str(int(float(id_str)))] = data_start_row + row_offset
-                    except:
-                        pass
-            
-            for mod in modifications:
-                id_value = mod.get('id')
-                modify_values = mod.get('modify_values', {})
-                
-                if not id_value or not modify_values:
-                    continue
-                
-                # 查找ID对应的行
-                id_str = str(id_value).strip()
-                target_row = id_to_row.get(id_str)
-                
-                # 尝试数字格式
-                if target_row is None:
-                    try:
-                        target_row = id_to_row.get(str(int(float(id_str))))
-                    except:
-                        pass
-                
-                if target_row is None:
-                    error_msg = f"未找到ID: {id_value}"
-                    errors.append(error_msg)
-                    continue
-                
-                # 修改每个指定的列
-                for col_name, new_value in modify_values.items():
-                    # 获取字段名
-                    field_name = field_mapping.get(col_name) if field_mapping else col_name
+            # 如果使用Position模式，不需要构建ID映射和字段映射
+            if use_position:
+                # Position模式：直接使用Position定位单元格
+                for mod in modifications:
+                    position = mod.get('position')
+                    modify_values = mod.get('modify_values', {})
                     
-                    if not field_name:
+                    if not position or not modify_values:
                         continue
                     
-                    # 查找字段对应的列
-                    col_num = field_to_col.get(field_name)
-                    
-                    if col_num is None:
-                        error_msg = f"未找到字段: {field_name}"
-                        if error_msg not in errors:
-                            errors.append(error_msg)
+                    # 解析Position（如"B7"）
+                    position_str = str(position).strip()
+                    match = re.match(r'([A-Z]+)(\d+)', position_str.upper())
+                    if not match:
+                        error_msg = f"无效的Position格式: {position}"
+                        errors.append(error_msg)
                         continue
                     
-                    # 读取旧值
-                    cell = ws.range((target_row, col_num))
-                    old_value = cell.value
+                    col_letter = match.group(1)
+                    target_row = int(match.group(2))
+                    col_num = get_column_number(col_letter)
                     
-                    # 比较新旧值，避免不必要的修改
-                    old_str = str(old_value).strip() if old_value is not None else ''
-                    new_str = str(new_value).strip() if new_value is not None else ''
-                    
-                    if old_str == new_str:
-                        # 值相同，跳过修改
+                    # modify_values应该只有一个值（对应Position所在的单元格）
+                    for col_name, new_value in modify_values.items():
+                        # 读取旧值
+                        cell = ws.range((target_row, col_num))
+                        old_value = cell.value
+                        
+                        # 比较新旧值，避免不必要的修改
+                        old_str = str(old_value).strip() if old_value is not None else ''
+                        new_str = str(new_value).strip() if new_value is not None else ''
+                        
+                        if old_str == new_str:
+                            # 值相同，跳过修改
+                            continue
+                        
+                        # 修改单元格
+                        cell.value = new_value
+                        
+                        # 记录修改日志
+                        self.modification_logs.append({
+                            'file': os.path.basename(excel_path),
+                            'position': position_str,
+                            'field': col_name,
+                            'old_value': old_value,
+                            'new_value': new_value
+                        })
+                        
+                        modified_count += 1
+            else:
+                # 传统ID匹配模式
+                # 缓存字段列号
+                field_columns = {}
+                
+                # 读取字段行（用于查找列号）
+                field_row_values = ws.range((field_row, 1), (field_row, max_col)).value
+                if not isinstance(field_row_values, list):
+                    field_row_values = [field_row_values]
+                
+                # 构建字段名到列号的映射
+                field_to_col = {}
+                for col_idx, field_val in enumerate(field_row_values, start=1):
+                    if field_val:
+                        field_to_col[str(field_val).strip()] = col_idx
+                
+                # 读取 ID 列数据（用于查找行号）
+                id_column_values = ws.range((data_start_row, id_col), (max_row, id_col)).value
+                if not isinstance(id_column_values, list):
+                    id_column_values = [id_column_values]
+                
+                # 构建 ID 到行号的映射
+                id_to_row = {}
+                for row_offset, id_val in enumerate(id_column_values):
+                    if id_val is not None:
+                        id_str = str(id_val).strip()
+                        id_to_row[id_str] = data_start_row + row_offset
+                        # 也尝试数字格式
+                        try:
+                            id_to_row[str(int(float(id_str)))] = data_start_row + row_offset
+                        except:
+                            pass
+                
+                for mod in modifications:
+                    id_value = mod.get('id')
+                    modify_values = mod.get('modify_values', {})
+                
+                    if not id_value or not modify_values:
                         continue
                     
-                    # 修改单元格
-                    cell.value = new_value
+                    # 查找ID对应的行
+                    id_str = str(id_value).strip()
+                    target_row = id_to_row.get(id_str)
                     
-                    # 记录修改日志
-                    self.modification_logs.append({
-                        'file': os.path.basename(excel_path),
-                        'id': id_value,
-                        'field': field_name,
-                        'position': f"{get_column_letter(col_num)}{target_row}",
-                        'old_value': old_value,
-                        'new_value': new_value
-                    })
+                    # 尝试数字格式
+                    if target_row is None:
+                        try:
+                            target_row = id_to_row.get(str(int(float(id_str))))
+                        except:
+                            pass
                     
-                    modified_count += 1
+                    if target_row is None:
+                        error_msg = f"未找到ID: {id_value}"
+                        errors.append(error_msg)
+                        continue
+                    
+                    # 修改每个指定的列
+                    for col_name, new_value in modify_values.items():
+                        # 获取字段名
+                        field_name = field_mapping.get(col_name) if field_mapping else col_name
+                        
+                        if not field_name:
+                            continue
+                        
+                        # 查找字段对应的列
+                        col_num = field_to_col.get(field_name)
+                        
+                        if col_num is None:
+                            error_msg = f"未找到字段: {field_name}"
+                            if error_msg not in errors:
+                                errors.append(error_msg)
+                            continue
+                        
+                        # 读取旧值
+                        cell = ws.range((target_row, col_num))
+                        old_value = cell.value
+                        
+                        # 比较新旧值，避免不必要的修改
+                        old_str = str(old_value).strip() if old_value is not None else ''
+                        new_str = str(new_value).strip() if new_value is not None else ''
+                        
+                        if old_str == new_str:
+                            # 值相同，跳过修改
+                            continue
+                        
+                        # 修改单元格
+                        cell.value = new_value
+                        
+                        # 记录修改日志
+                        self.modification_logs.append({
+                            'file': os.path.basename(excel_path),
+                            'id': id_value,
+                            'field': field_name,
+                            'position': f"{get_column_letter(col_num)}{target_row}",
+                            'old_value': old_value,
+                            'new_value': new_value
+                        })
+                        
+                        modified_count += 1
             
             # 保存文件 - 只有实际发生修改时才保存
             if modified_count > 0:
@@ -1018,51 +1140,101 @@ class BatchExcelModifier:
             self.error_logs.append(error_msg)
             return self.processing_stats
         
-        if id_col not in mapping_columns:
-            error_msg = f"错误: 映射表中不存在ID列 '{id_col}'，可用列: {mapping_columns}"
-            self._report_progress(error_msg)
-            self.error_logs.append(error_msg)
-            return self.processing_stats
+        # 检测是否有Position列（翻译提取格式）
+        use_position_mode = 'Position' in mapping_columns
+        
+        if not use_position_mode:
+            # 传统模式需要ID列
+            if id_col not in mapping_columns:
+                error_msg = f"错误: 映射表中不存在ID列 '{id_col}'，可用列: {mapping_columns}"
+                self._report_progress(error_msg)
+                self.error_logs.append(error_msg)
+                return self.processing_stats
+        else:
+            self._report_progress("检测到Position列，使用Position直接定位模式")
         
         # 按表名分组修改
         grouped_modifications = {}
         
         for idx, row in df.iterrows():
-            # 获取表名和ID
+            # 获取表名
             table_name = str(row[table_col]).strip() if pd.notna(row[table_col]) else ''
-            id_value = row[id_col] if pd.notna(row[id_col]) else ''
             
-            if not table_name or not id_value:
+            if not table_name:
                 self.processing_stats['skipped_rows'] += 1
                 continue
             
-            # 从JSON配置中获取该表的字段列表
-            table_fields = self.get_table_fields(table_name)
-            
-            if not table_fields:
-                # 该表不在JSON配置中，跳过
-                self.processing_stats['skipped_no_config'] += 1
-                continue
-            
-            # 找出映射表中与JSON字段匹配的列
-            modify_values = {}
-            for field in table_fields:
-                if field in mapping_columns and field in row.index:
-                    value = row[field]
-                    if pd.notna(value) and str(value).strip():
-                        modify_values[field] = str(value).strip()
-            
-            if not modify_values:
-                self.processing_stats['skipped_rows'] += 1
-                continue
-            
-            if table_name not in grouped_modifications:
-                grouped_modifications[table_name] = []
-            
-            grouped_modifications[table_name].append({
-                'id': id_value,
-                'modify_values': modify_values
-            })
+            if use_position_mode:
+                # Position模式
+                position = row.get('Position')
+                if pd.isna(position) or not str(position).strip():
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                # 从JSON配置中获取该表的字段列表
+                table_fields = self.get_table_fields(table_name)
+                
+                if not table_fields:
+                    # 该表不在JSON配置中，跳过
+                    self.processing_stats['skipped_no_config'] += 1
+                    continue
+                
+                # 找出映射表中与JSON字段匹配的列
+                modify_values = {}
+                for field in table_fields:
+                    if field in mapping_columns and field in row.index:
+                        value = row[field]
+                        if pd.notna(value) and str(value).strip():
+                            modify_values[field] = str(value).strip()
+                
+                if not modify_values:
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                if table_name not in grouped_modifications:
+                    grouped_modifications[table_name] = []
+                
+                grouped_modifications[table_name].append({
+                    'position': position,
+                    'modify_values': modify_values
+                })
+            else:
+                # 传统ID模式
+                id_value = row[id_col] if pd.notna(row[id_col]) else ''
+                
+                if not id_value:
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                # 从JSON配置中获取该表的字段列表
+                table_fields = self.get_table_fields(table_name)
+                # 从JSON配置中获取该表的字段列表
+                table_fields = self.get_table_fields(table_name)
+                
+                if not table_fields:
+                    # 该表不在JSON配置中，跳过
+                    self.processing_stats['skipped_no_config'] += 1
+                    continue
+                
+                # 找出映射表中与JSON字段匹配的列
+                modify_values = {}
+                for field in table_fields:
+                    if field in mapping_columns and field in row.index:
+                        value = row[field]
+                        if pd.notna(value) and str(value).strip():
+                            modify_values[field] = str(value).strip()
+                
+                if not modify_values:
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                if table_name not in grouped_modifications:
+                    grouped_modifications[table_name] = []
+                
+                grouped_modifications[table_name].append({
+                    'id': id_value,
+                    'modify_values': modify_values
+                })
         
         self._report_progress(f"需要修改 {len(grouped_modifications)} 个文件")
         
@@ -1099,11 +1271,12 @@ class BatchExcelModifier:
             fields_to_modify = list(first_mod.get('modify_values', {}).keys())
             self._report_progress(f"处理: {table_name} (字段: {', '.join(fields_to_modify)})")
             
-            # 修改文件 - 字段名直接使用，不需要映射
+            # 修改文件 - 传递use_position参数
             modified_count, errors = self.modify_excel_file(
                 excel_path, 
                 modifications, 
-                field_mapping=None  # 字段名已经是正确的
+                field_mapping=None,  # 字段名已经是正确的
+                use_position=use_position_mode  # 使用检测到的模式
             )
             
             if modified_count > 0:
@@ -1185,11 +1358,32 @@ class BatchExcelModifier:
         
         self._report_progress(f"JSON语言标记: {json_lang_name} ({json_lang_code})")
         
-        # 获取所有工作表
+        # 获取所有工作表（CSV文件需要从Table列提取表名）
         try:
-            xl = pd.ExcelFile(mapping_path)
-            sheet_names = xl.sheet_names
-            self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
+            file_ext = os.path.splitext(mapping_path)[1].lower()
+            if file_ext == '.csv':
+                # CSV文件，从Table列提取所有唯一的表名
+                df_csv, _ = self.load_mapping_table(mapping_path)
+                if df_csv is None or df_csv.empty:
+                    error_msg = "CSV文件为空或加载失败"
+                    self._report_progress(error_msg)
+                    self.error_logs.append(error_msg)
+                    return self.processing_stats
+                
+                if 'Table' not in df_csv.columns:
+                    error_msg = "CSV文件缺少'Table'列"
+                    self._report_progress(error_msg)
+                    self.error_logs.append(error_msg)
+                    return self.processing_stats
+                
+                # 提取唯一的表名（去除.xlsx/.xls扩展名）
+                unique_tables = df_csv['Table'].unique()
+                sheet_names = [t.replace('.xlsx', '').replace('.xls', '') for t in unique_tables]
+                self._report_progress(f"映射表为CSV格式，包含 {len(sheet_names)} 个表文件")
+            else:
+                xl = pd.ExcelFile(mapping_path)
+                sheet_names = xl.sheet_names
+                self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
         except Exception as e:
             error_msg = f"无法读取映射表: {e}"
             self._report_progress(error_msg)
@@ -1203,11 +1397,19 @@ class BatchExcelModifier:
             
             # 读取第一个数据工作表来检测列
             skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+            file_ext = os.path.splitext(mapping_path)[1].lower()
+            
             for sheet in sheet_names:
                 if sheet not in skip_sheets:
                     try:
-                        df_sample = pd.read_excel(mapping_path, sheet_name=sheet, nrows=0)
-                        columns = df_sample.columns.tolist()
+                        if file_ext == '.csv':
+                            # CSV文件，使用load_mapping_table读取并检查列
+                            df_mapping = self.load_mapping_table(mapping_path)
+                            if df_mapping is not None:
+                                columns = df_mapping.columns.tolist()
+                        else:
+                            df_sample = pd.read_excel(mapping_path, sheet_name=sheet, nrows=0)
+                            columns = df_sample.columns.tolist()
                         
                         for col in possible_columns:
                             if col in columns:
@@ -1264,7 +1466,24 @@ class BatchExcelModifier:
             
             # 读取该工作表的数据
             try:
-                df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+                file_ext = os.path.splitext(mapping_path)[1].lower()
+                if file_ext == '.csv':
+                    # CSV文件，使用load_mapping_table读取并筛选表名
+                    df_all = self.load_mapping_table(mapping_path)
+                    if df_all is None or df_all.empty:
+                        continue
+                    
+                    # 筛选该表的数据
+                    if 'Table' in df_all.columns:
+                        # 尝试匹配table_name (不带扩展名) 或 excel_filename (带扩展名)
+                        df = df_all[(df_all['Table'] == table_name) | (df_all['Table'] == excel_filename)]
+                        if df.empty:
+                            # 再尝试不带路径的表名
+                            df = df_all[df_all['Table'].str.contains(table_name, na=False, regex=False)]
+                    else:
+                        df = df_all  # 如果没有Table列，使用全部数据
+                else:
+                    df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
             except Exception as e:
                 error_msg = f"读取工作表 {sheet_name} 失败: {e}"
                 self.error_logs.append(error_msg)
@@ -1662,10 +1881,10 @@ class BatchExcelModifier:
 
     def get_mapping_file_languages(self, mapping_path: str) -> List[str]:
         """
-        获取映射表中可用的语言列
+        获取映射表中可用的语言列（支持Excel和CSV）
         
         Args:
-            mapping_path: 映射表Excel文件路径
+            mapping_path: 映射表文件路径（.xlsx/.xls/.csv）
             
         Returns:
             List[str]: 语言列名列表
@@ -1679,22 +1898,44 @@ class BatchExcelModifier:
                           '字段', '字段名', '表名', 'Table', 'table', '项目', '值', 'Name', 'name']
         
         try:
-            xl = pd.ExcelFile(mapping_path)
+            # 检查文件扩展名
+            file_ext = os.path.splitext(mapping_path)[1].lower()
             
-            # 跳过汇总信息等非数据工作表
-            skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
-            data_sheet = None
-            for sheet in xl.sheet_names:
-                if sheet not in skip_sheets:
-                    data_sheet = sheet
-                    break
+            if file_ext == '.csv':
+                # 读取CSV文件（只读取列名）
+                for encoding in ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']:
+                    try:
+                        df = pd.read_csv(mapping_path, nrows=0, encoding=encoding)
+                        columns = df.columns.tolist()
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    df = pd.read_csv(mapping_path, nrows=0, encoding='utf-8', errors='ignore')
+                    columns = df.columns.tolist()
+            else:
+                # Excel文件
+                xl = pd.ExcelFile(mapping_path)
+                
+                # 跳过汇总信息等非数据工作表
+                skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+                data_sheet = None
+                for sheet in xl.sheet_names:
+                    if sheet not in skip_sheets:
+                        data_sheet = sheet
+                        break
+                
+                if not data_sheet:
+                    data_sheet = xl.sheet_names[0] if xl.sheet_names else None
+                
+                if data_sheet:
+                    df = pd.read_excel(mapping_path, sheet_name=data_sheet, nrows=0)
+                    columns = df.columns.tolist()
+                else:
+                    return []
             
-            if not data_sheet:
-                data_sheet = xl.sheet_names[0] if xl.sheet_names else None
-            
-            if data_sheet:
-                df = pd.read_excel(mapping_path, sheet_name=data_sheet, nrows=0)
-                columns = df.columns.tolist()
+            # 过滤出语言列
+            if columns:
                 
                 # 过滤出语言列
                 available_langs = []
@@ -1759,11 +2000,33 @@ class BatchExcelModifier:
         
         self._report_progress(f"开始按语言批量修改，目标语言: {target_language}")
         
-        # 获取所有工作表
+        # 获取所有工作表（CSV文件需要从Table列提取表名）
         try:
-            xl = pd.ExcelFile(mapping_path)
-            sheet_names = xl.sheet_names
-            self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
+            file_ext = os.path.splitext(mapping_path)[1].lower()
+            
+            if file_ext == '.csv':
+                # CSV文件，从Table列提取所有唯一的表名
+                df_csv, _ = self.load_mapping_table(mapping_path)
+                if df_csv is None or df_csv.empty:
+                    error_msg = "CSV文件为空或加载失败"
+                    self._report_progress(error_msg)
+                    self.error_logs.append(error_msg)
+                    return self.processing_stats
+                
+                if 'Table' not in df_csv.columns:
+                    error_msg = "CSV文件缺少'Table'列"
+                    self._report_progress(error_msg)
+                    self.error_logs.append(error_msg)
+                    return self.processing_stats
+                
+                # 提取唯一的表名（去除.xlsx/.xls扩展名）
+                unique_tables = df_csv['Table'].unique()
+                sheet_names = [t.replace('.xlsx', '').replace('.xls', '') for t in unique_tables]
+                self._report_progress(f"映射表为CSV格式，包含 {len(sheet_names)} 个表文件")
+            else:
+                xl = pd.ExcelFile(mapping_path)
+                sheet_names = xl.sheet_names
+                self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
         except Exception as e:
             error_msg = f"无法读取映射表: {e}"
             self._report_progress(error_msg)
@@ -1806,11 +2069,32 @@ class BatchExcelModifier:
                 self.processing_stats['skipped_no_config'] += 1
                 continue
             
-            # 读取该工作表的数据
+            # 读取该工作表的数据（支持CSV）
             try:
-                df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+                if file_ext == '.csv':
+                    # CSV文件，加载整个文件后筛选当前表的数据
+                    df_all, _ = self.load_mapping_table(mapping_path)
+                    if df_all is None or df_all.empty:
+                        continue
+                    
+                    # 筛选当前表的数据（匹配table_name或excel_filename）
+                    if 'Table' in df_all.columns:
+                        mask = (df_all['Table'] == table_name) | \
+                               (df_all['Table'] == excel_filename) | \
+                               (df_all['Table'] == f"{table_name}.xlsx") | \
+                               (df_all['Table'] == f"{table_name}.xls")
+                        df = df_all[mask].copy()
+                        
+                        if df.empty:
+                            self._report_progress(f"  跳过: CSV中无 {table_name} 的数据")
+                            continue
+                    else:
+                        df = df_all
+                else:
+                    # Excel文件，读取指定工作表
+                    df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
             except Exception as e:
-                error_msg = f"读取工作表 {sheet_name} 失败: {e}"
+                error_msg = f"读取{'CSV文件' if file_ext == '.csv' else '工作表 ' + sheet_name} 失败: {e}"
                 self.error_logs.append(error_msg)
                 continue
             

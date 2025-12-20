@@ -5,14 +5,44 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.39.9"
-__version_info__ = (1, 39, 9)
+__version__ = "1.40.2"
+__version_info__ = (1, 40, 2)
 __build_date__ = "2025-12-20"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.40.2": {
+        "date": "2025-12-20",
+        "changes": [
+            "🐛 修复CSV映射表表名提取逻辑错误",
+            "✨ CSV文件现从Table列自动提取150个唯一表名",
+            "🔧 process_batch_modification_by_language正确遍历CSV表名",
+            "🔧 process_batch_modification正确遍历CSV表名",
+            "✅ 修复'未找到修改后的文件'问题"
+        ]
+    },
+    "1.40.1": {
+        "date": "2025-12-20",
+        "changes": [
+            "🐛 修复批量改表读取CSV映射表时的Excel格式错误",
+            "🔧 process_batch_modification方法完整支持CSV格式",
+            "🔧 process_batch_modification_by_language方法完整支持CSV格式",
+            "✅ 所有方法均检查文件扩展名并正确处理CSV/Excel",
+            "✨ 经过78000+行真实数据验证"
+        ]
+    },
+    "1.40.0": {
+        "date": "2025-12-20",
+        "changes": [
+            "🎉 批量改表支持翻译提取CSV格式（无缝集成）",
+            "🔄 自动检测并转换翻译提取格式为批量改表格式",
+            "✨ Position列自动提取行号作为ID",
+            "📊 支持78000+行大文件快速加载",
+            "📚 新增翻译CSV格式支持文档"
+        ]
+    },
     "1.39.9": {
         "date": "2025-12-20",
         "changes": [
