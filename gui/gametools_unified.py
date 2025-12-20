@@ -2274,7 +2274,7 @@ class GameToolsUnified:
         """浏览批量改表映射文件"""
         file_path = filedialog.askopenfilename(
             title="选择映射表文件",
-            filetypes=[("Excel文件", "*.xlsx *.xls"), ("所有文件", "*.*")]
+            filetypes=[("Excel和CSV文件", "*.xlsx *.xls *.csv"), ("Excel文件", "*.xlsx *.xls"), ("CSV文件", "*.csv"), ("所有文件", "*.*")]
         )
         if file_path:
             self.batch_mapping_var.set(file_path)
@@ -2299,38 +2299,58 @@ class GameToolsUnified:
         
         try:
             import pandas as pd
-            xl = pd.ExcelFile(mapping_file)
             
-            # 跳过汇总信息等非数据工作表，找到第一个数据工作表
-            skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
-            data_sheet = None
-            for sheet in xl.sheet_names:
-                if sheet not in skip_sheets:
-                    data_sheet = sheet
-                    break
+            # 检查文件扩展名
+            file_ext = os.path.splitext(mapping_file)[1].lower()
             
-            if not data_sheet:
-                data_sheet = xl.sheet_names[0] if xl.sheet_names else None
-            
-            if data_sheet:
-                df = pd.read_excel(mapping_file, sheet_name=data_sheet, nrows=0)
-                columns = df.columns.tolist()
-                
-                # 排除一些常见的非语言列
-                exclude_cols = ['Classification', 'classification', 'ID', 'id', 'Field', 'field', 
-                               '字段', '字段名', '表名', 'Table', 'table', '项目', '值', 'Name', 'name']
-                lang_cols = [c for c in columns if c not in exclude_cols]
-                
-                if lang_cols:
-                    self.batch_language_combo['values'] = lang_cols
-                    # 保持当前选择，如果当前值有效的话
-                    current = self.batch_language_var.get()
-                    if current not in lang_cols:
-                        self.batch_language_combo.set(lang_cols[0])
-                    # 更新JSON语言标签以反映当前选择的语言
-                    self._update_batch_json_language_for_selected_lang()
+            if file_ext == '.csv':
+                # CSV文件，直接读取列名
+                for encoding in ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']:
+                    try:
+                        df = pd.read_csv(mapping_file, nrows=0, encoding=encoding)
+                        columns = df.columns.tolist()
+                        break
+                    except UnicodeDecodeError:
+                        continue
                 else:
-                    messagebox.showwarning("警告", f"工作表 '{data_sheet}' 中未找到语言列")
+                    df = pd.read_csv(mapping_file, nrows=0, encoding='utf-8', errors='ignore')
+                    columns = df.columns.tolist()
+            else:
+                # Excel文件
+                xl = pd.ExcelFile(mapping_file)
+                
+                # 跳过汇总信息等非数据工作表，找到第一个数据工作表
+                skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+                data_sheet = None
+                for sheet in xl.sheet_names:
+                    if sheet not in skip_sheets:
+                        data_sheet = sheet
+                        break
+                
+                if not data_sheet:
+                    data_sheet = xl.sheet_names[0] if xl.sheet_names else None
+                
+                if data_sheet:
+                    df = pd.read_excel(mapping_file, sheet_name=data_sheet, nrows=0)
+                    columns = df.columns.tolist()
+                else:
+                    columns = []
+            
+            # 排除一些常见的非语言列
+            exclude_cols = ['Classification', 'classification', 'ID', 'id', 'Field', 'field', 
+                           '字段', '字段名', '表名', 'Table', 'table', '项目', '值', 'Name', 'name']
+            lang_cols = [c for c in columns if c not in exclude_cols]
+            
+            if lang_cols:
+                self.batch_language_combo['values'] = lang_cols
+                # 保持当前选择，如果当前值有效的话
+                current = self.batch_language_var.get()
+                if current not in lang_cols:
+                    self.batch_language_combo.set(lang_cols[0])
+                # 更新JSON语言标签以反映当前选择的语言
+                self._update_batch_json_language_for_selected_lang()
+            else:
+                messagebox.showwarning("警告", f"未找到语言列")
         except Exception as e:
             messagebox.showerror("错误", f"获取语言列表失败: {e}")
     
@@ -2430,9 +2450,27 @@ class GameToolsUnified:
         
         try:
             import pandas as pd
+            
+            # 检查文件扩展名
+            file_ext = os.path.splitext(mapping_file)[1].lower()
+            
             # 读取前20行数据预览
-            df = pd.read_excel(mapping_file, sheet_name=sheet_name if sheet_name else 0, 
-                              header=0, nrows=20)
+            if file_ext == '.csv':
+                # 尝试多种编码读取CSV
+                for encoding in ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']:
+                    try:
+                        df = pd.read_csv(mapping_file, header=0, nrows=20, encoding=encoding)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    df = pd.read_csv(mapping_file, header=0, nrows=20, encoding='utf-8', errors='ignore')
+                sheet_display = 'CSV文件'
+            else:
+                # Excel文件
+                df = pd.read_excel(mapping_file, sheet_name=sheet_name if sheet_name else 0, 
+                                  header=0, nrows=20)
+                sheet_display = sheet_name or '第一个'
             
             # 创建预览对话框
             preview_dialog = tk.Toplevel(self.root)
@@ -2441,7 +2479,7 @@ class GameToolsUnified:
             
             # 信息标签
             info_label = ttk.Label(preview_dialog, 
-                                  text=f"工作表: {sheet_name or '第一个'} | 列数: {len(df.columns)} | 显示前20行")
+                                  text=f"工作表: {sheet_display} | 列数: {len(df.columns)} | 显示前20行")
             info_label.pack(pady=10)
             
             # 创建表格框架

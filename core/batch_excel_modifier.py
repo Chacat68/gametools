@@ -61,6 +61,7 @@ class BatchExcelModifier:
         xlwings 可以完全保留 Excel 文件的原有结构（包括批注、格式等）
         """
         self.supported_extensions = {'.xlsx', '.xls'}
+        self.supported_mapping_formats = {'.xlsx', '.xls', '.csv'}  # 映射表支持的格式
         
         # 使用 xlwings 引擎
         self.use_xlwings = True
@@ -602,7 +603,7 @@ class BatchExcelModifier:
     
     def load_mapping_table(self, mapping_path: str, sheet_name: str = None) -> Tuple[pd.DataFrame, List[str]]:
         """
-        加载映射表Excel文件
+        加载映射表文件（支持Excel和CSV）
         
         映射表格式:
         A列: 表名（如 act_20206_shilian_0.xlsx）
@@ -612,22 +613,41 @@ class BatchExcelModifier:
         E列及之后: 其他语言列
         
         Args:
-            mapping_path: 映射表Excel文件路径
-            sheet_name: 工作表名称（可选，默认读取第一个）
+            mapping_path: 映射表文件路径（.xlsx/.xls/.csv）
+            sheet_name: 工作表名称（仅Excel文件有效，CSV文件忽略此参数）
             
         Returns:
             Tuple[pd.DataFrame, List[str]]: (DataFrame, 列名列表)
         """
         try:
-            # 读取Excel文件
-            if sheet_name:
-                df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+            # 检查文件扩展名
+            file_ext = os.path.splitext(mapping_path)[1].lower()
+            
+            if file_ext == '.csv':
+                # 读取CSV文件
+                # 尝试多种编码
+                for encoding in ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']:
+                    try:
+                        df = pd.read_csv(mapping_path, header=0, encoding=encoding)
+                        logger.info(f"使用编码 {encoding} 成功读取CSV文件")
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    # 如果所有编码都失败，使用默认编码并忽略错误
+                    df = pd.read_csv(mapping_path, header=0, encoding='utf-8', errors='ignore')
+                    logger.warning(f"使用默认编码读取CSV，可能存在字符问题")
             else:
-                df = pd.read_excel(mapping_path, header=0)
+                # 读取Excel文件
+                if sheet_name:
+                    df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+                else:
+                    df = pd.read_excel(mapping_path, header=0)
             
             columns = df.columns.tolist()
             
             logger.info(f"成功加载映射表: {mapping_path}")
+            logger.info(f"  - 文件格式: {file_ext}")
             logger.info(f"  - 行数: {len(df)}")
             logger.info(f"  - 列名: {columns}")
             
@@ -643,17 +663,25 @@ class BatchExcelModifier:
     
     def get_mapping_sheets(self, mapping_path: str) -> List[str]:
         """
-        获取映射表中的所有工作表名称
+        获取映射表中的所有工作表名称（仅Excel文件有效）
         
         Args:
-            mapping_path: 映射表Excel文件路径
+            mapping_path: 映射表文件路径（.xlsx/.xls/.csv）
             
         Returns:
-            List[str]: 工作表名称列表
+            List[str]: 工作表名称列表（CSV文件返回空列表）
         """
         try:
-            xl = pd.ExcelFile(mapping_path)
-            return xl.sheet_names
+            # 检查文件扩展名
+            file_ext = os.path.splitext(mapping_path)[1].lower()
+            
+            if file_ext == '.csv':
+                # CSV文件没有工作表概念，返回空列表
+                return []
+            else:
+                # Excel文件，返回工作表列表
+                xl = pd.ExcelFile(mapping_path)
+                return xl.sheet_names
         except Exception as e:
             logger.error(f"获取工作表列表失败: {e}")
             return []
