@@ -763,17 +763,29 @@ class GameToolsUnified:
         # 选项设置区域
         options_frame = ttk.LabelFrame(batch_frame, text="处理选项", padding="10")
         options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        options_frame.columnconfigure(0, weight=1)
         
-        # 备份选项
+        # 第一行：备份选项和引擎说明
+        row1_frame = ttk.Frame(options_frame)
+        row1_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        
         self.batch_backup_var = tk.BooleanVar(value=True)
-        self.batch_backup_check = ttk.Checkbutton(options_frame, text="修改前创建备份文件（.bak）", 
+        self.batch_backup_check = ttk.Checkbutton(row1_frame, text="修改前创建备份文件（.bak）", 
                                                  variable=self.batch_backup_var)
-        self.batch_backup_check.grid(row=0, column=0, sticky=tk.W, padx=(0, 20))
+        self.batch_backup_check.pack(side=tk.LEFT, padx=(0, 20))
         
-        # Excel引擎说明标签
-        engine_label = ttk.Label(options_frame, text="使用xlwings引擎（完全保留文件结构）", 
+        engine_label = ttk.Label(row1_frame, text="使用xlwings引擎（完全保留文件结构）", 
                                 foreground="green")
-        engine_label.grid(row=0, column=1, sticky=tk.W)
+        engine_label.pack(side=tk.LEFT)
+        
+        # 第二行：定位模式说明
+        row2_frame = ttk.Frame(options_frame)
+        row2_frame.grid(row=1, column=0, sticky=(tk.W, tk.E))
+        
+        mode_label = ttk.Label(row2_frame, 
+                              text="💡 定位模式：有Position列→直接定位单元格 | 无Position列→ID作为行号", 
+                              foreground="blue")
+        mode_label.pack(side=tk.LEFT)
         
         # 操作按钮区域
         button_frame = ttk.Frame(batch_frame)
@@ -2558,12 +2570,13 @@ JSON配置: {os.path.basename(json_file)}
 Excel目录: {excel_dir}
 目标语言: {target_language}
 
-自动识别:
-- 工作表名 = Excel文件名
-- ID列 = ID
-- 字段列 = Classification
+定位模式（自动识别）:
+• 有Position列 → Position直接定位（如B7、E24）
+• 无Position列 → ID值作为行号（如ID=7→第7行）
 
-备份: {'是' if self.batch_backup_var.get() else '否'}"""
+备份: {'是' if self.batch_backup_var.get() else '否'}
+
+提示：建议先用少量数据测试"""
         
         if not messagebox.askyesno("确认", confirm_msg):
             return
@@ -2688,7 +2701,10 @@ Excel目录: {excel_dir}
 修改的单元格数: {stats['modified_cells']}
 错误数: {stats['errors']}
 
-报告已保存: {report_file if report_file else '未生成'}"""
+定位模式: {'Position直接定位' if stats.get('used_position_mode') else '行号直接定位'}
+报告已保存: {report_file if report_file else '未生成'}
+
+提示：如有错误请查看结果详情"""
             
             self.root.after(0, lambda: messagebox.showinfo("完成", msg))
             

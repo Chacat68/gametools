@@ -1483,6 +1483,11 @@ class BatchExcelModifier:
             columns = df.columns.tolist()
             self.processing_stats['total_rows'] += len(df)
             
+            # 检测是否使用Position模式（翻译提取CSV格式）
+            use_position_mode = 'Position' in columns
+            if use_position_mode:
+                logger.info(f"工作表 {sheet_name} 检测到Position列，将使用Position直接定位模式")
+            
             # 自动检测ID列
             actual_id_col = id_col
             if not actual_id_col or actual_id_col not in columns:
@@ -1589,10 +1594,16 @@ class BatchExcelModifier:
                             logger.debug(f"没有Classification列，使用第一个语言字段: {target_field}")
                 
                 if target_field:
-                    modifications.append({
+                    modification_item = {
                         'id': id_value,
                         'modify_values': {target_field: str(lang_value).strip()}
-                    })
+                    }
+                    # 如果是Position模式，添加Position信息
+                    if use_position_mode and 'Position' in columns:
+                        position_value = row['Position'] if pd.notna(row['Position']) else ''
+                        if position_value:
+                            modification_item['position'] = str(position_value).strip()
+                    modifications.append(modification_item)
                 else:
                     skipped_no_field += 1
             
@@ -1617,7 +1628,8 @@ class BatchExcelModifier:
             modified_count, errors = self.modify_excel_file(
                 excel_path, 
                 modifications, 
-                field_mapping=None
+                field_mapping=None,
+                use_position=use_position_mode  # 使用检测到的模式
             )
             
             if modified_count > 0:
