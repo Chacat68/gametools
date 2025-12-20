@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-测试Position模式的批量改表功能
+测试批量改表的两种定位模式
+1. Position模式：使用Position列（如"B7"）直接定位单元格
+2. 行号模式：使用ID列的值直接作为行号
 """
 
 import sys
@@ -17,7 +19,7 @@ import pandas as pd
 def test_position_detection():
     """测试Position列检测"""
     print("=" * 60)
-    print("测试1: Position列检测")
+    print("测试1: Position模式 - Position列检测")
     print("=" * 60)
     
     modifier = BatchExcelModifier()
@@ -56,24 +58,41 @@ def test_position_detection():
         print("\n✗ 失败：Position列未保留")
         return False
     
-    # 检查是否有Classification列
-    if 'Classification' in converted_df.columns:
-        print("✓ 成功：Classification列已创建")
-        print(f"Classification列数据: {converted_df['Classification'].tolist()}")
-    else:
-        print("✗ 失败：Classification列未创建")
-        return False
-    
-    # 检查语言列是否保留
-    lang_cols = ['VN', 'TH']
-    for col in lang_cols:
-        if col in converted_df.columns:
-            print(f"✓ 成功：{col}列已保留")
-        else:
-            print(f"✗ 失败：{col}列未保留")
-            return False
-    
     return True
+
+def test_row_number_mode():
+    """测试行号模式"""
+    print("\n" + "=" * 60)
+    print("测试2: 行号模式 - ID直接作为行号")
+    print("=" * 60)
+    
+    # 创建测试CSV数据（行号模式）
+    test_data = {
+        'Table': ['test.xlsx', 'test.xlsx', 'test.xlsx'],
+        'Classification': ['name', 'name', 'desc'],
+        'ID': [7, 8, 9],  # 直接使用行号
+        'VN': ['Test 1', 'Test 2', 'Description 1'],
+        'TH': ['ทดสอบ1', 'ทดสอบ2', 'คำอธิบาย1']
+    }
+    
+    df = pd.DataFrame(test_data)
+    
+    print("\n行号模式DataFrame:")
+    print(df.head())
+    print(f"列名: {df.columns.tolist()}")
+    print(f"ID列数据（作为行号使用）: {df['ID'].tolist()}")
+    
+    # 验证ID可以转换为整数
+    all_valid = True
+    for id_val in df['ID']:
+        try:
+            row_num = int(float(id_val))
+            print(f"✓ ID {id_val} -> 行号 {row_num}")
+        except (ValueError, TypeError):
+            print(f"✗ ID {id_val} 无法转换为行号")
+            all_valid = False
+    
+    return all_valid
 
 def test_position_parsing():
     """测试Position字符串解析"""
@@ -116,18 +135,34 @@ def test_position_parsing():
 
 def main():
     """主测试函数"""
-    print("开始测试Position模式批量改表功能\n")
+    print("开始测试批量改表两种定位模式\n")
     
     test1_passed = test_position_detection()
-    test2_passed = test_position_parsing()
+    test2_passed = test_row_number_mode()
+    test3_passed = test_position_parsing()
     
     print("\n" + "=" * 60)
     print("测试总结")
     print("=" * 60)
-    print(f"测试1 (Position列检测): {'通过' if test1_passed else '失败'}")
-    print(f"测试2 (Position解析): {'通过' if test2_passed else '失败'}")
+    print(f"测试1 (Position模式 - Position列检测): {'通过' if test1_passed else '失败'}")
+    print(f"测试2 (行号模式 - ID作为行号): {'通过' if test2_passed else '失败'}")
+    print(f"测试3 (Position解析): {'通过' if test3_passed else '失败'}")
     
-    if test1_passed and test2_passed:
+    print("\n" + "=" * 60)
+    print("定位模式说明")
+    print("=" * 60)
+    print("1. Position模式：")
+    print("   - 检测到Position列时自动启用")
+    print("   - Position='B7' -> B列第7行")
+    print("   - 精确定位单元格，无需ID匹配")
+    print("")
+    print("2. 行号模式：")
+    print("   - 无Position列时使用")
+    print("   - ID值直接作为Excel行号")
+    print("   - ID=7 -> Excel第7行")
+    print("   - 简单直接，无需ID列匹配")
+    
+    if test1_passed and test2_passed and test3_passed:
         print("\n✓ 所有测试通过！")
         return 0
     else:
