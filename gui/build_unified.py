@@ -54,8 +54,30 @@ def check_dependencies():
         print(f"PyInstaller版本: {PyInstaller.__version__}")
     except ImportError:
         print("[ERROR] PyInstaller未安装，正在安装...")
-        if not run_command("pip install pyinstaller", "安装PyInstaller"):
+        if not run_command(f'"{sys.executable}" -m pip install pyinstaller', "安装PyInstaller"):
             return False
+
+    # 关键依赖（打包时必须在同一Python环境中可导入）
+    required_imports = [
+        ("pandas", "pandas"),
+        ("numpy", "numpy"),
+        ("xlwings", "xlwings"),
+        ("openpyxl", "openpyxl"),
+    ]
+    missing = []
+    for pkg_name, import_name in required_imports:
+        try:
+            __import__(import_name)
+        except Exception:
+            missing.append(pkg_name)
+
+    if missing:
+        print(f"[ERROR] 缺少或无法导入依赖: {', '.join(missing)}")
+        print("[SUGGESTION] 请在当前Python环境中安装依赖后重试:")
+        print(f"  {sys.executable} -m pip install -r requirements.txt")
+        print("  或者:")
+        print(f"  {sys.executable} -m pip install pandas numpy xlwings openpyxl")
+        return False
     
     return True
 
@@ -89,6 +111,29 @@ def create_spec_file():
 
 block_cipher = None
 
+# 排除不需要的大型库和模块以减小打包体积
+excluded_modules = [
+    # 测试相关
+    'pytest', 'unittest',
+    # 开发工具
+    'IPython', 'jupyter', 'notebook', 'ipykernel', 'ipywidgets',
+    'sphinx', 'docutils', 'jedi', 'parso',
+    # 不需要的科学计算库
+    'scipy', 'matplotlib', 'PIL', 'cv2', 'sklearn', 'tensorflow', 'torch',
+    # 网络相关（本项目不需要）
+    'flask', 'django', 'tornado', 'aiohttp',
+    'urllib3', 'httpx', 'websocket',
+    # 数据库相关
+    'sqlalchemy', 'psycopg2', 'pymysql',
+    # 其他不需要的
+    'cryptography',
+    'pygments', 'colorama',
+    'setuptools', 'pkg_resources', 'pip',
+    'lib2to3',
+    # PyQt/PySide (我们用tkinter)
+    'PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'wx',
+]
+
 a = Analysis(
     ['gametools_unified.py'],
     pathex=['.', '..'],
@@ -97,31 +142,45 @@ a = Analysis(
         ('../core', 'core'),
         ('../tools/json_error_detector', 'tools/json_error_detector'),
         ('../tools', 'tools'),
-        ('../docs', 'docs'),
     ],
     hiddenimports=[
         'pandas',
+        'numpy',
         'xlwings',
+        'openpyxl',
         'tkinter',
         'tkinter.ttk',
         'tkinter.filedialog',
         'tkinter.messagebox',
         'tkinter.scrolledtext',
-        'tools.excel_data_processor',
-        'core.table_range_translator',
-        'core.excel_field_extractor',
-        'core.batch_excel_modifier',
-        'core.excel_sheet_splitter',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=excluded_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
 )
+
+# 过滤掉不需要的二进制文件（但保留tkinter需要的tcl/tk）
+a.binaries = [x for x in a.binaries if not any(
+    excl in x[0].lower() for excl in [
+        'qt5', 'qt6', 'pyside', 'pyqt',
+        '_test', 'test_',
+    ]
+)]
+
+# 过滤掉不需要的数据文件（但保留tcl/tk数据）
+a.datas = [x for x in a.datas if not any(
+    excl in x[0].lower() for excl in [
+        'tests', 'testing',
+        'examples', 'sample',
+        '__pycache__',
+        'qt5', 'qt6',
+    ]
+)]
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
@@ -135,17 +194,17 @@ exe = EXE(
     name='gametools',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=True,  # 启用strip减小体积
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # 设置为False以隐藏控制台窗口
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # 可以添加图标文件路径
+    icon=None,
     version_file=None,
 )
 '''
@@ -165,7 +224,7 @@ def build_exe():
     dist_dir.mkdir(exist_ok=True)
     
     # 使用spec文件构建
-    if not run_command("pyinstaller gametools_unified.spec", "构建exe文件"):
+    if not run_command(f'"{sys.executable}" -m PyInstaller gametools_unified.spec', "构建exe文件"):
         return False
     
     # 检查构建结果
