@@ -149,13 +149,17 @@ class BatchExcelModifier:
             # 创建一个虚拟的ID列（使用行索引），虽然实际定位会用Position
             df['ID'] = range(1, len(df) + 1)
             
-            # 删除不需要的列（保留Position）
-            columns_to_drop = ['Sheet', 'Field', 'Type', 'ZH']
+            # 删除不需要的列（保留Position和Sheet）
+            # Sheet列用于定位三维表的工作表
+            columns_to_drop = ['Field', 'Type', 'ZH']
             df = df.drop(columns=[col for col in columns_to_drop if col in df.columns], errors='ignore')
             
-            # 重新排列列顺序：Table, Classification, ID, Position, 然后是语言列
-            lang_cols = [col for col in df.columns if col not in ['Table', 'Classification', 'ID', 'Position']]
-            new_columns = ['Table', 'Classification', 'ID', 'Position'] + lang_cols
+            # 重新排列列顺序：Table, Sheet, Classification, ID, Position, 然后是语言列
+            base_cols = ['Table', 'Classification', 'ID', 'Position']
+            if 'Sheet' in df.columns:
+                base_cols = ['Table', 'Sheet', 'Classification', 'ID', 'Position']
+            lang_cols = [col for col in df.columns if col not in base_cols]
+            new_columns = base_cols + lang_cols
             df = df[new_columns]
             
             logger.info(f"格式转换完成！")
@@ -854,7 +858,8 @@ class BatchExcelModifier:
                          id_col: int = 1, 
                          field_row: int = 5,
                          data_start_row: int = 7,
-                         use_position: bool = False) -> Tuple[int, List[str], int]:
+                         use_position: bool = False,
+                         sheet_name: str = None) -> Tuple[int, List[str], int]:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
@@ -872,13 +877,14 @@ class BatchExcelModifier:
             field_row: 字段名所在行
             data_start_row: 数据起始行（保护表头）
             use_position: 是否使用Position直接定位
+            sheet_name: 目标工作表名称（三维表支持），为None时使用第一个工作表
             
         Returns:
             Tuple[int, List[str], int]: (修改的单元格数, 错误列表, 跳过的相同值数量)
         """
         return self._modify_excel_file_xlwings(
             excel_path, modifications, field_mapping, 
-            id_col, field_row, data_start_row, use_position
+            id_col, field_row, data_start_row, use_position, sheet_name
         )
     
     def _modify_excel_file_xlwings(self, excel_path: str, modifications: List[Dict], 
@@ -886,7 +892,8 @@ class BatchExcelModifier:
                                    id_col: int = 1, 
                                    field_row: int = 5,
                                    data_start_row: int = 7,
-                                   use_position: bool = False) -> Tuple[int, List[str], int]:
+                                   use_position: bool = False,
+                                   sheet_name: str = None) -> Tuple[int, List[str], int]:
         """
         使用 xlwings 修改单个Excel文件（完全保留原文件结构）
         
@@ -907,6 +914,7 @@ class BatchExcelModifier:
             field_row: 字段名所在行
             data_start_row: 数据起始行（修改范围的最小行号，小于此行号的将被跳过）
             use_position: True=Position模式，False=行号模式
+            sheet_name: 目标工作表名称（三维表支持），为None时使用第一个工作表
             
         Returns:
             Tuple[int, List[str], int]: (修改的单元格数, 错误列表, 跳过的相同值数量)
@@ -920,7 +928,23 @@ class BatchExcelModifier:
             # 使用 xlwings 打开文件
             app = self._get_excel_app()
             wb = app.books.open(excel_path)
-            ws = wb.sheets[0]  # 使用第一个工作表
+            
+            # 选择工作表（三维表支持）
+            if sheet_name:
+                # 按名称查找工作表
+                sheet_names_in_wb = [s.name for s in wb.sheets]
+                if sheet_name in sheet_names_in_wb:
+                    ws = wb.sheets[sheet_name]
+                    logger.debug(f"使用指定工作表: {sheet_name}")
+                else:
+                    # 工作表不存在，使用第一个工作表并记录警告
+                    ws = wb.sheets[0]
+                    error_msg = f"工作表 '{sheet_name}' 不存在，使用第一个工作表 '{ws.name}'"
+                    errors.append(error_msg)
+                    logger.warning(error_msg)
+            else:
+                # 默认使用第一个工作表
+                ws = wb.sheets[0]
             
             # 获取数据范围
             used_range = ws.used_range
@@ -1162,7 +1186,13 @@ class BatchExcelModifier:
         else:
             self._report_progress("检测到Position列，使用Position直接定位模式")
         
-        # 按表名分组修改
+        # 检测是否有Sheet列（三维表支持）
+        has_sheet_column = 'Sheet' in mapping_columns
+        if has_sheet_column:
+            self._report_progress("检测到Sheet列，启用三维表支持")
+        
+        # 按表名和工作表分组修改
+        # key: (table_name, sheet_name), value: list of modifications
         grouped_modifications = {}
         
         for idx, row in df.iterrows():
@@ -1172,6 +1202,13 @@ class BatchExcelModifier:
             if not table_name:
                 self.processing_stats['skipped_rows'] += 1
                 continue
+            
+            # 获取工作表名（三维表支持）
+            sheet_name = None
+            if has_sheet_column:
+                sheet_val = row.get('Sheet')
+                if pd.notna(sheet_val) and str(sheet_val).strip():
+                    sheet_name = str(sheet_val).strip()
             
             if use_position_mode:
                 # Position模式
@@ -1200,10 +1237,12 @@ class BatchExcelModifier:
                     self.processing_stats['skipped_rows'] += 1
                     continue
                 
-                if table_name not in grouped_modifications:
-                    grouped_modifications[table_name] = []
+                # 使用 (table_name, sheet_name) 作为key
+                group_key = (table_name, sheet_name)
+                if group_key not in grouped_modifications:
+                    grouped_modifications[group_key] = []
                 
-                grouped_modifications[table_name].append({
+                grouped_modifications[group_key].append({
                     'position': position,
                     'modify_values': modify_values
                 })
@@ -1215,8 +1254,6 @@ class BatchExcelModifier:
                     self.processing_stats['skipped_rows'] += 1
                     continue
                 
-                # 从JSON配置中获取该表的字段列表
-                table_fields = self.get_table_fields(table_name)
                 # 从JSON配置中获取该表的字段列表
                 table_fields = self.get_table_fields(table_name)
                 
@@ -1237,17 +1274,19 @@ class BatchExcelModifier:
                     self.processing_stats['skipped_rows'] += 1
                     continue
                 
-                if table_name not in grouped_modifications:
-                    grouped_modifications[table_name] = []
+                # 使用 (table_name, sheet_name) 作为key
+                group_key = (table_name, sheet_name)
+                if group_key not in grouped_modifications:
+                    grouped_modifications[group_key] = []
                 
-                grouped_modifications[table_name].append({
+                grouped_modifications[group_key].append({
                     'id': id_value,
                     'modify_values': modify_values
                 })
         
-        self._report_progress(f"需要修改 {len(grouped_modifications)} 个文件")
+        self._report_progress(f"需要修改 {len(grouped_modifications)} 个文件/工作表组合")
         
-        # 处理每个文件
+        # 处理每个文件/工作表组合
         total_files = len(grouped_modifications)
         if total_files == 0:
             self._report_progress("没有找到需要修改的文件")
@@ -1255,7 +1294,7 @@ class BatchExcelModifier:
         
         processed_files = 0
         
-        for table_name, modifications in grouped_modifications.items():
+        for (table_name, sheet_name), modifications in grouped_modifications.items():
             # 构建文件路径
             excel_path = os.path.join(excel_directory, table_name)
             
@@ -1278,15 +1317,17 @@ class BatchExcelModifier:
             # 获取该表需要修改的字段（用于显示）
             first_mod = modifications[0] if modifications else {}
             fields_to_modify = list(first_mod.get('modify_values', {}).keys())
-            self._report_progress(f"处理: {table_name} (字段: {', '.join(fields_to_modify)})")
+            sheet_info = f" [工作表: {sheet_name}]" if sheet_name else ""
+            self._report_progress(f"处理: {table_name}{sheet_info} (字段: {', '.join(fields_to_modify)})")
             
-            # 修改文件 - 传递use_position参数和data_start_row保护表头
+            # 修改文件 - 传递use_position参数、data_start_row保护表头和sheet_name支持三维表
             modified_count, errors, skipped_same = self.modify_excel_file(
                 excel_path, 
                 modifications, 
                 field_mapping=None,  # 字段名已经是正确的
                 data_start_row=7,  # 默认数据起始行，保护表头
-                use_position=use_position_mode  # 使用检测到的模式
+                use_position=use_position_mode,  # 使用检测到的模式
+                sheet_name=sheet_name  # 三维表支持
             )
             
             if modified_count > 0:
