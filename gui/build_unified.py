@@ -24,8 +24,14 @@ def run_command(command, description):
     print('='*50)
     
     try:
-        result = subprocess.run(command, shell=True, check=True, 
-                              capture_output=True, text=True, encoding='utf-8')
+        result = subprocess.run(
+            command,
+            shell=True,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+        )
         print("[OK] 成功!")
         if result.stdout:
             print("输出:", result.stdout)
@@ -142,6 +148,9 @@ a = Analysis(
         ('../core', 'core'),
         ('../tools/json_error_detector', 'tools/json_error_detector'),
         ('../tools', 'tools'),
+        ('../config.json', 'config.json'),
+        ('../config_export.json', 'config_export.json'),
+        ('../README.md', 'README.md'),
     ],
     hiddenimports=[
         'pandas',
@@ -208,8 +217,9 @@ exe = EXE(
     version_file=None,
 )
 '''
-    
-    with open('gametools_unified.spec', 'w', encoding='utf-8') as f:
+
+    spec_path = Path(__file__).resolve().parent / 'gametools_unified.spec'
+    with open(spec_path, 'w', encoding='utf-8') as f:
         f.write(spec_content)
     
     print("[OK] 创建spec文件成功")
@@ -218,9 +228,10 @@ exe = EXE(
 def build_exe():
     """构建exe文件"""
     print("\n开始构建exe文件...")
-    
-    # 确保dist目录存在
-    dist_dir = Path("../dist")
+
+    script_dir = Path(__file__).resolve().parent
+    # 确保dist目录存在（项目根目录的 dist/）
+    dist_dir = script_dir.parent / "dist"
     dist_dir.mkdir(exist_ok=True)
     
     # 使用spec文件构建
@@ -270,7 +281,8 @@ def create_portable_package():
     # 生成带版本号的便携版目录名
     version = get_version()
     portable_dir_name = f"gametools_v{version}_便携版"
-    portable_dir = Path(f"../dist/{portable_dir_name}")
+    script_dir = Path(__file__).resolve().parent
+    portable_dir = script_dir.parent / "dist" / portable_dir_name
     portable_dir.mkdir(exist_ok=True)
     
     # 复制exe文件
@@ -332,6 +344,10 @@ def create_portable_package():
 
 def main():
     """主函数"""
+    # 无论从哪里调用，都切到 gui/ 目录，避免相对路径导致打包到错误目录或漏打文件
+    script_dir = Path(__file__).resolve().parent
+    os.chdir(script_dir)
+
     print("gametools统一版本构建脚本")
     print(f"版本: v{get_version()}")
     print(f"构建日期: {get_build_date()}")
@@ -339,7 +355,7 @@ def main():
     
     # 检查当前目录
     if not os.path.exists("gametools_unified.py"):
-        print("[ERROR] 请在gui目录中运行此脚本")
+        print("[ERROR] 未找到 gametools_unified.py（预期在 gui/ 目录）")
         return False
     
     # 检查依赖

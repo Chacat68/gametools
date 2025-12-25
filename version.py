@@ -5,14 +5,21 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.41.0"
-__version_info__ = (1, 41, 0)
-__build_date__ = "2025-12-23"
+__version__ = "1.41.1"
+__version_info__ = (1, 41, 1)
+__build_date__ = "2025-12-25"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.41.1": {
+        "date": "2025-12-25",
+        "changes": [
+            "📦 重新打包：补齐运行时配置文件（config.json / config_export.json）",
+            "🔧 构建脚本增强：允许从任意目录执行 build_unified.py"
+        ]
+    },
     "1.41.0": {
         "date": "2025-12-23",
         "changes": [
