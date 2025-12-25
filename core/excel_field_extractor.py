@@ -128,7 +128,13 @@ class ExcelFieldExtractor:
         field_row = 5
         if sheet.max_row >= field_row:
             for cell in sheet[field_row]:
-                if cell.value and str(cell.value).startswith(marker):
+                if cell.value is None:
+                    continue
+
+                # 只将“值严格等于 marker”的列视为边界标记。
+                # 注意：像 c_story、c_classic_battle_story 这类以 c_ 开头的真实字段不应被当成标记。
+                cell_value = str(cell.value).strip()
+                if cell_value == marker:
                     marker_columns.append(cell.column)
         
         # 如果找到至少两个标记，返回它们之间的范围（不包含标记列本身）
@@ -162,52 +168,66 @@ class ExcelFieldExtractor:
             for sheet_name in wb.sheetnames:
                 try:
                     sheet = wb[sheet_name]
-                    
-                    # 查找两个 c_ 之间的列范围
+
+                    def scan_text_columns_in_range(start_col: int, end_col: int) -> Tuple[Set[int], Dict[int, int], int]:
+                        """在指定列范围内扫描数据行，返回文本列集合与统计信息。"""
+                        text_column_counts: Dict[int, int] = {}
+                        total_data_rows = 0
+
+                        data_start_row = 7  # 第7行开始是数据
+                        if sheet.max_row >= data_start_row:
+                            total_data_rows = sheet.max_row - data_start_row + 1
+                            for row in sheet.iter_rows(
+                                min_row=data_start_row,
+                                max_row=sheet.max_row,
+                                min_col=start_col,
+                                max_col=end_col,
+                            ):
+                                for cell in row:
+                                    if cell.value is not None and self.contains_text(cell.value):
+                                        col_num = cell.column
+                                        text_column_counts[col_num] = text_column_counts.get(col_num, 0) + 1
+
+                        min_text_rows = 3  # 最少文本行数
+                        min_text_ratio = 0.10  # 最小文本占比 10%
+
+                        text_columns: Set[int] = set()
+                        for col_num, count in text_column_counts.items():
+                            if count >= min_text_rows or (
+                                total_data_rows > 0 and count / total_data_rows >= min_text_ratio
+                            ):
+                                text_columns.add(col_num)
+
+                        return text_columns, text_column_counts, total_data_rows
+
+                    # 1) 优先按两个 c_ 标记之间的范围扫描（如果存在）
+                    # 2) 若该范围未检测到任何文本列，则自动回退为全表扫描，避免漏掉文本列在标记外的表
                     column_range = self.find_column_range_between_markers(sheet)
-                    
-                    # 如果未找到两个标记，跳过该工作表
+
                     if column_range is None:
                         warning_msg = (
-                            f"⚠️ 未找到两个 c_ 标记，跳过工作表 | "
+                            f"⚠️ 未找到两个 c_ 标记，改为全表扫描 | "
                             f"文件: {file_path.name} | "
                             f"工作表: {sheet_name}"
                         )
                         self.extraction_warnings.append(warning_msg)
                         print(warning_msg)
-                        continue
-                    
-                    start_col, end_col = column_range
-                    
-                    # 检测包含本地化文本内容的列
-                    # 使用计数器统计每列包含文本的行数
-                    text_column_counts = {}  # {列号: 文本行计数}
-                    total_data_rows = 0
-                    
-                    # 只扫描数据行（从第7行开始），忽略表头和字段行
-                    # 这样可以过滤掉ID、配置列等纯代码/数字列
-                    data_start_row = 7  # 第7行开始是数据
-                    
-                    if sheet.max_row >= data_start_row:
-                        total_data_rows = sheet.max_row - data_start_row + 1
-                        # 只扫描指定列范围内的单元格
-                        for row in sheet.iter_rows(min_row=data_start_row, max_row=sheet.max_row, 
-                                                   min_col=start_col, max_col=end_col):
-                            for cell in row:
-                                if cell.value is not None and self.contains_text(cell.value):
-                                    col_num = cell.column
-                                    text_column_counts[col_num] = text_column_counts.get(col_num, 0) + 1
-                    
-                    # 筛选真正的文本列：要求至少有3行包含文本，或者文本行占比超过10%
-                    # 这样可以过滤掉偶尔有一两个特殊值的数字列
-                    min_text_rows = 3  # 最少文本行数
-                    min_text_ratio = 0.10  # 最小文本占比 10%
-                    
-                    text_columns = set()
-                    for col_num, count in text_column_counts.items():
-                        # 满足任一条件即可：至少3行文本，或者文本占比超过10%
-                        if count >= min_text_rows or (total_data_rows > 0 and count / total_data_rows >= min_text_ratio):
-                            text_columns.add(col_num)
+                        start_col, end_col = 1, sheet.max_column
+                        text_columns, _, _ = scan_text_columns_in_range(start_col, end_col)
+                    else:
+                        start_col, end_col = column_range
+                        text_columns, _, _ = scan_text_columns_in_range(start_col, end_col)
+
+                        if not text_columns:
+                            warning_msg = (
+                                f"⚠️ c_ 标记范围未检测到文本列，改为全表扫描 | "
+                                f"文件: {file_path.name} | "
+                                f"工作表: {sheet_name}"
+                            )
+                            self.extraction_warnings.append(warning_msg)
+                            print(warning_msg)
+                            start_col, end_col = 1, sheet.max_column
+                            text_columns, _, _ = scan_text_columns_in_range(start_col, end_col)
                     
                     if not text_columns:
                         # 未检测到本地化文本列：仍然加入结果，标记 has_text=False，字段为空
