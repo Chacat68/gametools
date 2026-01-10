@@ -127,3 +127,15 @@ dist/
 dist/*.exe
 dist/*/
 !dist/README.md
+# 测试输出文件（可重新生成）
+test/test_output/*
+!test/test_output/.gitkeep
+
+# 测试生成的Excel和数据文件
+test/test_excel_files/
+test/test_table_range/
+test_cache_demo/
+test_multi_lang/*.xlsx
+
+# 构建目录
+gui/build/
