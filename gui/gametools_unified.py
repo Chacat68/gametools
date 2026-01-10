@@ -27,6 +27,7 @@ from core.table_range_translator import TableRangeTranslator
 from core.excel_sheet_splitter import ExcelSheetSplitter
 from core.batch_excel_modifier import BatchExcelModifier
 from core.excel_config_sync import ExcelConfigSync
+from core.excel_to_csv_converter import ExcelToCsvConverter
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_description, get_latest_changes
@@ -62,6 +63,7 @@ class GameToolsUnified:
         self.sheet_splitter = ExcelSheetSplitter()
         self.batch_modifier = BatchExcelModifier()
         self.config_sync = ExcelConfigSync()
+        self.csv_converter = ExcelToCsvConverter()
         
         # 扫描状态
         self.is_scanning = False
@@ -75,7 +77,8 @@ class GameToolsUnified:
             'table_range_translator': '',
             'sheet_splitter': '',
             'batch_modifier': '',
-            'config_sync': ''
+            'config_sync': '',
+            'csv_converter': ''
         }
         
         # 字段提取结果数据
@@ -119,6 +122,7 @@ class GameToolsUnified:
         self.create_table_range_translator_tab()
         self.create_batch_modifier_tab()
         self.create_config_sync_tab()
+        self.create_csv_converter_tab()
         self.create_about_tab()
         
         # 状态栏
@@ -978,6 +982,131 @@ class GameToolsUnified:
         self.sync_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
                                                   command=lambda: self.show_results_dialog('config_sync'))
         self.sync_view_results_button.pack(side=tk.LEFT)
+    
+    def create_csv_converter_tab(self):
+        """创建Excel转CSV页签"""
+        csv_frame = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(csv_frame, text="Excel转CSV")
+        
+        # 配置网格
+        csv_frame.columnconfigure(0, weight=1)
+        
+        # 输入设置区域
+        input_frame = ttk.LabelFrame(csv_frame, text="输入设置", padding="10")
+        input_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        input_frame.columnconfigure(1, weight=1)
+        
+        # 输入文件/目录
+        ttk.Label(input_frame, text="输入路径:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.csv_input_var = tk.StringVar()
+        self.csv_input_entry = ttk.Entry(input_frame, textvariable=self.csv_input_var, 
+                                        font=("Microsoft YaHei", 9))
+        self.csv_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        
+        input_btn_frame = ttk.Frame(input_frame)
+        input_btn_frame.grid(row=0, column=2, pady=(0, 5))
+        ttk.Button(input_btn_frame, text="选择文件", 
+                  command=self.browse_csv_input_file).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(input_btn_frame, text="选择目录", 
+                  command=self.browse_csv_input_dir).pack(side=tk.LEFT)
+        
+        # 输出目录
+        ttk.Label(input_frame, text="输出目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
+        self.csv_output_var = tk.StringVar()
+        self.csv_output_entry = ttk.Entry(input_frame, textvariable=self.csv_output_var, 
+                                         font=("Microsoft YaHei", 9))
+        self.csv_output_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
+        ttk.Button(input_frame, text="浏览", 
+                  command=self.browse_csv_output_dir).grid(row=1, column=2, pady=(0, 5))
+        
+        ttk.Label(input_frame, text="(留空则输出到源文件同目录)", 
+                 style='Info.TLabel').grid(row=2, column=1, sticky=tk.W, pady=(0, 5))
+        
+        # 转换选项区域
+        options_frame = ttk.LabelFrame(csv_frame, text="转换选项", padding="10")
+        options_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        options_frame.columnconfigure(1, weight=1)
+        
+        # 编码选择
+        ttk.Label(options_frame, text="输出编码:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        self.csv_encoding_var = tk.StringVar(value="utf-8-sig")
+        encoding_combo = ttk.Combobox(options_frame, textvariable=self.csv_encoding_var, 
+                                      values=["utf-8-sig", "utf-8", "gbk", "gb2312"],
+                                      state="readonly", width=15)
+        encoding_combo.grid(row=0, column=1, sticky=tk.W, padx=(0, 20))
+        ttk.Label(options_frame, text="(utf-8-sig带BOM，Excel可直接打开)", 
+                 style='Info.TLabel').grid(row=0, column=2, sticky=tk.W)
+        
+        # 分隔符选择
+        ttk.Label(options_frame, text="分隔符:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(8, 0))
+        self.csv_delimiter_var = tk.StringVar(value=",")
+        delimiter_frame = ttk.Frame(options_frame)
+        delimiter_frame.grid(row=1, column=1, columnspan=2, sticky=tk.W, pady=(8, 0))
+        
+        ttk.Radiobutton(delimiter_frame, text="逗号 (,)", variable=self.csv_delimiter_var, 
+                       value=",").pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(delimiter_frame, text="制表符 (Tab)", variable=self.csv_delimiter_var, 
+                       value="\t").pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Radiobutton(delimiter_frame, text="分号 (;)", variable=self.csv_delimiter_var, 
+                       value=";").pack(side=tk.LEFT)
+        
+        # 复选框选项
+        check_frame = ttk.Frame(options_frame)
+        check_frame.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        
+        self.csv_recursive_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(check_frame, text="递归处理子目录", 
+                       variable=self.csv_recursive_var).pack(side=tk.LEFT, padx=(0, 20))
+        
+        self.csv_merge_sheets_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(check_frame, text="合并所有工作表", 
+                       variable=self.csv_merge_sheets_var).pack(side=tk.LEFT, padx=(0, 20))
+        
+        self.csv_include_sheet_col_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(check_frame, text="合并时添加工作表名称列", 
+                       variable=self.csv_include_sheet_col_var).pack(side=tk.LEFT, padx=(0, 20))
+        
+        self.csv_preserve_empty_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(check_frame, text="保留空行", 
+                       variable=self.csv_preserve_empty_var).pack(side=tk.LEFT)
+        
+        # 进度显示区域
+        progress_frame = ttk.LabelFrame(csv_frame, text="转换进度", padding="10")
+        progress_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 8))
+        progress_frame.columnconfigure(0, weight=1)
+        
+        # 进度条
+        self.csv_progress_var = tk.DoubleVar(value=0)
+        self.csv_progress_bar = ttk.Progressbar(progress_frame, variable=self.csv_progress_var, 
+                                               maximum=100, mode='determinate')
+        self.csv_progress_bar.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        
+        # 进度文本
+        self.csv_progress_text = tk.StringVar(value="就绪")
+        ttk.Label(progress_frame, textvariable=self.csv_progress_text, 
+                 style='Info.TLabel').grid(row=1, column=0, sticky=tk.W)
+        
+        # 操作按钮区域
+        button_frame = ttk.Frame(csv_frame)
+        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
+        
+        self.csv_convert_button = ttk.Button(button_frame, text="📄 开始转换", 
+                                            command=self.start_csv_conversion, 
+                                            style='Accent.TButton')
+        self.csv_convert_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.csv_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+                                          command=self.clear_csv_results)
+        self.csv_clear_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.csv_open_folder_button = ttk.Button(button_frame, text="📂 打开输出文件夹", 
+                                                command=self.open_csv_output_folder,
+                                                state="disabled")
+        self.csv_open_folder_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.csv_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+                                                 command=lambda: self.show_results_dialog('csv_converter'))
+        self.csv_view_results_button.pack(side=tk.LEFT)
     
     def create_about_tab(self):
         """创建关于页签"""
@@ -3208,6 +3337,201 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
         finally:
             self.root.after(0, lambda: self.sync_process_button.config(state="normal"))
             self.root.after(0, lambda: self.status_var.set("就绪"))
+    
+    # ==================== Excel转CSV相关方法 ====================
+    
+    def browse_csv_input_file(self):
+        """浏览CSV输入文件"""
+        file_path = filedialog.askopenfilename(
+            title="选择Excel文件",
+            filetypes=[("Excel文件", "*.xlsx *.xls"), ("所有文件", "*.*")]
+        )
+        if file_path:
+            self.csv_input_var.set(file_path)
+            # 自动设置输出目录
+            if not self.csv_output_var.get():
+                self.csv_output_var.set(os.path.dirname(file_path))
+    
+    def browse_csv_input_dir(self):
+        """浏览CSV输入目录"""
+        directory = filedialog.askdirectory(title="选择Excel文件目录")
+        if directory:
+            self.csv_input_var.set(directory)
+            # 自动设置输出目录
+            if not self.csv_output_var.get():
+                self.csv_output_var.set(directory)
+    
+    def browse_csv_output_dir(self):
+        """浏览CSV输出目录"""
+        directory = filedialog.askdirectory(title="选择输出目录")
+        if directory:
+            self.csv_output_var.set(directory)
+    
+    def start_csv_conversion(self):
+        """开始Excel转CSV转换"""
+        input_path = self.csv_input_var.get().strip()
+        
+        if not input_path:
+            messagebox.showerror("错误", "请选择输入文件或目录")
+            return
+        
+        if not os.path.exists(input_path):
+            messagebox.showerror("错误", "输入路径不存在")
+            return
+        
+        # 禁用按钮
+        self.csv_convert_button.config(state="disabled")
+        self.csv_open_folder_button.config(state="disabled")
+        self.status_var.set("正在转换Excel文件...")
+        
+        # 在新线程中执行转换
+        thread = threading.Thread(target=self._csv_conversion_process)
+        thread.daemon = True
+        thread.start()
+    
+    def _csv_conversion_process(self):
+        """CSV转换处理（后台线程）"""
+        try:
+            # 清空结果
+            self.root.after(0, self.clear_csv_results)
+            
+            # 获取参数
+            input_path = self.csv_input_var.get().strip()
+            output_dir = self.csv_output_var.get().strip() or None
+            encoding = self.csv_encoding_var.get()
+            delimiter = self.csv_delimiter_var.get()
+            recursive = self.csv_recursive_var.get()
+            merge_sheets = self.csv_merge_sheets_var.get()
+            include_sheet_column = self.csv_include_sheet_col_var.get()
+            preserve_empty_rows = self.csv_preserve_empty_var.get()
+            
+            # 显示开始信息
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                "开始Excel转CSV转换...\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"输入路径: {input_path}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"输出目录: {output_dir or '(源文件同目录)'}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"编码: {encoding}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"分隔符: {repr(delimiter)}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"选项: 递归={recursive}, 合并工作表={merge_sheets}, 保留空行={preserve_empty_rows}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                "-" * 70 + "\n\n"))
+            
+            # 设置进度回调
+            def progress_callback(msg, percentage=None):
+                self.root.after(0, lambda m=msg: self.append_result('csv_converter', m + "\n"))
+                if percentage is not None:
+                    self.root.after(0, lambda p=percentage: self.csv_progress_var.set(p))
+                    self.root.after(0, lambda m=msg: self.csv_progress_text.set(m))
+            
+            self.csv_converter.set_progress_callback(progress_callback)
+            
+            # 执行转换
+            result = self.csv_converter.batch_convert(
+                source_path=input_path,
+                output_dir=output_dir,
+                recursive=recursive,
+                encoding=encoding,
+                merge_sheets=merge_sheets,
+                include_sheet_column=include_sheet_column,
+                delimiter=delimiter,
+                preserve_empty_rows=preserve_empty_rows
+            )
+            
+            # 显示结果
+            self.root.after(0, lambda: self.append_result('csv_converter', "\n" + "=" * 70 + "\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', "转换统计:\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', "=" * 70 + "\n"))
+            
+            summary = result.get('summary', {})
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"  总文件数: {summary.get('total_files', 0)}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"  成功: {summary.get('success_files', 0)}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"  失败: {summary.get('failed_files', 0)}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"  总工作表: {summary.get('total_sheets', 0)}\n"))
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"  总行数: {summary.get('total_rows', 0)}\n"))
+            
+            # 显示输出文件列表
+            if result.get('files'):
+                self.root.after(0, lambda: self.append_result('csv_converter', 
+                    "\n输出文件:\n" + "-" * 40 + "\n"))
+                for file_result in result['files']:
+                    if file_result.get('success'):
+                        for output_file in file_result.get('output_files', []):
+                            file_path = output_file.get('file_path', '')
+                            rows = output_file.get('rows', 0)
+                            self.root.after(0, lambda fp=file_path, r=rows: 
+                                self.append_result('csv_converter', f"  ✅ {fp} ({r}行)\n"))
+                    else:
+                        self.root.after(0, lambda f=file_result: 
+                            self.append_result('csv_converter', 
+                                f"  ❌ {f.get('source_file', '未知')}: {f.get('error', '未知错误')}\n"))
+            
+            # 显示错误（如果有）
+            if result.get('errors'):
+                self.root.after(0, lambda: self.append_result('csv_converter', 
+                    "\n错误列表:\n" + "-" * 40 + "\n"))
+                for error in result['errors']:
+                    self.root.after(0, lambda e=error: 
+                        self.append_result('csv_converter', 
+                            f"  ⚠️ {e.get('file', '未知')}: {e.get('error', '未知错误')}\n"))
+            
+            # 完成
+            self.root.after(0, lambda: self.csv_progress_var.set(100))
+            self.root.after(0, lambda: self.csv_progress_text.set("转换完成"))
+            self.root.after(0, lambda: self.status_var.set("Excel转CSV完成"))
+            self.root.after(0, lambda: self.csv_open_folder_button.config(state="normal"))
+            
+            # 保存输出目录
+            final_output = output_dir or (os.path.dirname(self.csv_input_var.get().strip()) 
+                                          if os.path.isfile(self.csv_input_var.get().strip()) 
+                                          else self.csv_input_var.get().strip())
+            self._csv_output_dir = final_output
+            
+            success_count = summary.get('success_files', 0)
+            fail_count = summary.get('failed_files', 0)
+            self.root.after(0, lambda: messagebox.showinfo("完成", 
+                f"Excel转CSV完成！\n\n成功: {success_count} 个文件\n失败: {fail_count} 个文件"))
+            
+        except Exception as e:
+            error_msg = f"转换过程出错: {str(e)}"
+            self.root.after(0, lambda: self.append_result('csv_converter', 
+                f"\n❌ 错误: {error_msg}\n"))
+            self.root.after(0, lambda: self.csv_progress_text.set("转换失败"))
+            self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
+        
+        finally:
+            self.root.after(0, lambda: self.csv_convert_button.config(state="normal"))
+            self.root.after(0, lambda: self.status_var.set("就绪"))
+    
+    def clear_csv_results(self):
+        """清空CSV转换结果"""
+        self.clear_result('csv_converter')
+        self.csv_progress_var.set(0)
+        self.csv_progress_text.set("就绪")
+    
+    def open_csv_output_folder(self):
+        """打开CSV输出文件夹"""
+        output_dir = getattr(self, '_csv_output_dir', None)
+        if output_dir and os.path.exists(output_dir):
+            if os.name == 'nt':  # Windows
+                os.startfile(output_dir)
+            else:
+                subprocess.run(['open', output_dir])
+        else:
+            messagebox.showwarning("提示", "输出目录不存在")
 
 
 def main():

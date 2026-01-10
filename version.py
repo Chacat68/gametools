@@ -5,14 +5,25 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.41.1"
-__version_info__ = (1, 41, 1)
-__build_date__ = "2025-12-25"
+__version__ = "1.42.0"
+__version_info__ = (1, 42, 0)
+__build_date__ = "2026-01-07"
 __author__ = "gametools开发团队"
-__description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步等功能"
+__description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能"
 
 # 版本历史
 VERSION_HISTORY = {
+    "1.42.0": {
+        "date": "2026-01-07",
+        "changes": [
+            "✨ 新增Excel转CSV功能",
+            "📄 支持批量转换Excel文件为CSV格式",
+            "🔧 支持多种编码格式（UTF-8-sig、UTF-8、GBK、GB2312）",
+            "📊 支持多工作表处理和合并",
+            "🎯 保持内容完整，支持特殊字符和多行文本",
+            "⚡ 支持递归处理子目录"
+        ]
+    },
     "1.41.1": {
         "date": "2025-12-25",
         "changes": [
