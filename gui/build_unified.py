@@ -148,9 +148,9 @@ a = Analysis(
         ('../core', 'core'),
         ('../tools/json_error_detector', 'tools/json_error_detector'),
         ('../tools', 'tools'),
-        ('../config.json', 'config.json'),
-        ('../config_export.json', 'config_export.json'),
-        ('../README.md', 'README.md'),
+        ('../config.json', '.'),
+        ('../config_export.json', '.'),
+        ('../README.md', '.'),
     ],
     hiddenimports=[
         'pandas',
@@ -169,10 +169,11 @@ a = Analysis(
         'tkinter.filedialog',
         'tkinter.messagebox',
         'tkinter.scrolledtext',
+        'gui.import_helper',
     ],
-    hookspath=[''],  # 添加当前目录到hooks路径
+    hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['gui_runtime_hook.py'] if False else [],  # 运行时hook（可选）
     excludes=excluded_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -210,11 +211,11 @@ exe = EXE(
     name='gametools',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,  # 启用strip减小体积
+    strip=False,  # 关闭strip以保持debug信息用于故障排除
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,  # 保持控制台窗口以查看错误
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
