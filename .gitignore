@@ -137,6 +137,8 @@ test/test_table_range/translation_master_*.xlsx
 test/test_config_sync/*.bak
 test/test_config_sync/*/*.bak
 test/test_config_sync/sync_report.xlsx
+test/test_config_sync/*/*.xlsx
+test/test_multi_lang/*/*.xlsx
 
 # 构建目录
 gui/build/
