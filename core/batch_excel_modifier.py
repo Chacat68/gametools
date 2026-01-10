@@ -14,6 +14,12 @@ from typing import List, Dict, Set, Tuple, Optional
 import pandas as pd
 import logging
 
+# 导入统一的常量
+from core.constants import (
+    SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, SUPPORTED_MAPPING_FORMATS
+)
+from core.text_patterns import parse_cell_reference
+
 # 尝试导入xlwings
 try:
     import xlwings as xw
@@ -26,40 +32,38 @@ except ImportError:
 try:
     from openpyxl import load_workbook, Workbook
     from openpyxl.styles import PatternFill, Font, Alignment
+    from openpyxl.utils import get_column_letter, column_index_from_string
     OPENPYXL_AVAILABLE = True
 except ImportError:
     OPENPYXL_AVAILABLE = False
+    # 备用函数
+    def get_column_letter(col_num: int) -> str:
+        """将列号（从1开始）转换为Excel列字母"""
+        result = ""
+        while col_num > 0:
+            col_num, remainder = divmod(col_num - 1, 26)
+            result = chr(65 + remainder) + result
+        return result
+    
+    def column_index_from_string(col_letter: str) -> int:
+        """将Excel列字母转换为列号（从1开始）"""
+        col_letter = col_letter.upper()
+        result = 0
+        for char in col_letter:
+            result = result * 26 + (ord(char) - ord('A') + 1)
+        return result
 
-# 辅助函数：列号转列字母
-def get_column_letter(col_num: int) -> str:
-    """将列号（从1开始）转换为Excel列字母"""
-    result = ""
-    while col_num > 0:
-        col_num, remainder = divmod(col_num - 1, 26)
-        result = chr(65 + remainder) + result
-    return result
+# 别名，保持向后兼容
+get_column_number = column_index_from_string
 
-def get_column_number(col_letter: str) -> int:
-    """将Excel列字母转换为列号（从1开始）"""
-    col_letter = col_letter.upper()
-    result = 0
-    for char in col_letter:
-        result = result * 26 + (ord(char) - ord('A') + 1)
-    return result
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 class BatchExcelModifier:
     """批量Excel修改器（使用 xlwings 引擎）"""
     
-    # 支持的语言配置（与 ExcelFieldExtractor 保持一致）
-    SUPPORTED_LANGUAGES = {
-        'zh': {'name': '中文', 'code': 'zh', 'suffix': '_zh'},
-        'vn': {'name': '越南语', 'code': 'vn', 'suffix': '_vn'},
-        'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'}
-    }
+    # 使用统一的语言配置
+    SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES
     
     def __init__(self):
         """
@@ -68,8 +72,8 @@ class BatchExcelModifier:
         使用 xlwings 库进行修改，需要安装 Microsoft Excel
         xlwings 可以完全保留 Excel 文件的原有结构（包括批注、格式等）
         """
-        self.supported_extensions = {'.xlsx', '.xls'}
-        self.supported_mapping_formats = {'.xlsx', '.xls', '.csv'}  # 映射表支持的格式
+        self.supported_extensions = SUPPORTED_EXCEL_EXTENSIONS
+        self.supported_mapping_formats = SUPPORTED_MAPPING_FORMATS
         
         # 使用 xlwings 引擎
         self.use_xlwings = True

@@ -15,12 +15,11 @@ from pathlib import Path
 import subprocess
 import logging
 
-# 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 # 添加模块路径
 sys.path.append(str(Path(__file__).parent.parent))
 
+# 导入core模块（会自动初始化日志配置）
+import core
 from core.cross_project_translator import CrossProjectTranslator
 from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator

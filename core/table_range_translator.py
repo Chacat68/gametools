@@ -9,7 +9,6 @@
 
 import os
 import json
-import re
 from pathlib import Path
 from typing import List, Dict, Set, Tuple, Optional
 import pandas as pd
@@ -19,38 +18,30 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# 导入统一的常量和模式
+from core.constants import (
+    SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, EXPORTABLE_FIELD_TYPES
+)
+from core.text_patterns import (
+    CHINESE_PATTERN, VIETNAMESE_PATTERN, THAI_PATTERN,
+    is_filterable_content, contains_chinese, contains_vietnamese, contains_thai
+)
+
 logger = logging.getLogger(__name__)
 
 
 class TableRangeTranslator:
     """多语言翻译提取器"""
     
-    # 支持的语言配置（与 ExcelFieldExtractor 保持一致）
-    SUPPORTED_LANGUAGES = {
-        'zh': {'name': '中文', 'code': 'zh', 'suffix': '_zh'},
-        'vn': {'name': '越南语', 'code': 'vn', 'suffix': '_vn'},
-        'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'}
-    }
+    # 使用统一的语言配置
+    SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES
     
     def __init__(self):
         """初始化翻译提取器"""
-        self.supported_extensions = {'.xlsx', '.xls'}
-        
-        # 文本模式：中文、越南文、泰文
-        self.chinese_pattern = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf]')
-        self.vietnamese_pattern = re.compile(r'[\u00C0-\u1EF9]')
-        self.thai_pattern = re.compile(r'[\u0E00-\u0E7F]')
-        
-        # 非文本内容过滤模式（用于过滤{}、[]、数组、纯数字）
-        # 匹配: {}, [], {2,99}, [2,99], [{},{}], [{22},{333}], 纯数字等
-        self.empty_braces_pattern = re.compile(r'^\s*[\{\[]\s*[\}\]]\s*$')  # 空括号 {} 或 []
-        self.array_pattern = re.compile(r'^\s*[\[\{]\s*[\d\s,\.\-]*\s*[\]\}]\s*$')  # 数组格式 [2,99] 或 {2,99} 或 [] 或 {}
-        self.object_array_pattern = re.compile(r'^\s*\[\s*(\{\s*[\d\s,\.\-]*\s*\}\s*,?\s*)+\]\s*$')  # 对象数组 [{},{}] 或 [{22},{333}]
-        self.pure_number_pattern = re.compile(r'^\s*[\-]?[\d\.]+\s*$')  # 纯数字
+        self.supported_extensions = SUPPORTED_EXCEL_EXTENSIONS
         
         # 需要导出的字段类型（忽略"策划"）
-        self.exportable_field_types = {'前端', '后端', '前后端'}
+        self.exportable_field_types = EXPORTABLE_FIELD_TYPES
         
         # 结果存储
         self.translation_results = []
@@ -510,23 +501,8 @@ class TableRangeTranslator:
         if not text_str:
             return False
         
-        # 过滤空花括号 {}
-        if self.empty_braces_pattern.match(text_str):
-            return False
-        
-        # 过滤数组格式 [2, 99] 或 {2, 99}
-        if self.array_pattern.match(text_str):
-            return False
-        
-        # 过滤空对象数组 [{},{}]
-        if self.object_array_pattern.match(text_str):
-            return False
-        
-        # 过滤纯数字
-        if self.pure_number_pattern.match(text_str):
-            return False
-        
-        return True
+        # 使用统一的过滤函数
+        return not is_filterable_content(text_str)
     
     def filter_lang_contents(self, lang_contents: Dict[str, str]) -> Dict[str, str]:
         """
@@ -556,9 +532,10 @@ class TableRangeTranslator:
         
         text_str = str(text).strip()
         
-        has_chinese = bool(self.chinese_pattern.search(text_str))
-        has_vietnamese = bool(self.vietnamese_pattern.search(text_str))
-        has_thai = bool(self.thai_pattern.search(text_str))
+        # 使用统一的语言检测函数
+        has_chinese = contains_chinese(text_str)
+        has_vietnamese = contains_vietnamese(text_str)
+        has_thai = contains_thai(text_str)
         
         # 判断语言类型
         if has_chinese and has_vietnamese:

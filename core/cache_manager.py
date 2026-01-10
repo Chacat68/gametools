@@ -17,8 +17,6 @@ import logging
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 
-# 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Python 3.7+ 兼容性处理

@@ -8,7 +8,6 @@ Excel表字段导出器
 """
 
 import os
-import re
 import json
 from pathlib import Path
 from typing import List, Dict, Set, Tuple
@@ -18,34 +17,21 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+# 导入统一的常量和模式
+from core.constants import SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, COLUMN_MARKER
+from core.text_patterns import (
+    TEXT_PATTERN, is_filterable_content, contains_localized_text
+)
+
 
 class ExcelFieldExtractor:
     """Excel表字段导出器"""
     
-    # 支持的语言配置
-    SUPPORTED_LANGUAGES = {
-        'zh': {'name': '中文', 'code': 'zh', 'suffix': '_zh'},
-        'vn': {'name': '越南语', 'code': 'vn', 'suffix': '_vn'},
-        'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'}
-    }
+    # 使用统一的语言配置
+    SUPPORTED_LANGUAGES = SUPPORTED_LANGUAGES
     
     def __init__(self):
-        self.supported_extensions = {'.xlsx', '.xls'}
-        # 定义文本模式：只匹配中文、越南文、泰文
-        # 中文：\u4e00-\u9fff (CJK统一汉字), \u3400-\u4dbf (CJK扩展A)
-        # 越南文：\u00C0-\u1EF9 (包含带音标的拉丁字母)
-        # 泰文：\u0E00-\u0E7F
-        self.text_pattern = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf\u00C0-\u1EF9\u0E00-\u0E7F]')
-        
-        # 非文本内容过滤模式（用于过滤{}、[]、数组、纯数字）
-        # 与 table_range_translator.py 保持一致
-        self.empty_braces_pattern = re.compile(r'^\s*[\{\[]\s*[\}\]]\s*$')  # 空括号 {} 或 []
-        self.array_pattern = re.compile(r'^\s*[\[\{]\s*[\d\s,\.\-]*\s*[\]\}]\s*$')  # 数组格式 [2,99] 或 {2,99} 或 [] 或 {}
-        self.object_array_pattern = re.compile(r'^\s*\[\s*(\{\s*[\d\s,\.\-]*\s*\}\s*,?\s*)+\]\s*$')  # 对象数组 [{},{}] 或 [{22},{333}]
-        self.pure_number_pattern = re.compile(r'^\s*[\-]?[\d\.]+\s*$')  # 纯数字
-        
-        # 曾用于过滤字段名的列表（已废弃，因为即使字段名是 name 等，数据仍可能包含中文需要翻译）
-        # self.excluded_field_names = {'name', 'model', 'id', 'code', 'type'}
+        self.supported_extensions = SUPPORTED_EXCEL_EXTENSIONS
         # 错误日志列表
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
@@ -78,38 +64,12 @@ class ExcelFieldExtractor:
         
         value_str = str(value).strip()
         
-        # 排除空值
-        if not value_str:
-            return False
-        
-        # 使用正则表达式过滤（与 table_range_translator.py 保持一致）
-        # 排除空括号 {} 或 []
-        if self.empty_braces_pattern.match(value_str):
-            return False
-        
-        # 排除数组格式 [2,99] 或 {2,99} 或 [] 或 {}
-        if self.array_pattern.match(value_str):
-            return False
-        
-        # 排除空对象数组 [{},{}]
-        if self.object_array_pattern.match(value_str):
-            return False
-        
-        # 排除纯数字
-        if self.pure_number_pattern.match(value_str):
-            return False
-        
-        # 排除常见的配置关键字
-        if value_str in ('null', 'None', 'true', 'false', 'True', 'False'):
-            return False
-        
-        # 排除看起来像代码或配置的内容（包含特殊符号但不含目标文字）
-        # 例如：ID_001, CONFIG_NAME 等
-        if not self.text_pattern.search(value_str):
+        # 排除空值和应被过滤的内容
+        if not value_str or is_filterable_content(value_str):
             return False
         
         # 检查是否包含中文、越南文或泰文字符
-        return True
+        return contains_localized_text(value_str)
     
     def find_column_range_between_markers(self, sheet, marker: str = "c_"):
         """

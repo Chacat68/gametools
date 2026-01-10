@@ -12,8 +12,6 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 import logging
 
-# 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
