@@ -1,0 +1,18 @@
+# gametools 统一依赖包
+# ========================
+
+# 核心数据处理
+pandas>=1.3.0
+numpy>=1.21.0
+
+# Excel处理
+openpyxl>=3.0.0      # Python原生Excel读写（用于不需要Excel应用的场景）
+xlwings>=0.30.0      # Excel原生引擎（需要安装Excel，用于批量改表等需要保持格式的场景）
+
+# 打包工具（仅用于构建exe）
+pyinstaller>=5.0.0
+
+# 注意事项：
+# - tkinter 属于Python标准库，随Python安装
+# - pathlib 属于Python标准库（Python 3.4+）
+# - JSON检测工具只使用标准库，无额外依赖
