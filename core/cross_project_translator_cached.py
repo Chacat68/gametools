@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 增强版跨项目翻译对应工具 - 集成缓存机制
-根据Excel表格中的B列（表格名）和C列（表内位置）查找对应的内容
-支持内存缓存和文件缓存，提升性能
+继承自CrossProjectTranslator，添加缓存支持
 """
 
 import os
@@ -15,14 +14,14 @@ import logging
 import time
 from hashlib import md5
 
-# 添加当前目录到路径
+from .cross_project_translator import CrossProjectTranslator
 from .cache_manager import CacheManager, get_cache_manager
 
 logger = logging.getLogger(__name__)
 
 
-class CrossProjectTranslatorWithCache:
-    """增强版跨项目翻译对应工具 - 支持缓存"""
+class CrossProjectTranslatorWithCache(CrossProjectTranslator):
+    """增强版跨项目翻译对应工具 - 支持缓存（继承自CrossProjectTranslator）"""
     
     def __init__(self, cache_dir: str = ".cache", enable_file_cache: bool = True,
                  memory_cache_size: int = 1000, cache_ttl: Optional[float] = 86400):
@@ -35,8 +34,8 @@ class CrossProjectTranslatorWithCache:
             memory_cache_size: 内存缓存最大条目数
             cache_ttl: 缓存过期时间（秒），默认24小时
         """
-        self.supported_formats = ['.xlsx', '.xls']
-        self.translation_results = []
+        # 调用父类初始化
+        super().__init__()
         
         # 初始化缓存管理器
         self.cache_manager = CacheManager(
@@ -56,35 +55,7 @@ class CrossProjectTranslatorWithCache:
         self.cache_misses = 0
         self.query_start_time = None
     
-    def parse_cell_reference(self, cell_ref: str) -> Tuple[int, int]:
-        """
-        解析Excel单元格引用（如A1, B5, C10等）
-        
-        Args:
-            cell_ref: Excel单元格引用字符串
-            
-        Returns:
-            (row, col): 行号和列号的元组
-        """
-        try:
-            match = re.match(r'^([A-Z]+)(\d+)$', cell_ref.upper())
-            if not match:
-                raise ValueError(f"无效的单元格引用格式: {cell_ref}")
-            
-            col_str, row_str = match.groups()
-            
-            # 将列字母转换为数字
-            col_num = 0
-            for char in col_str:
-                col_num = col_num * 26 + (ord(char) - ord('A') + 1)
-            
-            row_num = int(row_str)
-            
-            return row_num, col_num
-            
-        except Exception as e:
-            logger.error(f"解析单元格引用失败 {cell_ref}: {e}")
-            return None, None
+    # 注意: parse_cell_reference 继承自父类，无需重复定义
     
     def _get_file_hash(self, file_path: str) -> str:
         """获取文件的哈希值（用于缓存键）"""
