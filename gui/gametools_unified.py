@@ -53,16 +53,8 @@ class GameToolsUnified:
         # 创建界面
         self.create_widgets()
         
-        # 初始化检测器
-        self.cross_project_translator = CrossProjectTranslator()
-        self.json_detector = JSONErrorDetector()
-        self.excel_processor = ExcelDataProcessor()
-        self.field_extractor = ExcelFieldExtractor()
-        self.table_range_translator = TableRangeTranslator()
-        self.sheet_splitter = ExcelSheetSplitter()
-        self.batch_modifier = BatchExcelModifier()
-        self.config_sync = ExcelConfigSync()
-        self.csv_converter = ExcelToCsvConverter()
+        # 懒加载：处理器实例缓存（首次使用时才初始化，避免启动卡顿）
+        self._processors = {}
         
         # 扫描状态
         self.is_scanning = False
@@ -82,6 +74,50 @@ class GameToolsUnified:
         
         # 字段提取结果数据
         self.field_extraction_results = None
+    
+    # ==================== 懒加载处理器属性 ====================
+    def _get_processor(self, name, factory):
+        """通用懒加载处理器获取方法"""
+        if name not in self._processors:
+            self._processors[name] = factory()
+        return self._processors[name]
+    
+    @property
+    def cross_project_translator(self):
+        return self._get_processor('cross_project_translator', CrossProjectTranslator)
+    
+    @property
+    def json_detector(self):
+        return self._get_processor('json_detector', JSONErrorDetector)
+    
+    @property
+    def excel_processor(self):
+        return self._get_processor('excel_processor', ExcelDataProcessor)
+    
+    @property
+    def field_extractor(self):
+        return self._get_processor('field_extractor', ExcelFieldExtractor)
+    
+    @property
+    def table_range_translator(self):
+        return self._get_processor('table_range_translator', TableRangeTranslator)
+    
+    @property
+    def sheet_splitter(self):
+        return self._get_processor('sheet_splitter', ExcelSheetSplitter)
+    
+    @property
+    def batch_modifier(self):
+        return self._get_processor('batch_modifier', BatchExcelModifier)
+    
+    @property
+    def config_sync(self):
+        return self._get_processor('config_sync', ExcelConfigSync)
+    
+    @property
+    def csv_converter(self):
+        return self._get_processor('csv_converter', ExcelToCsvConverter)
+    # ==================== 懒加载处理器属性 结束 ====================
     
     def setup_styles(self):
         """设置界面样式"""
