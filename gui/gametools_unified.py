@@ -15,6 +15,10 @@ from pathlib import Path
 import subprocess
 import logging
 
+# 修复 PyInstaller 环境下的导入问题（必须在其他导入之前调用）
+from .import_helper import fix_pyinstaller_imports
+fix_pyinstaller_imports()
+
 # 添加模块路径
 sys.path.append(str(Path(__file__).parent.parent))
 

@@ -154,7 +154,14 @@ a = Analysis(
     ],
     hiddenimports=[
         'pandas',
+        'pandas._libs',
+        'pandas._libs.tslibs',
+        'pandas.core',
+        'pandas.io',
+        'pandas.io.formats',
         'numpy',
+        'numpy.core',
+        'numpy.lib',
         'xlwings',
         'openpyxl',
         'tkinter',
@@ -163,7 +170,7 @@ a = Analysis(
         'tkinter.messagebox',
         'tkinter.scrolledtext',
     ],
-    hookspath=[],
+    hookspath=[''],  # 添加当前目录到hooks路径
     hooksconfig={},
     runtime_hooks=[],
     excludes=excluded_modules,
