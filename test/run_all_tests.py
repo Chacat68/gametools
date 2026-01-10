@@ -16,8 +16,8 @@ if sys.platform == 'win32':
 def run_tests():
     """运行所有测试文件"""
     test_dir = Path(__file__).parent
-    # 排除已损坏的测试文件
-    skip_files = {'test_phase2_integration.py'}
+    # 跳过的文件（非测试或已合并）
+    skip_files = set()
     test_files = sorted([f for f in test_dir.glob("test_*.py") if f.name not in skip_files])
     
     if not test_files:
