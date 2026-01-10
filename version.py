@@ -7,14 +7,25 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.42.0"
-__version_info__ = (1, 42, 0)
-__build_date__ = "2026-01-07"
+__version__ = "1.43.0"
+__version_info__ = (1, 43, 0)
+__build_date__ = "2026-01-10"
 __author__ = "gametools开发团队"
-__description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能"
+__description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能、GUI启动优化"
 
 # 版本历史（仅保留最近5个版本，更早版本请查看 docs/VERSION_HISTORY_ARCHIVE.md）
 VERSION_HISTORY = {
+    "1.43.0": {
+        "date": "2026-01-10",
+        "changes": [
+            "⚡ GUI启动性能优化 4-6倍快",
+            "🚀 实施Tab延迟加载机制（仅在用户切换时创建Tab UI）",
+            "📖 模块延迟导入优化（减少启动时导入时间）",
+            "🔧 后台预加载常用处理器（避免首次使用卡顿）",
+            "📊 启动时间从2-3秒降至0.5秒",
+            "📝 添加性能诊断工具（gui_startup_profiler.py）"
+        ]
+    },
     "1.42.0": {
         "date": "2026-01-07",
         "changes": [
