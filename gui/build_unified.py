@@ -359,18 +359,18 @@ excluded_modules = [
     'pdb', 'pdbpp', 'ipdb', 'pudb',
     # 序列化（不需要的格式）
     'yaml', 'toml', 'msgpack', 'pickle5',
-    # numpy/pandas 不需要的子模块
+    # numpy 不需要的子模块
     'numpy.f2py', 'numpy.distutils', 'numpy.doc',
-    'pandas.tests', 'pandas.plotting', 'pandas.io.sql',
+    # pandas 测试模块
+    'pandas.tests',
     # email相关（不需要）
-    'email', 'smtplib', 'imaplib',
+    'smtplib', 'imaplib',
 ]
 
 # 只包含必需的 hiddenimports（减少分析时间）
 minimal_hiddenimports = [
-    # pandas 核心
-    'pandas', 'pandas._libs', 'pandas._libs.tslibs',
-    'pandas.core', 'pandas.io.excel',
+    # pandas 核心（让PyInstaller自动处理pandas的完整依赖）
+    'pandas',
     # numpy 核心
     'numpy', 'numpy.core', 'numpy.core._multiarray_umath',
     'numpy.lib', 'numpy.random',
@@ -470,127 +470,6 @@ exe = EXE(
         .replace('__CONSOLE__', 'True' if console else 'False')
         .replace('__STRIP__', 'True')  # 默认开启strip以减小体积
         .replace('__OPTIMIZE__', str(optimize))
-    )
-
-    spec_path = Path(__file__).resolve().parent / 'gametools_unified.spec'
-    changed = _write_text_if_changed(spec_path, spec_content)
-    if changed:
-        print("[OK] 创建/更新spec文件成功")
-    else:
-        print("[OK] spec未变化，跳过重写")
-    ],
-    hiddenimports=[
-        'pandas',
-        'pandas._libs',
-        'pandas._libs.tslibs',
-        'pandas._libs.tslibs.timedeltas',
-        'pandas._libs.tslibs.nattype',
-        'pandas._libs.tslibs.np_datetime',
-        'pandas.core',
-        'pandas.core.arrays',
-        'pandas.io',
-        'pandas.io.formats',
-        'pandas.io.excel',
-        'pandas.io.excel._xlrd',
-        'pandas.io.excel._openpyxl',
-        'numpy',
-        'numpy.__config__',
-        'numpy._core',
-        'numpy._core._multiarray_umath',
-        'numpy.core',
-        'numpy.core._multiarray_umath',
-        'numpy.core._multiarray_tests',
-        'numpy.core._dtype_ctypes',
-        'numpy.core.multiarray',
-        'numpy.lib',
-        'numpy.random',
-        'numpy.random.mtrand',
-        'numpy.linalg',
-        'numpy.linalg._umath_linalg',
-        'numpy.fft',
-        'numpy.fft._pocketfft_internal',
-        'numpy._distributor_init',
-        'numpy.compat',
-        'numpy.testing',
-        'xlwings',
-        'xlwings.main',
-        'openpyxl',
-        'openpyxl.workbook',
-        'openpyxl.worksheet',
-        'tkinter',
-        'tkinter.ttk',
-        'tkinter.filedialog',
-        'tkinter.messagebox',
-        'tkinter.scrolledtext',
-        'gui.import_helper',
-        'core',
-        'core.cross_project_translator',
-        'core.excel_field_extractor',
-        'core.table_range_translator',
-        'core.excel_sheet_splitter',
-        'core.batch_excel_modifier',
-        'core.excel_config_sync',
-        'core.excel_to_csv_converter',
-    ],
-    hookspath=['.'],
-    hooksconfig={},
-    runtime_hooks=['pyi_rth_numpy_fix.py'],  # 修复 numpy 导入问题
-    excludes=excluded_modules,
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
-    noarchive=False,
-)
-
-# 过滤掉不需要的二进制文件（但保留tkinter需要的tcl/tk和numpy必需的_multiarray_tests）
-a.binaries = [x for x in a.binaries if not any(
-    excl in x[0].lower() for excl in [
-        'qt5', 'qt6', 'pyside', 'pyqt',
-    ]
-) or '_multiarray_tests' in x[0].lower()]
-
-# 过滤掉不需要的数据文件（但保留tcl/tk数据）
-a.datas = [x for x in a.datas if not any(
-    excl in x[0].lower() for excl in [
-        'tests', 'testing',
-        'examples', 'sample',
-        '__pycache__',
-        'qt5', 'qt6',
-    ]
-)]
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name='gametools',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,  # 关闭strip以保持debug信息用于故障排除
-    upx=__UPX__,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=__CONSOLE__,  # GUI程序默认不显示控制台窗口
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=None,
-    version_file=None,
-)
-'''
-
-    # 使用占位符替换，避免 f-string 与 spec 内部 "{}" 冲突
-    spec_content = (
-        spec_content
-        .replace('__UPX__', 'True' if upx else 'False')
-        .replace('__CONSOLE__', 'True' if console else 'False')
     )
 
     spec_path = Path(__file__).resolve().parent / 'gametools_unified.spec'
