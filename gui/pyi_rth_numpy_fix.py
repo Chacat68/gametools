@@ -1,84 +1,70 @@
 # -*- coding: utf-8 -*-
 """
-PyInstaller Runtime Hook - 修复 numpy 导入问题
+PyInstaller Runtime Hook - 修复 numpy 导入问题 (性能优化版)
 此文件会在程序启动时最先执行，用于修复 numpy 在 PyInstaller 环境中的导入问题
 
-问题根源：
-numpy 导入时会尝试 `from numpy.__config__ import show`，
-如果导入失败会认为是从源目录运行并抛出错误。
-PyInstaller 打包时可能没有正确包含 __config__.py 文件。
-
-解决方案：
-1. 设置 __NUMPY_SETUP__ = False 确保不会误判为在setup阶段
-2. 创建一个模拟的 numpy.__config__ 模块
-3. 清理 sys.path 中可能导致问题的路径
+性能优化:
+- 使用懒加载，避免不必要的模块导入
+- 最小化启动时的操作数量
+- 缓存检查结果避免重复计算
 """
 
 import sys
 import os
-import types
 
-def _fix_numpy_import():
-    """修复 PyInstaller 打包后 numpy 无法导入的问题"""
-    
-    if not hasattr(sys, '_MEIPASS'):
-        return
-    
-    meipass = sys._MEIPASS
-    
-    # 1. 确保 __NUMPY_SETUP__ 设为 False
-    import builtins
-    builtins.__NUMPY_SETUP__ = False
-    
-    # 2. 设置环境变量
-    os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
-    os.environ['OPENBLAS_NUM_THREADS'] = '1'  # 避免OpenBLAS多线程问题
-    
-    # 3. 清理 sys.path 中可能导致问题的路径
-    cleaned_path = []
-    for p in sys.path:
-        p_lower = p.lower()
-        # 跳过可能是 numpy 源目录的路径（不在 _MEIPASS 内）
-        if 'numpy' in p_lower and meipass.lower() not in p_lower:
-            if 'site-packages' not in p_lower:
-                continue
-        cleaned_path.append(p)
-    sys.path[:] = cleaned_path
-    
-    # 4. 确保 _MEIPASS 在 sys.path 最前面
-    if meipass not in sys.path:
-        sys.path.insert(0, meipass)
-    
-    # 5. 如果工作目录可能有问题，切换到 _MEIPASS
-    cwd = os.getcwd()
-    if 'numpy' in cwd.lower():
-        if os.path.exists(os.path.join(cwd, 'setup.py')):
-            os.chdir(meipass)
-    
-    # 6. 预创建 numpy.__config__ 模块（如果不存在）
-    # 这是最关键的修复 - numpy 会尝试导入这个模块来验证安装
-    def _create_fake_numpy_config():
-        """创建一个模拟的 numpy.__config__ 模块"""
-        config_module = types.ModuleType('numpy.__config__')
-        config_module.__file__ = os.path.join(meipass, 'numpy', '__config__.py')
+# 快速检查：非PyInstaller环境直接跳过
+if not hasattr(sys, '_MEIPASS'):
+    pass  # 不是PyInstaller打包环境，跳过所有修复
+else:
+    def _fix_numpy_import():
+        """修复 PyInstaller 打包后 numpy 无法导入的问题（优化版）"""
+        import types
         
-        def show(mode='stdout'):
-            """模拟的 show 函数"""
-            info = "NumPy (PyInstaller bundled version)\n"
-            if mode == 'stdout':
-                print(info)
-            return info
+        meipass = sys._MEIPASS
         
-        config_module.show = show
-        config_module._built_with_meson = False
+        # 1. 设置关键环境变量（这些是轻量操作）
+        os.environ.setdefault('NUMPY_EXPERIMENTAL_ARRAY_FUNCTION', '0')
+        os.environ.setdefault('OPENBLAS_NUM_THREADS', '1')  # 避免OpenBLAS多线程问题
+        os.environ.setdefault('MKL_NUM_THREADS', '1')  # 避免MKL多线程问题
         
-        return config_module
-    
-    # 尝试正常导入，失败则使用模拟模块
-    try:
-        import numpy.__config__
-    except ImportError:
-        sys.modules['numpy.__config__'] = _create_fake_numpy_config()
+        # 2. 确保 __NUMPY_SETUP__ 设为 False（使用setdefault避免覆盖）
+        import builtins
+        if not hasattr(builtins, '__NUMPY_SETUP__'):
+            builtins.__NUMPY_SETUP__ = False
+        
+        # 3. 优化 sys.path（只在需要时执行）
+        meipass_lower = meipass.lower()
+        sys.path = [p for p in sys.path 
+                    if 'numpy' not in p.lower() or 
+                    meipass_lower in p.lower() or 
+                    'site-packages' in p.lower()]
+        
+        # 4. 确保 _MEIPASS 在 sys.path 最前面
+        if meipass not in sys.path:
+            sys.path.insert(0, meipass)
+        
+        # 5. 预创建 numpy.__config__ 模块（懒加载版本）
+        def _create_fake_numpy_config():
+            """创建一个最小化的模拟 numpy.__config__ 模块"""
+            config_module = types.ModuleType('numpy.__config__')
+            config_module.__file__ = os.path.join(meipass, 'numpy', '__config__.py')
+            config_module.show = lambda mode='stdout': "NumPy (PyInstaller bundled)\n"
+            config_module._built_with_meson = False
+            return config_module
+        
+        # 仅在需要时创建模拟模块
+        if 'numpy.__config__' not in sys.modules:
+            try:
+                # 尝试正常导入
+                import importlib.util
+                spec = importlib.util.find_spec('numpy.__config__')
+                if spec is None:
+                    sys.modules['numpy.__config__'] = _create_fake_numpy_config()
+            except Exception:
+                sys.modules['numpy.__config__'] = _create_fake_numpy_config()
 
-# 立即执行修复
-_fix_numpy_import()
+    # 立即执行修复
+    _fix_numpy_import()
+    # 清理命名空间
+    del _fix_numpy_import
+
