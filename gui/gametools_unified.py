@@ -38,6 +38,7 @@ from core.excel_sheet_splitter import ExcelSheetSplitter
 from core.batch_excel_modifier import BatchExcelModifier
 from core.excel_config_sync import ExcelConfigSync
 from core.excel_to_csv_converter import ExcelToCsvConverter
+from core.config_manager import config_manager
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_description, get_latest_changes
@@ -159,16 +160,30 @@ class GameToolsUnified:
         self.notebook = ttk.Notebook(main_frame)
         self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # 创建各个功能页签
-        self.create_cross_project_translator_tab()
-        self.create_json_detector_tab()
-        self.create_excel_data_processor_tab()
-        self.create_sheet_splitter_tab()
-        self.create_field_extractor_tab()
-        self.create_table_range_translator_tab()
-        self.create_batch_modifier_tab()
-        self.create_config_sync_tab()
-        self.create_csv_converter_tab()
+        # 获取页签可见性配置
+        tabs_config = config_manager.config.tabs
+        
+        # 创建各个功能页签（根据配置决定是否显示）
+        if tabs_config.cross_project_translator:
+            self.create_cross_project_translator_tab()
+        if tabs_config.json_detector:
+            self.create_json_detector_tab()
+        if tabs_config.excel_data_processor:
+            self.create_excel_data_processor_tab()
+        if tabs_config.sheet_splitter:
+            self.create_sheet_splitter_tab()
+        if tabs_config.field_extractor:
+            self.create_field_extractor_tab()
+        if tabs_config.table_range_translator:
+            self.create_table_range_translator_tab()
+        if tabs_config.batch_modifier:
+            self.create_batch_modifier_tab()
+        if tabs_config.config_sync:
+            self.create_config_sync_tab()
+        if tabs_config.csv_converter:
+            self.create_csv_converter_tab()
+        
+        # 关于页签（始终显示）
         self.create_about_tab()
         
         # 状态栏
@@ -1260,6 +1275,15 @@ class GameToolsUnified:
         bottom_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(20, 0))
         bottom_frame.columnconfigure(0, weight=1)
         
+        # 设置按钮区域
+        settings_frame = ttk.Frame(bottom_frame)
+        settings_frame.grid(row=0, column=0, pady=(0, 15))
+        
+        settings_btn = ttk.Button(settings_frame, text="⚙️ 界面设置", 
+                                  command=self.show_settings_dialog,
+                                  style='Accent.TButton')
+        settings_btn.pack()
+        
         # 使用方法
         usage_text = "📖 使用方法: 选择相应的功能页签 → 按照界面提示操作 → 查看检测结果"
         usage_label = ttk.Label(bottom_frame, text=usage_text, 
@@ -1273,6 +1297,99 @@ class GameToolsUnified:
                                    font=("Microsoft YaHei", 9), 
                                    style='Info.TLabel')
         copyright_label.grid(row=1, column=0)
+    
+    def show_settings_dialog(self):
+        """显示设置对话框"""
+        # 页签配置信息：(配置键, 显示名称, 描述)
+        TAB_CONFIGS = [
+            ('cross_project_translator', '跨项目翻译', '跨项目翻译对应工具'),
+            ('json_detector', 'JSON检测', 'JSON格式错误检测工具'),
+            ('excel_data_processor', 'Excel数据处理', 'Excel数据分组处理工具'),
+            ('sheet_splitter', '分页拆分', 'Excel分页拆分工具'),
+            ('field_extractor', '字段导出', '表字段导出工具'),
+            ('table_range_translator', '多语言提取', '多语言翻译提取工具'),
+            ('batch_modifier', '批量改表', '批量修改Excel表格工具'),
+            ('config_sync', '配置同步', 'Excel配置同步工具'),
+            ('csv_converter', 'CSV转换', 'Excel转CSV工具'),
+        ]
+        
+        # 创建对话框
+        dialog = tk.Toplevel(self.root)
+        dialog.title("界面设置")
+        dialog.geometry("500x450")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 居中显示
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+        
+        # 主框架
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="功能页签显示设置", style='Heading.TLabel')
+        title_label.pack(anchor=tk.W, pady=(0, 10))
+        
+        # 说明
+        hint_label = ttk.Label(main_frame, 
+                              text="勾选需要显示的功能页签，取消勾选隐藏页签。\n修改后需重启程序生效。",
+                              style='Info.TLabel')
+        hint_label.pack(anchor=tk.W, pady=(0, 15))
+        
+        # 页签勾选区域
+        tabs_frame = ttk.LabelFrame(main_frame, text="页签列表", padding="10")
+        tabs_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        
+        # 存储变量
+        tab_vars = {}
+        tabs_config = config_manager.config.tabs
+        
+        for idx, (key, name, desc) in enumerate(TAB_CONFIGS):
+            var = tk.BooleanVar(value=getattr(tabs_config, key, True))
+            tab_vars[key] = var
+            
+            checkbox = ttk.Checkbutton(tabs_frame, text=f"{name}  -  {desc}", variable=var)
+            checkbox.grid(row=idx, column=0, sticky=tk.W, pady=3)
+        
+        # 快捷按钮
+        quick_frame = ttk.Frame(main_frame)
+        quick_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        def select_all():
+            for var in tab_vars.values():
+                var.set(True)
+        
+        def deselect_all():
+            for var in tab_vars.values():
+                var.set(False)
+        
+        ttk.Button(quick_frame, text="全选", command=select_all).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(quick_frame, text="全不选", command=deselect_all).pack(side=tk.LEFT)
+        
+        # 底部按钮
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X)
+        
+        def save_and_close():
+            # 保存设置
+            for key, var in tab_vars.items():
+                setattr(config_manager.config.tabs, key, var.get())
+            
+            from core.config_manager import save_config
+            if save_config():
+                messagebox.showinfo("保存成功", "设置已保存！\n\n请重启程序以应用新的页签显示设置。", parent=dialog)
+                dialog.destroy()
+            else:
+                messagebox.showerror("保存失败", "保存设置时出错，请检查配置文件权限。", parent=dialog)
+        
+        ttk.Button(button_frame, text="保存", command=save_and_close, 
+                  style='Accent.TButton').pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="取消", command=dialog.destroy).pack(side=tk.LEFT)
     
     # 结果存储辅助函数
     def append_result(self, result_type, text):

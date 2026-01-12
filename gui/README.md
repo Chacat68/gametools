@@ -55,6 +55,34 @@ gui/
 | 配置同步 | Excel配置一致性检查 | `excel_config_sync.py` |
 | Excel转CSV | 批量转换格式 | `excel_to_csv_converter.py` |
 
+## 页签可见性设置
+
+用户可以在「关于」页面中点击「界面设置」按钮来自定义显示哪些功能页签：
+
+1. 打开「关于」页签
+2. 点击「⚙️ 界面设置」按钮
+3. 在弹窗中勾选/取消勾选需要显示的功能页签
+4. 点击「保存」
+5. 重启程序后生效
+
+配置存储在 `config.json` 的 `tabs` 字段中：
+
+```json
+{
+  "tabs": {
+    "cross_project_translator": true,
+    "json_detector": true,
+    "excel_data_processor": true,
+    "sheet_splitter": true,
+    "field_extractor": true,
+    "table_range_translator": true,
+    "batch_modifier": true,
+    "config_sync": true,
+    "csv_converter": true
+  }
+}
+```
+
 ## 打包发布
 
 ```bash

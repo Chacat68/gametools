@@ -38,5 +38,16 @@
     "detect_chinese": true,
     "detect_english": true,
     "min_confidence": 0.8
+  },
+  "tabs": {
+    "cross_project_translator": true,
+    "json_detector": true,
+    "excel_data_processor": true,
+    "sheet_splitter": true,
+    "field_extractor": true,
+    "table_range_translator": true,
+    "batch_modifier": true,
+    "config_sync": true,
+    "csv_converter": true
   }
 }

@@ -73,6 +73,20 @@ class DetectionConfig:
     
 
 @dataclass
+class TabVisibilityConfig:
+    """页签可见性配置"""
+    cross_project_translator: bool = True  # 跨项目翻译
+    json_detector: bool = True  # JSON检测
+    excel_data_processor: bool = True  # Excel数据处理
+    sheet_splitter: bool = True  # 分页拆分
+    field_extractor: bool = True  # 字段导出
+    table_range_translator: bool = True  # 多语言提取
+    batch_modifier: bool = True  # 批量改表
+    config_sync: bool = True  # 配置同步
+    csv_converter: bool = True  # CSV转换
+    
+
+@dataclass
 class GameToolsConfig:
     """GameTools 主配置"""
     version: str = "1.23.0"
@@ -84,6 +98,7 @@ class GameToolsConfig:
     ui: UIConfig = field(default_factory=UIConfig)
     path: PathConfig = field(default_factory=PathConfig)
     detection: DetectionConfig = field(default_factory=DetectionConfig)
+    tabs: TabVisibilityConfig = field(default_factory=TabVisibilityConfig)
 
 
 class ConfigManager:
@@ -130,7 +145,8 @@ class ConfigManager:
                     log=LogConfig(**data.get('log', {})),
                     ui=UIConfig(**data.get('ui', {})),
                     path=PathConfig(**data.get('path', {})),
-                    detection=DetectionConfig(**data.get('detection', {}))
+                    detection=DetectionConfig(**data.get('detection', {})),
+                    tabs=TabVisibilityConfig(**data.get('tabs', {}))
                 )
                 
                 logger.info(f"配置已加载: {self.config_file}")
@@ -163,7 +179,8 @@ class ConfigManager:
                 'log': asdict(self.config.log),
                 'ui': asdict(self.config.ui),
                 'path': asdict(self.config.path),
-                'detection': asdict(self.config.detection)
+                'detection': asdict(self.config.detection),
+                'tabs': asdict(self.config.tabs)
             }
             
             # 确保目录存在
@@ -276,7 +293,8 @@ class ConfigManager:
                 'log': asdict(self.config.log),
                 'ui': asdict(self.config.ui),
                 'path': asdict(self.config.path),
-                'detection': asdict(self.config.detection)
+                'detection': asdict(self.config.detection),
+                'tabs': asdict(self.config.tabs)
             }
             
             with open(export_file, 'w', encoding='utf-8') as f:
@@ -318,7 +336,8 @@ class ConfigManager:
                 log=LogConfig(**data.get('log', {})),
                 ui=UIConfig(**data.get('ui', {})),
                 path=PathConfig(**data.get('path', {})),
-                detection=DetectionConfig(**data.get('detection', {}))
+                detection=DetectionConfig(**data.get('detection', {})),
+                tabs=TabVisibilityConfig(**data.get('tabs', {}))
             )
             
             # 保存导入的配置
