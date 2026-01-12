@@ -25,17 +25,15 @@ gametools/
 │   ├── excel_config_sync.py      # Excel配置同步器
 │   ├── excel_field_extractor.py  # 表字段导出器
 │   ├── excel_sheet_splitter.py   # Excel工作表拆分器
-│   ├── table_range_translator.py # 多语言翻译提取器
-│   └── requirements.txt
+│   ├── excel_to_csv_converter.py # Excel转CSV转换器
+│   └── table_range_translator.py # 多语言翻译提取器
 ├── tools/                   # 工具脚本和模块
-│   ├── json_error_detector/      # JSON格式检测工具（命令行版）
-│   ├── excel_data_processor/     # Excel数据处理工具
+│   ├── json_error_detector/      # JSON错误检测核心模块
 │   ├── excel_data_processor.py   # Excel数据处理脚本
-│   └── demo.py                   # 演示脚本
+│   └── excel_sheet_splitter.py   # 分页拆分命令行入口
 ├── gui/                     # GUI和打包相关文件
 │   ├── gametools_unified.py      # 统一界面主程序
-│   ├── json_format_detector_gui.py # JSON检测GUI
-│   ├── cross_project_translator_cache_gui.py # 缓存翻译工具GUI
+│   ├── tabs/                     # 各功能页签模块
 │   ├── build_unified.py          # 统一版本构建脚本
 │   └── run_unified.py            # GUI启动脚本
 ├── test/                    # 测试文件夹

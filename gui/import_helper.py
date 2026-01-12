@@ -11,37 +11,52 @@ import os
 # 修复 PyInstaller 环境下的 numpy 导入问题
 def fix_pyinstaller_imports():
     """修复 PyInstaller 环境中的导入问题"""
-    # 移除可能的 numpy 源目录从 sys.path
-    original_path = sys.path.copy()
-    sys.path = [p for p in sys.path if 'numpy' not in p.lower() or 'site-packages' in p.lower()]
     
-    # 如果在 PyInstaller 环境中，设置临时目录
+    # 如果在 PyInstaller 环境中
     if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
-        # 设置 numpy 配置
-        os.environ['NUMPY_EXPERIMENTAL_ARRAY_FUNCTION'] = '0'
+        meipass = sys._MEIPASS
         
-        # 避免 numpy 尝试导入其源目录
-        numpy_base = os.path.join(sys._MEIPASS, 'numpy')
-        if os.path.exists(numpy_base):
-            # 清理可能导致问题的路径
-            sys.path = [p for p in sys.path if numpy_base not in p]
+        # 设置 numpy 配置
+        os.environ.setdefault('NUMPY_EXPERIMENTAL_ARRAY_FUNCTION', '0')
+        
+        # 清理 sys.path 中可能导致 numpy 认为在源目录的路径
+        cleaned_path = []
+        for p in sys.path:
+            p_lower = p.lower()
+            # 保留 _MEIPASS 内的路径
+            if meipass.lower() in p_lower:
+                cleaned_path.append(p)
+            # 保留 site-packages 路径
+            elif 'site-packages' in p_lower:
+                cleaned_path.append(p)
+            # 排除可能的 numpy 源目录
+            elif 'numpy' in p_lower:
+                continue
+            else:
+                cleaned_path.append(p)
+        
+        sys.path[:] = cleaned_path
+        
+        # 确保 _MEIPASS 在 sys.path 最前面
+        if meipass not in sys.path:
+            sys.path.insert(0, meipass)
+    else:
+        # 非 PyInstaller 环境，移除可能的 numpy 源目录
+        sys.path = [p for p in sys.path if 'numpy' not in p.lower() or 'site-packages' in p.lower()]
 
-# 在任何其他导入之前调用此函数
-try:
-    fix_pyinstaller_imports()
-except Exception as e:
-    print(f"警告: 导入修复失败 - {e}")
-
-# 尝试导入关键依赖
-try:
-    import pandas  # noqa: F401
-    import numpy   # noqa: F401
-    import xlwings  # noqa: F401
-    import openpyxl  # noqa: F401
-except ImportError as e:
-    print(f"错误: 无法导入必需的模块 - {e}")
-    print("这可能是 PyInstaller 环境问题，请尝试以下方案：")
-    print("1. 重新运行应用程序")
-    print("2. 重新安装依赖: pip install -r requirements.txt")
-    print("3. 使用非打包版本: python gui/run_unified.py")
-    sys.exit(1)
+# 延迟导入验证函数（不在模块加载时立即执行）
+def verify_imports():
+    """验证关键依赖是否可导入（供外部调用）"""
+    missing = []
+    for module in ['pandas', 'numpy', 'xlwings', 'openpyxl']:
+        try:
+            __import__(module)
+        except ImportError as e:
+            missing.append((module, str(e)))
+    
+    if missing:
+        print("警告: 以下模块导入失败:")
+        for module, error in missing:
+            print(f"  - {module}: {error}")
+        return False
+    return True

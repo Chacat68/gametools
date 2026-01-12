@@ -1,103 +1,79 @@
-# JSON错误检测工具 - GUI版本
+# GameTools GUI 模块
 
-基于tkinter的图形界面版本，提供友好的用户界面来检测JSON文件中的各种错误。
+基于 tkinter 的统一图形界面，整合所有游戏策划工具。
 
-## 功能特点
-
-- 🖥️ 直观的图形界面
-- 📁 文件浏览和选择
-- 🔍 全面的错误检测（语法、结构、数据类型、编码、性能）
-- 📊 实时显示检测结果
-- 💾 保存检测报告
-- ⚡ 多线程处理，界面不卡顿
-- 📦 可打包成独立的exe文件
-
-## 快速开始
-
-### 方法1: 直接运行Python脚本
+## 快速启动
 
 ```bash
-# 安装依赖
-pip install -r requirements.txt
+# 方法1: 运行启动脚本
+python run_unified.py
 
-# 运行GUI
-python json_error_detector_gui.py
-```
-
-### 方法2: 运行主GUI文件
-
-```bash
+# 方法2: 直接运行主程序
 python gametools_unified.py
+
+# 方法3: 使用批处理文件（Windows）
+双击 ../启动策划工具.bat
 ```
 
-## 使用说明
+## 目录结构
 
-1. **启动程序**: 运行上述命令启动图形界面
-2. **选择路径**: 点击"浏览文件夹"按钮选择包含JSON文件的文件夹
-3. **开始检测**: 点击"开始检测"按钮，工具会自动检测文件夹下的全部JSON文件
-4. **查看结果**: 在结果区域查看详细的检测报告
-5. **保存报告**: 点击"保存报告"按钮将结果保存到文件
+```
+gui/
+├── gametools_unified.py    # 统一界面主程序
+├── run_unified.py          # GUI 启动脚本
+├── build_unified.py        # PyInstaller 打包脚本
+├── gametools_unified.spec  # PyInstaller 配置文件
+├── tabs/                   # 各功能页签模块
+│   ├── base_tab.py         # 页签基类
+│   ├── batch_modifier_tab.py
+│   ├── config_sync_tab.py
+│   ├── cross_project_tab.py
+│   ├── csv_converter_tab.py
+│   ├── field_extractor_tab.py
+│   ├── json_detector_tab.py
+│   ├── sheet_splitter_tab.py
+│   ├── table_range_translator_tab.py
+│   └── about_tab.py
+├── base_detector_gui.py    # 检测器 GUI 基类
+├── gui_utils.py            # GUI 工具函数
+├── import_helper.py        # PyInstaller 导入修复
+├── hook_numpy.py           # numpy 打包钩子
+└── pyi_rth_numpy_fix.py    # numpy 运行时钩子
+```
 
-## 界面说明
+## 功能页签
 
-### 路径选择区域
-- **路径**: 选择要检测的JSON文件路径或文件夹路径
-- **自动检测**: 工具会根据路径类型自动选择检测方式（文件或文件夹）
+| 页签 | 功能 | 核心模块 |
+|------|------|----------|
+| 跨项目翻译对应 | 翻译映射和对照 | `cross_project_translator.py` |
+| JSON检测 | JSON语法和格式错误检测 | `json_error_detector.py` |
+| Excel数据处理 | A列分组和拆分 | `excel_data_processor.py` |
+| 表字段导出 | 提取本地化字段 | `excel_field_extractor.py` |
+| 多语言翻译提取 | 按配置提取多语言 | `table_range_translator.py` |
+| 分页拆分 | 按首列创建分页 | `excel_sheet_splitter.py` |
+| 批量改表 | 批量修改Excel | `batch_excel_modifier.py` |
+| 配置同步 | Excel配置一致性检查 | `excel_config_sync.py` |
+| Excel转CSV | 批量转换格式 | `excel_to_csv_converter.py` |
 
-### 控制按钮
-- **开始检测**: 开始执行错误检测
-- **清空结果**: 清空当前显示的结果
-- **保存报告**: 将检测结果保存到文本文件
-
-### 结果显示区域
-- 显示详细的错误检测报告
-- 包括错误类型、位置、严重程度等信息
-- 支持语法错误、结构错误、数据类型错误、编码错误和性能问题检测
-
-## 检测的错误类型
-
-### 语法错误
-- 尾随逗号
-- 单引号使用
-- 注释存在
-- JSON解析错误
-
-
-### 数据类型错误
-- 键类型错误
-- 值类型错误
-- 数组元素类型错误
-
-### 编码错误
-- 编码检测错误
-- 编码警告
-
-### 性能问题
-- 嵌套过深
-- 对象过大
-- 数组过大
-
-## 打包成exe文件
-
-### 自动构建
+## 打包发布
 
 ```bash
-# 运行自动化构建脚本
-python build.py
+# 运行打包脚本
+python build_unified.py
+
+# 输出位置
+dist/gametools_v{版本号}.exe
 ```
 
-构建完成后会生成：
-- `dist/JSON错误检测工具.exe` - 主程序
-- `dist/JSON错误检测工具_便携版/` - 便携版包
+## 性能优化
 
-### 手动构建
-
-```bash
-# 使用PyInstaller构建
-pyinstaller json_error_detector.spec
-```
+- **Tab 延迟加载**: 只在用户切换时创建 Tab UI
+- **模块延迟导入**: 减少启动时导入时间
+- **后台预加载**: 常用处理器后台初始化
+- **启动时间**: 优化后 ~0.5 秒
 
 ## 系统要求
 
-- Python 3.7+
-- tkinter (通常随Python安装)
+- Python 3.8+
+- Windows 10/11
+- 依赖: tkinter, pandas, openpyxl, xlwings

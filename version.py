@@ -7,14 +7,23 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.43.0"
-__version_info__ = (1, 43, 0)
-__build_date__ = "2026-01-10"
+__version__ = "1.43.1"
+__version_info__ = (1, 43, 1)
+__build_date__ = "2026-01-12"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能、GUI启动优化"
 
 # 版本历史（仅保留最近5个版本，更早版本请查看 docs/VERSION_HISTORY_ARCHIVE.md）
 VERSION_HISTORY = {
+    "1.43.1": {
+        "date": "2026-01-12",
+        "changes": [
+            "🔧 修复 PyInstaller 打包后 numpy 导入错误",
+            "📦 添加运行时钩子 pyi_rth_numpy_fix.py 解决 numpy 源目录检测问题",
+            "✨ 更新 hiddenimports 包含必需的 numpy 模块（__config__, _multiarray_tests等）",
+            "🛠️ 修复二进制文件过滤规则，保留 numpy 必需的测试模块"
+        ]
+    },
     "1.43.0": {
         "date": "2026-01-10",
         "changes": [

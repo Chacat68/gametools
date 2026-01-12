@@ -1,6 +1,6 @@
 # GameTools 文档目录
 
-> 游戏工具集 (v1.39.6) - 集成策划本地化、Excel处理、翻译提取等功能
+> 游戏工具集 (v1.43.1) - 集成策划本地化、Excel处理、翻译提取等功能
 
 ## 📚 文档导航
 
@@ -20,16 +20,15 @@
 #### 缓存系统
 - **[CACHE_SYSTEM_GUIDE.md](CACHE_SYSTEM_GUIDE.md)** - 翻译内容缓存机制详解
 
-#### Excel处理
-- **[TABLE_RANGE_TRANSLATOR_IMPLEMENTATION.md](TABLE_RANGE_TRANSLATOR_IMPLEMENTATION.md)** - 表范围翻译实现细节
-- **[TABLE_RANGE_TRANSLATOR_EXCEL_POSITION_SUMMARY.md](TABLE_RANGE_TRANSLATOR_EXCEL_POSITION_SUMMARY.md)** - Excel位置验证报告
-- **[EXCEL_POSITION_VERIFICATION_REPORT.md](EXCEL_POSITION_VERIFICATION_REPORT.md)** - Excel位置验证详细报告
+#### CSV格式支持
+- **[CSV_MAPPING_SUPPORT.md](CSV_MAPPING_SUPPORT.md)** - CSV映射表格式说明
+- **[TRANSLATION_CSV_SUPPORT.md](TRANSLATION_CSV_SUPPORT.md)** - 翻译CSV格式支持
 
 ### 📋 其他资源
 
 - **[ERROR_LOGGING_FEATURE.md](ERROR_LOGGING_FEATURE.md)** - 错误日志和诊断功能
-- **[RELEASE_NOTES_v1.39.6.md](RELEASE_NOTES_v1.39.6.md)** - 最新版本发布说明
-- **[BUILD_REPORT.md](BUILD_REPORT.md)** - 最新构建报告
+- **[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)** - 最新构建报告
+- **[VERSION_HISTORY_ARCHIVE.md](VERSION_HISTORY_ARCHIVE.md)** - 版本历史归档
 
 ---
 
@@ -106,15 +105,15 @@ python gui/gametools_unified.py
 
 ## 📝 版本信息
 
-当前版本：**v1.39.6** (2025-12-16)
+当前版本：**v1.43.1** (2026-01-12)
 
 最新特性：
-- ✨ 批量改表自动检测映射表语言
-- 🚀 智能缓存系统（命中率70-90%）
+- ⚡ GUI启动性能优化 4-6倍
+- ✨ Excel转CSV功能
 - 🛡️ 增强错误处理和诊断
 - 📈 实时进度跟踪和ETA显示
 
-详见：[RELEASE_NOTES_v1.39.6.md](RELEASE_NOTES_v1.39.6.md)
+详见：[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)
 
 ---
 
@@ -144,6 +143,6 @@ python gui/gametools_unified.py
 ---
 
 ## 📞 更新日期
-- 文档最后更新：2025-12-16
-- 对应程序版本：v1.39.6
+- 文档最后更新：2026-01-12
+- 对应程序版本：v1.43.1
 

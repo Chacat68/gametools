@@ -16,11 +16,18 @@ import subprocess
 import logging
 
 # 修复 PyInstaller 环境下的导入问题（必须在其他导入之前调用）
-from .import_helper import fix_pyinstaller_imports
+# 检测是否在 PyInstaller 环境
+if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
+    # PyInstaller 环境使用绝对导入
+    from gui.import_helper import fix_pyinstaller_imports
+else:
+    # 开发环境使用相对导入
+    from .import_helper import fix_pyinstaller_imports
 fix_pyinstaller_imports()
 
-# 添加模块路径
-sys.path.append(str(Path(__file__).parent.parent))
+# 添加模块路径（仅在非 PyInstaller 环境）
+if not hasattr(sys, 'frozen'):
+    sys.path.append(str(Path(__file__).parent.parent))
 
 # 导入core模块（会自动初始化日志配置）
 import core
