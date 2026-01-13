@@ -245,7 +245,14 @@ class HomePage(ModernPage):
             try:
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
-                messagebox.showinfo("成功", "设置已保存！\n重启应用后生效。", parent=dialog)
+                
+                # 即时刷新侧边栏
+                if hasattr(self.app, 'refresh_sidebar'):
+                    self.app.refresh_sidebar()
+                    messagebox.showinfo("成功", "设置已保存并生效！", parent=dialog)
+                else:
+                    messagebox.showinfo("成功", "设置已保存！\n重启应用后生效。", parent=dialog)
+                
                 dialog.destroy()
             except Exception as e:
                 messagebox.showerror("错误", f"保存配置失败：{e}", parent=dialog)

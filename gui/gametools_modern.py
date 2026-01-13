@@ -160,6 +160,47 @@ class GameToolsModern:
         except:
             return {}
     
+    def refresh_sidebar(self):
+        """刷新侧边栏（用于设置变更后即时生效）"""
+        # 保存当前选中项
+        saved_key = self.sidebar.clear_items()
+        
+        # 加载最新的可见性配置
+        visible_pages = self._load_visible_pages()
+        
+        # 重新添加导航项
+        current_group = None
+        group_labels = {
+            "main": "主页",
+            "excel": "Excel 工具",
+            "translate": "翻译工具",
+            "tools": "其他工具",
+            "other": "更多",
+        }
+        
+        for key, title, icon, group, _ in self.PAGE_CONFIG:
+            # 检查是否应该显示此页面
+            if key != "home" and not visible_pages.get(key, True):
+                continue
+                
+            # 添加分组标签
+            if group != current_group:
+                self.sidebar.add_group_label(group_labels.get(group, group))
+                current_group = group
+            
+            # 添加导航项
+            item = SidebarItem(key=key, title=title, icon=icon, group=group)
+            self.sidebar.add_item(item)
+        
+        # 恢复选中状态
+        if saved_key:
+            # 如果之前选中的页面仍然可见，恢复选中
+            if saved_key == "home" or visible_pages.get(saved_key, True):
+                self.sidebar.restore_selection(saved_key)
+            else:
+                # 如果之前的页面被隐藏，导航到首页
+                self._navigate_to("home")
+    
     def _create_content_area(self):
         """创建内容区域"""
         self.content_area = tk.Frame(

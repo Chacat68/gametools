@@ -433,3 +433,25 @@ class ModernSidebar(tk.Frame):
             height=1
         )
         separator.pack(fill=tk.X, padx=16, pady=8)
+    
+    def clear_items(self):
+        """清除所有导航项和分组"""
+        # 保存当前选中项
+        saved_current_key = self.current_key
+        
+        # 清除按钮引用
+        self.buttons.clear()
+        self.groups.clear()
+        self.current_group = None
+        
+        # 销毁 nav_container 中的所有子组件
+        for widget in self.nav_container.winfo_children():
+            widget.destroy()
+        
+        return saved_current_key
+    
+    def restore_selection(self, key: str):
+        """恢复选中状态"""
+        if key and key in self.buttons:
+            self.current_key = key
+            self._set_button_active(key)
