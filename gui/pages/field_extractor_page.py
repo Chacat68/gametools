@@ -310,31 +310,6 @@ class FieldExtractorPage(ModernPage):
         
         self.progress_fill = tk.Frame(self.progress_track, bg=self.theme.colors["primary"], height=4)
         self.progress_fill.place(x=0, y=0, relheight=1, relwidth=0)
-        
-        # 结果文本
-        result_frame = tk.Frame(
-            inner,
-            bg=self.theme.colors["bg_input"],
-            highlightbackground=self.theme.colors["border"],
-            highlightthickness=1
-        )
-        result_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.result_text = tk.Text(
-            result_frame,
-            font=self.theme.FONTS["mono"],
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            wrap=tk.WORD,
-            padx=10,
-            pady=10
-        )
-        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        scrollbar = ttk.Scrollbar(result_frame, orient=tk.VERTICAL, command=self.result_text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
     
     def _start_extraction(self):
         """开始提取"""
@@ -349,7 +324,6 @@ class FieldExtractorPage(ModernPage):
         
         self.extract_btn.configure(state=tk.DISABLED)
         self.stats_label.configure(text="提取中...")
-        self.result_text.delete("1.0", tk.END)
         
         thread = threading.Thread(target=self._do_extraction, daemon=True)
         thread.start()
@@ -391,8 +365,6 @@ class FieldExtractorPage(ModernPage):
         self.stats_label.configure(text=message)
         if percentage is not None:
             self.progress_fill.place(relwidth=percentage / 100)
-        self.result_text.insert(tk.END, message + "\n")
-        self.result_text.see(tk.END)
     
     def _on_complete(self, result):
         """完成处理"""
@@ -402,24 +374,18 @@ class FieldExtractorPage(ModernPage):
         if isinstance(result, dict):
             tables = result.get('tables', {})
             self.stats_label.configure(text=f"✅ 完成，共 {len(tables)} 个表", fg=self.theme.colors["success"])
-            
-            summary = f"\n{'='*50}\n提取完成:\n"
-            summary += f"  扫描表数: {len(tables)}\n"
             total_fields = sum(len(t.get('fields', [])) for t in tables.values())
-            summary += f"  总字段数: {total_fields}\n"
-            self.result_text.insert(tk.END, summary)
-        
-        self.show_info("完成", "字段提取完成！")
+            self.show_info("完成", f"字段提取完成！\n\n扫描表数: {len(tables)}\n总字段数: {total_fields}")
+        else:
+            self.show_info("完成", "字段提取完成！")
     
     def _on_error(self, error_msg: str):
         """错误处理"""
         self.extract_btn.configure(state=tk.NORMAL)
         self.stats_label.configure(text="❌ 失败", fg=self.theme.colors["error"])
-        self.result_text.insert(tk.END, f"\n错误: {error_msg}\n")
         self.show_error("错误", error_msg)
     
     def _clear_results(self):
         """清空结果"""
-        self.result_text.delete("1.0", tk.END)
         self.stats_label.configure(text="", fg=self.theme.colors["text_muted"])
         self.progress_fill.place(relwidth=0)

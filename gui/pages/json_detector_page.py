@@ -287,38 +287,6 @@ class JsonDetectorPage(ModernPage):
             height=4
         )
         self.progress_fill.place(x=0, y=0, relheight=1, relwidth=0)
-        
-        # 结果列表
-        result_frame = tk.Frame(
-            inner,
-            bg=self.theme.colors["bg_input"],
-            highlightbackground=self.theme.colors["border"],
-            highlightthickness=1
-        )
-        result_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.result_text = tk.Text(
-            result_frame,
-            font=self.theme.FONTS["mono"],
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            wrap=tk.WORD,
-            padx=10,
-            pady=10
-        )
-        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        scrollbar = ttk.Scrollbar(result_frame, orient=tk.VERTICAL,
-                                   command=self.result_text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
-        
-        # 配置文本标签颜色
-        self.result_text.tag_configure("error", foreground=self.theme.colors["error"])
-        self.result_text.tag_configure("warning", foreground=self.theme.colors["warning"])
-        self.result_text.tag_configure("success", foreground=self.theme.colors["success"])
-        self.result_text.tag_configure("info", foreground=self.theme.colors["info"])
     
     # ==================== 浏览方法 ====================
     
@@ -353,7 +321,6 @@ class JsonDetectorPage(ModernPage):
         # 禁用按钮，清空结果
         self.detect_btn.configure(state=tk.DISABLED)
         self.save_btn.configure(state=tk.DISABLED)
-        self.result_text.delete("1.0", tk.END)
         self.stats_label.configure(text="检测中...")
         
         # 启动检测线程
@@ -403,20 +370,7 @@ class JsonDetectorPage(ModernPage):
                 fg=self.theme.colors["success"]
             )
         
-        # 显示详细结果
-        for result in results:
-            filepath = result.get('file', 'unknown')
-            filename = Path(filepath).name
-            
-            if result.get('has_error', False):
-                self.result_text.insert(tk.END, f"❌ {filename}\n", "error")
-                errors = result.get('errors', [])
-                for error in errors:
-                    self.result_text.insert(tk.END, f"   {error}\n")
-            else:
-                self.result_text.insert(tk.END, f"✓ {filename}\n", "success")
-        
-        # 启用保存按钮
+        # 保存结果用于导出
         if results:
             self.save_btn.configure(state=tk.NORMAL)
             self._detection_results = results
@@ -425,12 +379,10 @@ class JsonDetectorPage(ModernPage):
         """处理错误"""
         self.detect_btn.configure(state=tk.NORMAL)
         self.stats_label.configure(text="检测失败", fg=self.theme.colors["error"])
-        self.result_text.insert(tk.END, f"错误: {error_msg}\n", "error")
         self.show_error("检测错误", error_msg)
     
     def _clear_results(self):
         """清空结果"""
-        self.result_text.delete("1.0", tk.END)
         self.stats_label.configure(text="", fg=self.theme.colors["text_muted"])
         self.progress_fill.place(relwidth=0)
         self.save_btn.configure(state=tk.DISABLED)
@@ -450,7 +402,17 @@ class JsonDetectorPage(ModernPage):
         
         if filepath:
             try:
-                content = self.result_text.get("1.0", tk.END)
+                # 生成报告内容
+                content = "JSON 检测报告\n" + "=" * 50 + "\n\n"
+                for result in self._detection_results:
+                    filename = Path(result.get('file', 'unknown')).name
+                    if result.get('has_error', False):
+                        content += f"❌ {filename}\n"
+                        for error in result.get('errors', []):
+                            content += f"   {error}\n"
+                    else:
+                        content += f"✓ {filename}\n"
+                
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(content)
                 self.show_info("保存成功", f"报告已保存到:\n{filepath}")

@@ -316,24 +316,16 @@ class CrossProjectPage(ModernPage):
         )
         title.pack(fill=tk.X, pady=(0, 12))
         
-        # 结果文本框
-        text_frame = tk.Frame(inner, bg=self.theme.colors["bg_card"])
-        text_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.result_text = tk.Text(
-            text_frame,
-            font=("Consolas", 10),
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            wrap=tk.WORD
+        # 状态标签
+        self.status_info_label = tk.Label(
+            inner,
+            text="就绪",
+            font=self.theme.FONTS["body"],
+            bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_muted"],
+            anchor=tk.W
         )
-        
-        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.result_text.yview)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
-        
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.status_info_label.pack(fill=tk.X)
     
     # ==================== 事件处理方法 ====================
     
@@ -458,16 +450,18 @@ class CrossProjectPage(ModernPage):
     
     def _schedule_append(self, text):
         """调度追加文本"""
-        self.after(0, lambda: self._append_result(text))
+        # 结果文本框已移除，此方法保留但不执行操作
+        pass
     
     def _append_result(self, text):
         """追加结果文本"""
-        self.result_text.insert(tk.END, text)
-        self.result_text.see(tk.END)
+        # 结果文本框已移除，此方法保留但不执行操作
+        pass
     
     def _clear_results(self):
         """清空结果"""
-        self.result_text.delete(1.0, tk.END)
+        if hasattr(self, 'status_info_label'):
+            self.status_info_label.configure(text="就绪")
         self.export_button.config(state="disabled")
     
     def _export_results(self):

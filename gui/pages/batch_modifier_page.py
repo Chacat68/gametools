@@ -430,32 +430,6 @@ class BatchModifierPage(ModernPage):
             height=6
         )
         self.progress_fill.place(x=0, y=0, relheight=1, relwidth=0)
-        
-        # 结果文本区域
-        text_frame = tk.Frame(
-            inner,
-            bg=self.theme.colors["bg_input"],
-            highlightbackground=self.theme.colors["border"],
-            highlightthickness=1
-        )
-        text_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.result_text = tk.Text(
-            text_frame,
-            font=self.theme.FONTS["mono"],
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            wrap=tk.WORD,
-            padx=10,
-            pady=10
-        )
-        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, 
-                                   command=self.result_text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
     
     # ==================== 浏览方法 ====================
     
@@ -536,7 +510,6 @@ class BatchModifierPage(ModernPage):
         # 禁用按钮
         self.start_btn.configure(state=tk.DISABLED)
         self.status_label.configure(text="处理中...", fg=self.theme.colors["info"])
-        self.result_text.delete("1.0", tk.END)
         
         # 启动线程
         thread = threading.Thread(target=self._do_modification, daemon=True)
@@ -589,10 +562,6 @@ class BatchModifierPage(ModernPage):
         self.status_label.configure(text=message)
         if percentage is not None:
             self.progress_fill.place(relwidth=percentage / 100)
-        
-        # 追加到结果文本
-        self.result_text.insert(tk.END, message + "\n")
-        self.result_text.see(tk.END)
     
     def _on_complete(self, result):
         """处理完成"""
@@ -602,20 +571,15 @@ class BatchModifierPage(ModernPage):
         
         # 显示统计
         if isinstance(result, dict):
-            summary = f"\n{'='*50}\n处理完成统计:\n"
-            summary += f"  修改文件数: {result.get('modified_files', 0)}\n"
-            summary += f"  修改单元格: {result.get('modified_cells', 0)}\n"
-            summary += f"  跳过记录数: {result.get('skipped', 0)}\n"
-            summary += f"  错误数: {result.get('errors', 0)}\n"
-            self.result_text.insert(tk.END, summary)
-        
-        self.show_info("完成", "批量修改已完成！")
+            msg = f"批量修改已完成！\n\n修改文件数: {result.get('modified_files', 0)}\n修改单元格: {result.get('modified_cells', 0)}\n跳过记录数: {result.get('skipped', 0)}\n错误数: {result.get('errors', 0)}"
+            self.show_info("完成", msg)
+        else:
+            self.show_info("完成", "批量修改已完成！")
     
     def _on_error(self, error_msg: str):
         """处理错误"""
         self.start_btn.configure(state=tk.NORMAL)
         self.status_label.configure(text="❌ 处理失败", fg=self.theme.colors["error"])
-        self.result_text.insert(tk.END, f"\n错误: {error_msg}\n")
         self.show_error("错误", error_msg)
     
     def _preview_mapping(self):
@@ -633,15 +597,13 @@ class BatchModifierPage(ModernPage):
             preview = f"映射表预览: {Path(mapping_path).name}\n"
             preview += f"行数: {len(df)}, 列数: {len(df.columns)}\n"
             preview += f"列名: {', '.join(df.columns.tolist())}\n\n"
-            preview += df.head(10).to_string()
+            preview += f"前10行数据:\n{df.head(10).to_string()}"
             
-            self.result_text.delete("1.0", tk.END)
-            self.result_text.insert("1.0", preview)
+            self.show_info("映射表预览", preview)
         except Exception as e:
             self.show_error("预览失败", str(e))
     
     def _clear_results(self):
         """清空结果"""
-        self.result_text.delete("1.0", tk.END)
         self.status_label.configure(text="就绪", fg=self.theme.colors["text_muted"])
         self.progress_fill.place(relwidth=0)

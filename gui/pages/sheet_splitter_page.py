@@ -392,24 +392,16 @@ class SheetSplitterPage(ModernPage):
         )
         title.pack(fill=tk.X, pady=(0, 12))
         
-        # 结果文本框
-        text_frame = tk.Frame(inner, bg=self.theme.colors["bg_card"])
-        text_frame.pack(fill=tk.BOTH, expand=True)
-        
-        self.result_text = tk.Text(
-            text_frame,
-            font=("Consolas", 10),
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            wrap=tk.WORD
+        # 状态标签
+        self.status_info_label = tk.Label(
+            inner,
+            text="就绪",
+            font=self.theme.FONTS["body"],
+            bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_muted"],
+            anchor=tk.W
         )
-        
-        scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=self.result_text.yview)
-        self.result_text.configure(yscrollcommand=scrollbar.set)
-        
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.status_info_label.pack(fill=tk.X)
     
     # ==================== 事件处理方法 ====================
     
@@ -524,10 +516,6 @@ class SheetSplitterPage(ModernPage):
     
     def _show_success_result(self, report, output_file):
         """显示成功结果"""
-        self._append_result(report)
-        self._append_result("\n\n✅ Excel分页拆分完成！")
-        self._append_result(f"\n输出文件: {output_file}")
-        
         self.process_button.config(state="normal")
         self.open_folder_button.config(state="normal")
         self.update_status("Excel分页拆分完成")
@@ -539,8 +527,6 @@ class SheetSplitterPage(ModernPage):
     
     def _show_error_result(self, error_msg):
         """显示错误结果"""
-        self._append_result(f"❌ {error_msg}\n")
-        
         self.process_button.config(state="normal")
         self.update_status("Excel分页拆分失败")
         
@@ -548,12 +534,13 @@ class SheetSplitterPage(ModernPage):
     
     def _append_result(self, text):
         """追加结果文本"""
-        self.result_text.insert(tk.END, text)
-        self.result_text.see(tk.END)
+        # 结果文本框已移除，此方法保留但不执行操作
+        pass
     
     def _clear_results(self):
         """清空结果"""
-        self.result_text.delete(1.0, tk.END)
+        if hasattr(self, 'status_info_label'):
+            self.status_info_label.configure(text="就绪")
     
     def _open_output_folder(self):
         """打开输出文件所在的文件夹"""
