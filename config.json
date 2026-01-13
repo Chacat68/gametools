@@ -49,5 +49,17 @@
     "batch_modifier": true,
     "config_sync": true,
     "csv_converter": true
+  },
+  "visible_pages": {
+    "batch_modifier": true,
+    "field_extractor": true,
+    "sheet_splitter": false,
+    "config_sync": false,
+    "csv_converter": false,
+    "excel_processor": false,
+    "cross_project": true,
+    "table_range": true,
+    "json_detector": true,
+    "about": true
   }
 }

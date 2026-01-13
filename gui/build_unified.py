@@ -26,7 +26,7 @@ from typing import Optional
 
 # 添加父目录到路径以导入版本信息
 sys.path.append(str(Path(__file__).parent.parent))
-from version import get_version, get_build_date, get_author, get_description
+from version import get_version, get_build_date, get_author, get_description, increment_version
 
 # 最近一次成功生成到项目根目录 dist/ 的exe路径（用于打印准确产物名）
 LAST_BUILT_EXE: Optional[Path] = None
@@ -691,12 +691,16 @@ def main():
     script_dir = Path(__file__).resolve().parent
     os.chdir(script_dir)
 
+    # 自动递增版本号
+    print("\n[版本更新] 自动递增版本号...")
+    new_version = increment_version("patch")
+
     total_start_time = time.time()
     
     print("=" * 60)
     print("gametools 统一版本构建脚本 (性能优化版)")
     print("=" * 60)
-    print(f"版本: v{get_version()}")
+    print(f"版本: v{new_version}")
     print(f"构建日期: {get_build_date()}")
     print(f"构建时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     

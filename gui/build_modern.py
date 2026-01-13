@@ -18,7 +18,7 @@ from datetime import datetime
 
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
-from version import get_version, get_build_date, get_author, get_description
+from version import get_version, get_build_date, get_author, get_description, increment_version
 
 
 def create_spec_content(script_dir: Path, project_root: Path) -> str:
@@ -244,9 +244,13 @@ def main():
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     
+    # 自动递增版本号
+    print("\n[版本更新] 自动递增版本号...")
+    new_version = increment_version("patch")
+    
     print("=" * 60)
     print(f"[GameTools] 现代化版本打包工具")
-    print(f"   版本: v{get_version()}")
+    print(f"   版本: v{new_version}")
     print(f"   构建日期: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     

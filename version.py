@@ -131,6 +131,78 @@ def get_latest_changes():
     return VERSION_HISTORY[latest_version]["changes"]
 
 
+def increment_version(part: str = "patch") -> str:
+    """
+    自动递增版本号并更新 version.py 文件
+    
+    Args:
+        part: 要递增的部分，可选 'major', 'minor', 'patch'
+              - major: 1.0.0 -> 2.0.0
+              - minor: 1.0.0 -> 1.1.0  
+              - patch: 1.0.0 -> 1.0.1 (默认)
+    
+    Returns:
+        新版本号字符串
+    """
+    import re
+    from datetime import datetime
+    from pathlib import Path
+    
+    global __version__, __version_info__, __build_date__
+    
+    # 解析当前版本
+    major, minor, patch = __version_info__
+    
+    # 递增版本号
+    if part == "major":
+        major += 1
+        minor = 0
+        patch = 0
+    elif part == "minor":
+        minor += 1
+        patch = 0
+    else:  # patch
+        patch += 1
+    
+    new_version = f"{major}.{minor}.{patch}"
+    new_version_info = (major, minor, patch)
+    new_build_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # 读取当前文件
+    version_file = Path(__file__)
+    content = version_file.read_text(encoding='utf-8')
+    
+    # 更新版本信息
+    content = re.sub(
+        r'__version__ = "[\d.]+"',
+        f'__version__ = "{new_version}"',
+        content
+    )
+    content = re.sub(
+        r'__version_info__ = \([\d, ]+\)',
+        f'__version_info__ = ({major}, {minor}, {patch})',
+        content
+    )
+    content = re.sub(
+        r'__build_date__ = "[\d-]+"',
+        f'__build_date__ = "{new_build_date}"',
+        content
+    )
+    
+    # 写回文件
+    version_file.write_text(content, encoding='utf-8')
+    
+    # 更新全局变量
+    __version__ = new_version
+    __version_info__ = new_version_info
+    __build_date__ = new_build_date
+    
+    print(f"[VERSION] 版本已更新: {__version__} -> {new_version}")
+    print(f"[VERSION] 构建日期: {new_build_date}")
+    
+    return new_version
+
+
 if __name__ == "__main__":
     # 测试版本信息
     print("=== gametools 版本信息 ===")

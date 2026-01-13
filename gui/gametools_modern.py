@@ -115,6 +115,9 @@ class GameToolsModern:
         )
         self.sidebar.grid(row=0, column=0, rowspan=2, sticky="nsew")
         
+        # 加载可见性配置
+        visible_pages = self._load_visible_pages()
+        
         # 添加导航项
         current_group = None
         group_labels = {
@@ -126,6 +129,10 @@ class GameToolsModern:
         }
         
         for key, title, icon, group, _ in self.PAGE_CONFIG:
+            # 检查是否应该显示此页面
+            if key != "home" and not visible_pages.get(key, True):
+                continue
+                
             # 添加分组标签
             if group != current_group:
                 if current_group is not None:
@@ -136,6 +143,22 @@ class GameToolsModern:
             # 添加导航项
             item = SidebarItem(key=key, title=title, icon=icon, group=group)
             self.sidebar.add_item(item)
+    
+    def _load_visible_pages(self):
+        """加载页面可见性配置"""
+        import json
+        from pathlib import Path
+        
+        config_path = Path("config.json")
+        if not config_path.exists():
+            return {}
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get("visible_pages", {})
+        except:
+            return {}
     
     def _create_content_area(self):
         """创建内容区域"""
