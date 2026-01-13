@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 GameTools 现代化侧边栏组件
-提供左侧导航栏，支持动态切换页面
+提供左侧导航栏，支持动态切换页面、分组折叠和滚动
 """
 
 import tkinter as tk
@@ -37,7 +37,9 @@ class ModernSidebar(tk.Frame):
         self.theme = theme
         self.on_select = on_select
         self.current_key = None
-        self.buttons: Dict[str, tk.Frame] = {}
+        self.buttons: Dict[str, dict] = {}
+        self.groups: Dict[str, dict] = {}  # 分组信息
+        self.current_group = None  # 当前正在添加的分组
         
         # 配置样式
         self.configure(
@@ -48,7 +50,7 @@ class ModernSidebar(tk.Frame):
         
         # 创建内部容器
         self._create_header()
-        self._create_nav_container()
+        self._create_scrollable_nav()
         self._create_footer()
     
     def _create_header(self):
@@ -100,11 +102,75 @@ class ModernSidebar(tk.Frame):
         )
         separator.pack(fill=tk.X, padx=16, pady=(0, 10))
     
-    def _create_nav_container(self):
-        """创建导航按钮容器"""
-        # 滚动容器
-        self.nav_container = tk.Frame(self, bg=self.theme.colors["bg_sidebar"])
-        self.nav_container.pack(fill=tk.BOTH, expand=True, padx=8)
+    def _create_scrollable_nav(self):
+        """创建可滚动的导航区域"""
+        # 创建 Canvas 用于滚动
+        self.canvas = tk.Canvas(
+            self,
+            bg=self.theme.colors["bg_sidebar"],
+            highlightthickness=0,
+            bd=0
+        )
+        self.canvas.pack(fill=tk.BOTH, expand=True, padx=0)
+        
+        # 创建滚动条（仅在需要时显示）
+        self.scrollbar = ttk.Scrollbar(
+            self.canvas,
+            orient="vertical",
+            command=self.canvas.yview
+        )
+        
+        # 创建内部容器
+        self.nav_container = tk.Frame(
+            self.canvas,
+            bg=self.theme.colors["bg_sidebar"]
+        )
+        
+        # 将容器放入 Canvas
+        self.canvas_window = self.canvas.create_window(
+            (0, 0),
+            window=self.nav_container,
+            anchor="nw"
+        )
+        
+        # 配置滚动
+        self.canvas.configure(yscrollcommand=self._on_scroll)
+        self.nav_container.bind("<Configure>", self._on_frame_configure)
+        self.canvas.bind("<Configure>", self._on_canvas_configure)
+        
+        # 绑定鼠标滚轮
+        self.canvas.bind("<Enter>", self._bind_mousewheel)
+        self.canvas.bind("<Leave>", self._unbind_mousewheel)
+    
+    def _on_scroll(self, *args):
+        """滚动条回调"""
+        self.scrollbar.set(*args)
+        # 检查是否需要显示滚动条
+        if float(args[0]) <= 0 and float(args[1]) >= 1:
+            self.scrollbar.place_forget()
+        else:
+            self.scrollbar.place(relx=1, rely=0, relheight=1, anchor="ne")
+    
+    def _on_frame_configure(self, event):
+        """内容变化时更新滚动区域"""
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+    
+    def _on_canvas_configure(self, event):
+        """Canvas 大小变化时调整内容宽度"""
+        # 让内容填满 Canvas 宽度
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+    
+    def _bind_mousewheel(self, event):
+        """绑定鼠标滚轮"""
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+    
+    def _unbind_mousewheel(self, event):
+        """解绑鼠标滚轮"""
+        self.canvas.unbind_all("<MouseWheel>")
+    
+    def _on_mousewheel(self, event):
+        """鼠标滚轮滚动"""
+        self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
     
     def _create_footer(self):
         """创建底部区域"""
@@ -136,22 +202,121 @@ class ModernSidebar(tk.Frame):
         version_label.pack(anchor=tk.W)
     
     def add_group_label(self, text: str):
-        """添加分组标签"""
-        label = tk.Label(
+        """添加可折叠的分组标签"""
+        group_key = text.lower().replace(" ", "_")
+        self.current_group = group_key
+        
+        # 分组容器
+        group_frame = tk.Frame(
             self.nav_container,
+            bg=self.theme.colors["bg_sidebar"]
+        )
+        group_frame.pack(fill=tk.X, pady=(12, 0))
+        
+        # 标签行（可点击）
+        label_row = tk.Frame(
+            group_frame,
+            bg=self.theme.colors["bg_sidebar"],
+            cursor="hand2"
+        )
+        label_row.pack(fill=tk.X, padx=8, pady=(0, 6))
+        
+        # 分组标题
+        label = tk.Label(
+            label_row,
             text=text.upper(),
             font=("Microsoft YaHei", 8, "bold"),
             bg=self.theme.colors["bg_sidebar"],
             fg=self.theme.colors["text_muted"],
             anchor=tk.W
         )
-        label.pack(fill=tk.X, padx=8, pady=(16, 6))
+        label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        # 折叠/展开按钮
+        toggle_btn = tk.Label(
+            label_row,
+            text="▼",
+            font=("Microsoft YaHei", 8),
+            bg=self.theme.colors["bg_sidebar"],
+            fg=self.theme.colors["text_muted"],
+            cursor="hand2"
+        )
+        toggle_btn.pack(side=tk.RIGHT, padx=(4, 0))
+        
+        # 子项容器
+        items_frame = tk.Frame(
+            group_frame,
+            bg=self.theme.colors["bg_sidebar"]
+        )
+        items_frame.pack(fill=tk.X)
+        
+        # 保存分组信息
+        self.groups[group_key] = {
+            "frame": group_frame,
+            "label_row": label_row,
+            "label": label,
+            "toggle_btn": toggle_btn,
+            "items_frame": items_frame,
+            "collapsed": False,
+            "items": []
+        }
+        
+        # 绑定点击事件
+        for widget in [label_row, label, toggle_btn]:
+            widget.bind("<Button-1>", lambda e, k=group_key: self._toggle_group(k))
+            widget.bind("<Enter>", lambda e, k=group_key: self._on_group_enter(k))
+            widget.bind("<Leave>", lambda e, k=group_key: self._on_group_leave(k))
+    
+    def _on_group_enter(self, group_key: str):
+        """分组标签鼠标进入效果"""
+        group = self.groups.get(group_key)
+        if group:
+            bg = self.theme.colors["sidebar_hover"]
+            group["label_row"].configure(bg=bg)
+            group["label"].configure(bg=bg)
+            group["toggle_btn"].configure(bg=bg)
+    
+    def _on_group_leave(self, group_key: str):
+        """分组标签鼠标离开效果"""
+        group = self.groups.get(group_key)
+        if group:
+            bg = self.theme.colors["bg_sidebar"]
+            group["label_row"].configure(bg=bg)
+            group["label"].configure(bg=bg)
+            group["toggle_btn"].configure(bg=bg)
+    
+    def _toggle_group(self, group_key: str):
+        """切换分组的折叠/展开状态"""
+        group = self.groups.get(group_key)
+        if not group:
+            return
+        
+        if group["collapsed"]:
+            # 展开
+            group["items_frame"].pack(fill=tk.X)
+            group["toggle_btn"].configure(text="▼")
+            group["collapsed"] = False
+        else:
+            # 折叠
+            group["items_frame"].pack_forget()
+            group["toggle_btn"].configure(text="▶")
+            group["collapsed"] = True
+        
+        # 更新滚动区域
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
     
     def add_item(self, item: SidebarItem):
         """添加导航项"""
+        # 确定父容器（如果有当前分组，添加到分组的items_frame中）
+        if self.current_group and self.current_group in self.groups:
+            parent = self.groups[self.current_group]["items_frame"]
+            self.groups[self.current_group]["items"].append(item.key)
+        else:
+            parent = self.nav_container
+        
         # 创建按钮容器
         btn_frame = tk.Frame(
-            self.nav_container,
+            parent,
             bg=self.theme.colors["bg_sidebar"],
             cursor="hand2"
         )
@@ -189,7 +354,8 @@ class ModernSidebar(tk.Frame):
             "content": content,
             "icon": icon_label,
             "title": title_label,
-            "item": item
+            "item": item,
+            "group": self.current_group
         }
         
         # 绑定点击事件

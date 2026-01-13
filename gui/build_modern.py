@@ -24,6 +24,13 @@ from version import get_version, get_build_date, get_author, get_description
 def create_spec_content(script_dir: Path, project_root: Path) -> str:
     """生成 PyInstaller spec 文件内容"""
     
+    # 检查图标文件是否存在
+    icon_path = project_root / "icon.ico"
+    if icon_path.exists():
+        icon_value = f"r'{icon_path}'"
+    else:
+        icon_value = "None"
+    
     spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 # GameTools Modern 打包配置文件
 # 自动生成于 {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -73,6 +80,11 @@ hiddenimports = [
     'gui.pages.json_detector_page',
     'gui.pages.field_extractor_page',
     'gui.pages.csv_converter_page',
+    'gui.pages.sheet_splitter_page',
+    'gui.pages.config_sync_page',
+    'gui.pages.cross_project_page',
+    'gui.pages.table_range_page',
+    'gui.pages.excel_processor_page',
     
     # 工具模块
     'tools',
@@ -149,7 +161,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=r'{project_root / "icon.ico"}' if (project_root / "icon.ico").exists() else None,
+    icon={icon_value},
 )
 '''
     return spec_content
@@ -157,7 +169,7 @@ exe = EXE(
 
 def clean_build_artifacts(script_dir: Path, full_clean: bool = False):
     """清理构建产物"""
-    print("🧹 清理构建产物...")
+    print("[*] 清理构建产物...")
     
     dirs_to_clean = [
         script_dir / "dist",
@@ -183,7 +195,7 @@ def clean_build_artifacts(script_dir: Path, full_clean: bool = False):
 
 def run_pyinstaller(spec_file: Path, verbose: bool = False):
     """运行 PyInstaller"""
-    print("\n📦 开始打包...")
+    print("\n[*] 开始打包...")
     
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -214,7 +226,7 @@ def copy_to_project_dist(script_dir: Path, project_root: Path):
     for exe_file in src_dist.glob("*.exe"):
         dst_file = dst_dist / exe_file.name
         shutil.copy2(exe_file, dst_file)
-        print(f"\n✅ 已复制到: {dst_file}")
+        print(f"\n[OK] 已复制到: {dst_file}")
         return dst_file
     
     return None
@@ -233,7 +245,7 @@ def main():
     project_root = script_dir.parent
     
     print("=" * 60)
-    print(f"🎮 GameTools 现代化版本打包工具")
+    print(f"[GameTools] 现代化版本打包工具")
     print(f"   版本: v{get_version()}")
     print(f"   构建日期: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
@@ -247,7 +259,7 @@ def main():
         clean_build_artifacts(script_dir, full_clean=False)
     
     # 生成 spec 文件
-    print("\n📝 生成打包配置...")
+    print("\n[*] 生成打包配置...")
     spec_content = create_spec_content(script_dir, project_root)
     spec_file = script_dir / "gametools_modern.spec"
     with open(spec_file, 'w', encoding='utf-8') as f:
@@ -259,16 +271,16 @@ def main():
     
     if success:
         elapsed = time.time() - start_time
-        print(f"\n🎉 打包成功！耗时: {elapsed:.1f}秒")
+        print(f"\n[SUCCESS] 打包成功！耗时: {elapsed:.1f}秒")
         
         # 复制到项目目录
         if not args.no_copy:
             exe_path = copy_to_project_dist(script_dir, project_root)
             if exe_path:
-                print(f"\n📁 最终产物: {exe_path}")
+                print(f"\n[OUTPUT] 最终产物: {exe_path}")
                 print(f"   文件大小: {exe_path.stat().st_size / 1024 / 1024:.1f} MB")
     else:
-        print("\n❌ 打包失败！请检查错误信息。")
+        print("\n[FAILED] 打包失败！请检查错误信息。")
         sys.exit(1)
 
 

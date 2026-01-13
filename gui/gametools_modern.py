@@ -52,12 +52,12 @@ class GameToolsModern:
         ("home", "首页", "🏠", "main", "HomePage"),
         ("batch_modifier", "批量改表", "⚡", "excel", "BatchModifierPage"),
         ("field_extractor", "字段导出", "📋", "excel", "FieldExtractorPage"),
-        ("sheet_splitter", "分页拆分", "✂️", "excel", None),
-        ("config_sync", "配置同步", "🔗", "excel", None),
+        ("sheet_splitter", "分页拆分", "✂️", "excel", "SheetSplitterPage"),
+        ("config_sync", "配置同步", "🔗", "excel", "ConfigSyncPage"),
         ("csv_converter", "Excel转CSV", "📄", "excel", "CsvConverterPage"),
-        ("excel_processor", "数据处理", "📊", "excel", None),
-        ("cross_project", "跨项目翻译", "🔄", "translate", None),
-        ("table_range", "多语言提取", "🌐", "translate", None),
+        ("excel_processor", "数据处理", "📊", "excel", "ExcelProcessorPage"),
+        ("cross_project", "跨项目翻译", "🔄", "translate", "CrossProjectPage"),
+        ("table_range", "多语言提取", "🌐", "translate", "TableRangePage"),
         ("json_detector", "JSON检测", "🔍", "tools", "JsonDetectorPage"),
         ("about", "关于", "ℹ️", "other", "AboutPage"),
     ]
@@ -232,6 +232,21 @@ class GameToolsModern:
         elif class_name == "CsvConverterPage":
             from gui.pages.csv_converter_page import CsvConverterPage
             return CsvConverterPage(self.content_area, self, self.theme)
+        elif class_name == "SheetSplitterPage":
+            from gui.pages.sheet_splitter_page import SheetSplitterPage
+            return SheetSplitterPage(self.content_area, self, self.theme)
+        elif class_name == "ConfigSyncPage":
+            from gui.pages.config_sync_page import ConfigSyncPage
+            return ConfigSyncPage(self.content_area, self, self.theme)
+        elif class_name == "ExcelProcessorPage":
+            from gui.pages.excel_processor_page import ExcelProcessorPage
+            return ExcelProcessorPage(self.content_area, self, self.theme)
+        elif class_name == "CrossProjectPage":
+            from gui.pages.cross_project_page import CrossProjectPage
+            return CrossProjectPage(self.content_area, self, self.theme)
+        elif class_name == "TableRangePage":
+            from gui.pages.table_range_page import TableRangePage
+            return TableRangePage(self.content_area, self, self.theme)
         else:
             return None
     

@@ -1,24 +1,29 @@
 @echo off
 chcp 65001 >nul
+title GameTools - 游戏策划工具集（现代化版本）
+cd /d "%~dp0"
 echo ========================================
 echo   gametools - 游戏策划工具集
+echo   [现代化版本]
 echo ========================================
 echo.
 echo 功能模块:
-echo   - 跨项目翻译对应
-echo   - JSON错误检测工具
-echo   - Excel数据处理工具
-echo   - Excel分页拆分
-echo   - 表字段导出
-echo   - 多语言翻译提取
 echo   - 批量改表
+echo   - 字段导出
+echo   - 分页拆分
+echo   - 配置同步
+echo   - Excel转CSV
+echo   - 数据处理
+echo   - 跨项目翻译
+echo   - 多语言提取
+echo   - JSON检测
 echo.
 echo 正在启动...
 echo.
-python gui\run_unified.py
+python gui\run_modern.py
 if errorlevel 1 (
     echo.
     echo 启动失败，请确保已安装Python和所需依赖
-    echo 可以运行: pip install -r core\requirements.txt
+    echo 可以运行: pip install -r requirements.txt
 )
 pause
