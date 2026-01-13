@@ -7,14 +7,24 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.44.0"
-__version_info__ = (1, 44, 0)
-__build_date__ = "2026-01-12"
+__version__ = "1.45.0"
+__version_info__ = (1, 45, 0)
+__build_date__ = "2026-01-13"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能、GUI启动优化"
 
 # 版本历史（仅保留最近5个版本，更早版本请查看 docs/VERSION_HISTORY_ARCHIVE.md）
 VERSION_HISTORY = {
+    "1.45.0": {
+        "date": "2026-01-13",
+        "changes": [
+            "✨ 现代化UI设为默认启动界面",
+            "📄 新增5个功能页面：Sheet分割、配置同步、跨项目翻译、多语言提取、数据处理",
+            "🎨 侧边栏增强：支持分组折叠/展开（▼/▶切换）",
+            "📜 侧边栏滚动支持：功能过多时自动显示滚动条",
+            "🔧 修复打包脚本Unicode编码问题（GBK控制台兼容）"
+        ]
+    },
     "1.44.0": {
         "date": "2026-01-12",
         "changes": [
@@ -62,36 +72,6 @@ VERSION_HISTORY = {
         "changes": [
             "📦 重新打包：补齐运行时配置文件（config.json / config_export.json）",
             "🔧 构建脚本增强：允许从任意目录执行 build_unified.py"
-        ]
-    },
-    "1.41.0": {
-        "date": "2025-12-23",
-        "changes": [
-            "✨ 新增三维表（多工作表）支持",
-            "🔧 批量改表支持按Sheet列定位不同工作表",
-            "📊 翻译提取CSV保留Sheet列信息",
-            "🎯 字段导出已支持遍历所有工作表",
-            "⚡ 数据按(Table, Sheet)分组处理",
-            "📝 智能工作表选择，不存在时回退到第一个"
-        ]
-    },
-    "1.40.6": {
-        "date": "2025-12-20",
-        "changes": [
-            "🐛 修复 process_batch_modification_by_language 未使用Position模式的问题",
-            "✨ 翻译提取CSV现在会自动检测Position列并使用Position直接定位",
-            "🎯 解决'行号超出范围'大量错误问题",
-            "📊 处理进度显示定位模式信息[Position模式]"
-        ]
-    },
-    "1.40.5": {
-        "date": "2025-12-20",
-        "changes": [
-            "📝 更新批量改表UI提示文本",
-            "💡 添加定位模式说明（界面上显示）",
-            "✨ 确认对话框显示定位模式信息",
-            "📊 完成对话框显示使用的定位模式",
-            "🎨 优化界面布局和提示信息"
         ]
     }
     # 更早的版本历史请查看 docs/VERSION_HISTORY_ARCHIVE.md
