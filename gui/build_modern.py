@@ -114,6 +114,13 @@ a = Analysis(
         (r'{project_root / "config_export.json"}', '.'),
         # 版本文件
         (r'{project_root / "version.py"}', '.'),
+        # GUI 模块源代码
+        (r'{script_dir / "pages"}', 'gui/pages'),
+        (r'{script_dir / "components"}', 'gui/components'),
+        # 核心模块源代码
+        (r'{project_root / "core"}', 'core'),
+        # 工具模块
+        (r'{project_root / "tools"}', 'tools'),
     ],
     hiddenimports=hiddenimports,
     hookspath=[r'{script_dir}'],

@@ -22,6 +22,7 @@ class ConfigSyncPage(ModernPage):
     
     def __init__(self, parent, app, theme):
         self.processor = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def _init_processor(self):
@@ -398,7 +399,22 @@ class ConfigSyncPage(ModernPage):
             cursor="hand2",
             padx=16,
             pady=8
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            button_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
+            bg=self.theme.colors["bg_hover"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=16,
+            pady=8
+        )
+        self.show_result_btn.pack(side=tk.LEFT)
     
     def _create_result_section(self):
         """创建结果显示区域"""
@@ -408,10 +424,10 @@ class ConfigSyncPage(ModernPage):
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        card.pack(fill=tk.X)
         
         inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        inner.pack(fill=tk.X, padx=20, pady=20)
         
         # 标题
         title = tk.Label(
@@ -721,6 +737,13 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
             summary = self.processor.get_stats_summary()
             self.after(0, lambda: self._append_result("\n" + summary + "\n"))
             
+            # 保存结果供后续查看
+            self.after(0, lambda: self._save_result({
+                'stats': stats.copy() if stats else {},
+                'summary': summary,
+                'report_file': report_file
+            }))
+            
             # 生成报告
             if report_file:
                 self.after(0, lambda: self._append_result(f"\n正在生成报告: {report_file}\n"))
@@ -730,8 +753,7 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
                     self.after(0, lambda: self._append_result("✗ 报告生成失败\n"))
             
             # 完成
-            self.after(0, lambda: self.update_status("同步完成"))
-            self.after(0, lambda: messagebox.showinfo("完成", "配置同步完成！"))
+            self.after(0, lambda: self.update_status("✅ 完成（点击【显示结果】查看详情）"))
             
         except Exception as e:
             error_msg = f"同步过程出错: {str(e)}"
@@ -740,7 +762,10 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
         
         finally:
             self.after(0, lambda: self.process_button.config(state="normal"))
-            self.after(0, lambda: self.update_status("就绪"))
+    
+    def _save_result(self, result):
+        """保存结果"""
+        self.last_result = result
     
     def _append_result(self, text):
         """追加结果文本"""
@@ -751,3 +776,25 @@ JSON配置: {os.path.basename(json_file) if json_file else '(未选择)'}
         """清空结果"""
         if hasattr(self, 'status_info_label'):
             self.status_info_label.configure(text="就绪")
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行配置同步操作。")
+            return
+        
+        result = self.last_result
+        stats = result.get('stats', {})
+        
+        msg = f"配置同步结果\n\n"
+        msg += f"源文件数: {stats.get('source_files', 0)}\n"
+        msg += f"同步文件数: {stats.get('synced_files', 0)}\n"
+        msg += f"同步单元格: {stats.get('synced_cells', 0)}\n"
+        msg += f"跳过单元格: {stats.get('skipped_cells', 0)}\n"
+        msg += f"错误数: {stats.get('errors', 0)}\n"
+        
+        if result.get('report_file'):
+            msg += f"\n报告文件:\n{result['report_file']}"
+        
+        self.show_info("执行结果", msg)

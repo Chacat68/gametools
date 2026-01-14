@@ -21,6 +21,7 @@ class JsonDetectorPage(ModernPage):
     
     def __init__(self, parent, app, theme):
         self.detector = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def create_widgets(self):
@@ -236,7 +237,24 @@ class JsonDetectorPage(ModernPage):
             highlightthickness=1,
             state=tk.DISABLED
         )
-        self.save_btn.pack(side=tk.LEFT)
+        self.save_btn.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            btn_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
+            bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=12,
+            pady=8,
+            highlightbackground=self.theme.colors["border"],
+            highlightthickness=1
+        )
+        self.show_result_btn.pack(side=tk.LEFT)
     
     def _create_result_section(self):
         """创建结果区域"""
@@ -246,10 +264,10 @@ class JsonDetectorPage(ModernPage):
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        card.pack(fill=tk.X)
         
         inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        inner.pack(fill=tk.X, padx=20, pady=20)
         
         # 标题和统计
         header = tk.Frame(inner, bg=self.theme.colors["bg_card"])
@@ -355,18 +373,21 @@ class JsonDetectorPage(ModernPage):
         self.detect_btn.configure(state=tk.NORMAL)
         self.progress_fill.place(relwidth=1)
         
+        # 保存结果供后续查看
+        self.last_result = results
+        
         total_files = len(results)
         error_count = sum(1 for r in results if r.get('has_error', False))
         
         # 统计信息
         if error_count > 0:
             self.stats_label.configure(
-                text=f"共 {total_files} 个文件，{error_count} 个有错误",
+                text=f"共 {total_files} 个文件，{error_count} 个有错误（点击【显示结果】查看详情）",
                 fg=self.theme.colors["error"]
             )
         else:
             self.stats_label.configure(
-                text=f"共 {total_files} 个文件，全部正常",
+                text=f"共 {total_files} 个文件，全部正常（点击【显示结果】查看详情）",
                 fg=self.theme.colors["success"]
             )
         
@@ -387,6 +408,35 @@ class JsonDetectorPage(ModernPage):
         self.progress_fill.place(relwidth=0)
         self.save_btn.configure(state=tk.DISABLED)
         self._detection_results = None
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行检测操作。")
+            return
+        
+        results = self.last_result
+        total_files = len(results)
+        error_count = sum(1 for r in results if r.get('has_error', False))
+        
+        msg = f"JSON检测结果\n\n"
+        msg += f"检测文件数: {total_files}\n"
+        msg += f"正常文件数: {total_files - error_count}\n"
+        msg += f"错误文件数: {error_count}\n"
+        
+        # 显示错误详情
+        if error_count > 0:
+            msg += f"\n错误文件详情:\n"
+            error_files = [r for r in results if r.get('has_error', False)][:10]
+            for r in error_files:
+                filename = Path(r.get('file', 'unknown')).name
+                errors = r.get('errors', [])
+                msg += f"  • {filename}: {errors[0] if errors else '未知错误'}\n"
+            if error_count > 10:
+                msg += f"  ... 还有 {error_count - 10} 个错误文件"
+        
+        self.show_info("执行结果", msg)
     
     def _save_report(self):
         """保存检测报告"""

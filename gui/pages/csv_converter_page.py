@@ -21,6 +21,7 @@ class CsvConverterPage(ModernPage):
     
     def __init__(self, parent, app, theme):
         self.converter = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def create_widgets(self):
@@ -263,7 +264,24 @@ class CsvConverterPage(ModernPage):
             pady=8,
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            btn_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
+            bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=12,
+            pady=8,
+            highlightbackground=self.theme.colors["border"],
+            highlightthickness=1
+        )
+        self.show_result_btn.pack(side=tk.LEFT)
     
     def _create_result_section(self):
         """创建结果区域"""
@@ -273,10 +291,10 @@ class CsvConverterPage(ModernPage):
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        card.pack(fill=tk.X)
         
         inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        inner.pack(fill=tk.X, padx=20, pady=20)
         
         # 标题
         header = tk.Frame(inner, bg=self.theme.colors["bg_card"])
@@ -377,14 +395,15 @@ class CsvConverterPage(ModernPage):
         self.convert_btn.configure(state=tk.NORMAL)
         self.progress_fill.place(relwidth=1)
         
+        # 保存结果供后续查看
+        self.last_result = result
+        
         if isinstance(result, dict):
             converted = result.get('converted', 0)
             self.stats_label.configure(
-                text=f"✅ 完成，共转换 {converted} 个文件",
+                text=f"✅ 完成（点击【显示结果】查看详情）",
                 fg=self.theme.colors["success"]
             )
-        
-        self.show_info("完成", "Excel转CSV完成！")
     
     def _on_error(self, error_msg: str):
         """错误处理"""
@@ -396,3 +415,29 @@ class CsvConverterPage(ModernPage):
         """清空结果"""
         self.stats_label.configure(text="", fg=self.theme.colors["text_muted"])
         self.progress_fill.place(relwidth=0)
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行转换操作。")
+            return
+        
+        result = self.last_result
+        if isinstance(result, dict):
+            msg = f"Excel转CSV结果\n\n"
+            msg += f"转换文件数: {result.get('converted', 0)}\n"
+            msg += f"失败文件数: {result.get('failed', 0)}\n"
+            msg += f"跳过文件数: {result.get('skipped', 0)}\n"
+            
+            # 如果有详细文件列表
+            if result.get('files'):
+                msg += f"\n转换文件列表:\n"
+                for f in result.get('files', [])[:10]:
+                    msg += f"  • {f}\n"
+                if len(result.get('files', [])) > 10:
+                    msg += f"  ... 还有 {len(result.get('files', [])) - 10} 个文件"
+            
+            self.show_info("执行结果", msg)
+        else:
+            self.show_info("执行结果", "Excel转CSV已完成！")

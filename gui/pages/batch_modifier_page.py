@@ -567,7 +567,7 @@ class BatchModifierPage(ModernPage):
     def _on_complete(self, result):
         """处理完成"""
         self.start_btn.configure(state=tk.NORMAL)
-        self.status_label.configure(text="✅ 处理完成（点击"显示结果"查看详情）", fg=self.theme.colors["success"])
+        self.status_label.configure(text="✅ 处理完成（点击【显示结果】查看详情）", fg=self.theme.colors["success"])
         self.progress_fill.place(relwidth=1)
         
         # 保存结果供后续查看

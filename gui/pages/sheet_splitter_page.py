@@ -25,6 +25,7 @@ class SheetSplitterPage(ModernPage):
     def __init__(self, parent, app, theme):
         self.processor = None
         self._output_file = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def _init_processor(self):
@@ -366,7 +367,22 @@ class SheetSplitterPage(ModernPage):
             pady=8,
             state="disabled"
         )
-        self.open_folder_button.pack(side=tk.LEFT)
+        self.open_folder_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            button_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
+            bg=self.theme.colors["bg_hover"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=16,
+            pady=8
+        )
+        self.show_result_btn.pack(side=tk.LEFT)
     
     def _create_result_section(self):
         """创建结果显示区域"""
@@ -376,10 +392,10 @@ class SheetSplitterPage(ModernPage):
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        card.pack(fill=tk.X)
         
         inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        inner.pack(fill=tk.X, padx=20, pady=20)
         
         # 标题
         title = tk.Label(
@@ -518,12 +534,16 @@ class SheetSplitterPage(ModernPage):
         """显示成功结果"""
         self.process_button.config(state="normal")
         self.open_folder_button.config(state="normal")
-        self.update_status("Excel分页拆分完成")
+        self.update_status("✅ 完成（点击【显示结果】查看详情）")
         
         # 保存输出文件路径用于打开文件夹
         self._output_file = output_file
         
-        messagebox.showinfo("成功", f"Excel分页拆分完成！\n\n输出文件: {output_file}")
+        # 保存结果供后续查看
+        self.last_result = {
+            'report': report,
+            'output_file': output_file
+        }
     
     def _show_error_result(self, error_msg):
         """显示错误结果"""
@@ -541,6 +561,23 @@ class SheetSplitterPage(ModernPage):
         """清空结果"""
         if hasattr(self, 'status_info_label'):
             self.status_info_label.configure(text="就绪")
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行分页拆分操作。")
+            return
+        
+        result = self.last_result
+        msg = f"Excel分页拆分结果\n\n"
+        
+        if result.get('report'):
+            msg += f"{result['report']}\n\n"
+        
+        msg += f"输出文件:\n{result.get('output_file', '未知')}"
+        
+        self.show_info("执行结果", msg)
     
     def _open_output_folder(self):
         """打开输出文件所在的文件夹"""

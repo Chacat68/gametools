@@ -21,6 +21,7 @@ class FieldExtractorPage(ModernPage):
     
     def __init__(self, parent, app, theme):
         self.extractor = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def create_widgets(self):
@@ -267,7 +268,24 @@ class FieldExtractorPage(ModernPage):
             pady=8,
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            btn_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
+            bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=12,
+            pady=8,
+            highlightbackground=self.theme.colors["border"],
+            highlightthickness=1
+        )
+        self.show_result_btn.pack(side=tk.LEFT)
     
     def _create_result_section(self):
         """创建结果区域"""
@@ -277,10 +295,10 @@ class FieldExtractorPage(ModernPage):
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        card.pack(fill=tk.X)
         
         inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        inner.pack(fill=tk.X, padx=20, pady=20)
         
         # 标题
         header = tk.Frame(inner, bg=self.theme.colors["bg_card"])
@@ -371,13 +389,14 @@ class FieldExtractorPage(ModernPage):
         self.extract_btn.configure(state=tk.NORMAL)
         self.progress_fill.place(relwidth=1)
         
+        # 保存结果供后续查看
+        self.last_result = result
+        
         if isinstance(result, dict):
             tables = result.get('tables', {})
-            self.stats_label.configure(text=f"✅ 完成，共 {len(tables)} 个表", fg=self.theme.colors["success"])
-            total_fields = sum(len(t.get('fields', [])) for t in tables.values())
-            self.show_info("完成", f"字段提取完成！\n\n扫描表数: {len(tables)}\n总字段数: {total_fields}")
+            self.stats_label.configure(text=f"✅ 完成（点击【显示结果】查看详情）", fg=self.theme.colors["success"])
         else:
-            self.show_info("完成", "字段提取完成！")
+            self.stats_label.configure(text="✅ 完成", fg=self.theme.colors["success"])
     
     def _on_error(self, error_msg: str):
         """错误处理"""
@@ -389,3 +408,32 @@ class FieldExtractorPage(ModernPage):
         """清空结果"""
         self.stats_label.configure(text="", fg=self.theme.colors["text_muted"])
         self.progress_fill.place(relwidth=0)
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行字段提取操作。")
+            return
+        
+        result = self.last_result
+        if isinstance(result, dict):
+            tables = result.get('tables', {})
+            total_fields = sum(len(t.get('fields', [])) for t in tables.values())
+            
+            msg = f"字段提取结果\n\n"
+            msg += f"扫描表数: {len(tables)}\n"
+            msg += f"总字段数: {total_fields}\n\n"
+            
+            # 显示各表详情（最多显示10个）
+            if tables:
+                msg += "各表详情:\n"
+                for i, (table_name, table_info) in enumerate(list(tables.items())[:10]):
+                    fields = table_info.get('fields', [])
+                    msg += f"  • {table_name}: {len(fields)} 个字段\n"
+                if len(tables) > 10:
+                    msg += f"  ... 还有 {len(tables) - 10} 个表"
+            
+            self.show_info("执行结果", msg)
+        else:
+            self.show_info("执行结果", "字段提取已完成！")

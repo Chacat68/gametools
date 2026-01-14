@@ -279,6 +279,7 @@ def log_error_with_context(error: Exception, context: dict, logger_instance: log
     logger_instance.error(f"{error_msg} [上下文: {context_str}]")
     
     if isinstance(error, GameToolsError) and error.original_error:
-        logger_instance.debug(f"原始异常: {traceback.format_exception(type(error.original_error), 
-                                                                       error.original_error, 
-                                                                       error.original_error.__traceback__)}")
+        tb_str = traceback.format_exception(type(error.original_error), 
+                                            error.original_error, 
+                                            error.original_error.__traceback__)
+        logger_instance.debug(f"原始异常: {tb_str}")

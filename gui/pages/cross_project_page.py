@@ -22,6 +22,7 @@ class CrossProjectPage(ModernPage):
     
     def __init__(self, parent, app, theme):
         self.processor = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def _init_processor(self):
@@ -290,7 +291,22 @@ class CrossProjectPage(ModernPage):
             pady=8,
             state="disabled"
         )
-        self.export_button.pack(side=tk.LEFT)
+        self.export_button.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            button_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
+            bg=self.theme.colors["bg_hover"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=16,
+            pady=8
+        )
+        self.show_result_btn.pack(side=tk.LEFT)
     
     def _create_result_section(self):
         """创建结果显示区域"""
@@ -300,10 +316,10 @@ class CrossProjectPage(ModernPage):
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        card.pack(fill=tk.X)
         
         inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        inner.pack(fill=tk.X, padx=20, pady=20)
         
         # 标题
         title = tk.Label(
@@ -435,6 +451,15 @@ class CrossProjectPage(ModernPage):
                 
                 if len(results) > 20:
                     self._schedule_append(f"... 还有 {len(results) - 20} 条结果，请查看导出的Excel文件\n")
+                
+                # 保存结果供后续查看
+                success_count = sum(1 for r in results if r.get('status') == 'success')
+                self.after(0, lambda: self._save_result({
+                    'total': len(results),
+                    'success': success_count,
+                    'failed': len(results) - success_count,
+                    'output_file': output_file
+                }))
             else:
                 self._schedule_append(f"处理失败，没有生成结果\n")
             
@@ -445,8 +470,11 @@ class CrossProjectPage(ModernPage):
         
         # 恢复按钮状态
         self.after(0, lambda: self.process_button.config(state="normal"))
-        self.after(0, lambda: self.update_status("翻译对应完成"))
-        self.after(0, lambda: messagebox.showinfo("完成", "翻译对应完成！请点击查看结果按钮查看详细报告"))
+        self.after(0, lambda: self.update_status("✅ 完成（点击【显示结果】查看详情）"))
+    
+    def _save_result(self, stats):
+        """保存结果"""
+        self.last_result = stats
     
     def _schedule_append(self, text):
         """调度追加文本"""
@@ -463,6 +491,22 @@ class CrossProjectPage(ModernPage):
         if hasattr(self, 'status_info_label'):
             self.status_info_label.configure(text="就绪")
         self.export_button.config(state="disabled")
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行跨项目翻译对应操作。")
+            return
+        
+        stats = self.last_result
+        msg = f"跨项目翻译对应结果\n\n"
+        msg += f"总记录数: {stats.get('total', 0)}\n"
+        msg += f"成功匹配: {stats.get('success', 0)}\n"
+        msg += f"匹配失败: {stats.get('failed', 0)}\n\n"
+        msg += f"输出文件:\n{stats.get('output_file', '未知')}"
+        
+        self.show_info("执行结果", msg)
     
     def _export_results(self):
         """导出结果"""
