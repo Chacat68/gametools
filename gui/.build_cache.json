@@ -36,8 +36,8 @@
     "tools\\gui_startup_profiler.py": "bd2cbdfaf45ba8fbd7582908f7109df6",
     "config.json": "af91e5aa4de77be370bbc37dcdc1fdfc",
     "config_export.json": "c2a30f886a48694949679ed39509da82",
-    "version.py": "f3279a9174a9f395a1cb7ec84128e909"
+    "version.py": "a4dab6c2e0783923253d8887691ee831"
   },
-  "last_build_time": "2026-01-13T23:58:12.343911",
-  "build_duration": 32.60358548164368
+  "last_build_time": "2026-01-14T16:01:38.379293",
+  "build_duration": 55.47027277946472
 }
