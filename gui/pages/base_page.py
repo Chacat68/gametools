@@ -111,12 +111,132 @@ class ModernPage(tk.Frame):
     
     def _create_content(self):
         """创建页面内容（子类需要覆盖）"""
-        # 内容区域容器
-        self.content = tk.Frame(self, bg=self.theme.colors["bg_main"])
-        self.content.pack(fill=tk.BOTH, expand=True, padx=24, pady=(0, 24))
-        
+        # 内容区域容器（可滚动）
+        self._content_container = tk.Frame(self, bg=self.theme.colors["bg_main"])
+        self._content_container.pack(fill=tk.BOTH, expand=True, padx=24, pady=(0, 24))
+
+        self._content_canvas = tk.Canvas(
+            self._content_container,
+            bg=self.theme.colors["bg_main"],
+            highlightthickness=0,
+            bd=0,
+            relief=tk.FLAT
+        )
+        self._content_vscroll = ttk.Scrollbar(
+            self._content_container,
+            orient="vertical",
+            command=self._content_canvas.yview
+        )
+        self._content_canvas.configure(yscrollcommand=self._content_vscroll.set)
+
+        self._content_vscroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self._content_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self._vscroll_visible = True
+
+        # 真实内容Frame：保持对外 API 为 self.content
+        self.content = tk.Frame(self._content_canvas, bg=self.theme.colors["bg_main"])
+        self._content_window = self._content_canvas.create_window(
+            (0, 0),
+            window=self.content,
+            anchor="nw"
+        )
+
+        # 绑定尺寸更新
+        self.content.bind("<Configure>", self._on_content_configure)
+        self._content_canvas.bind("<Configure>", self._on_canvas_configure)
+
+        # 鼠标滚轮支持（仅在内容区内启用，且不抢占文本/表格控件自身滚动）
+        self._content_canvas.bind("<Enter>", self._enable_mousewheel)
+        self._content_canvas.bind("<Leave>", self._disable_mousewheel)
+        self.content.bind("<Enter>", self._enable_mousewheel)
+        self.content.bind("<Leave>", self._disable_mousewheel)
+
         # 子类实现具体内容
         self.create_widgets()
+
+    def _set_vscroll_visible(self, visible: bool):
+        """按需显示/隐藏垂直滚动条"""
+        if not hasattr(self, "_content_vscroll"):
+            return
+
+        if visible and not getattr(self, "_vscroll_visible", False):
+            self._content_vscroll.pack(side=tk.RIGHT, fill=tk.Y)
+            self._vscroll_visible = True
+        elif not visible and getattr(self, "_vscroll_visible", False):
+            self._content_vscroll.pack_forget()
+            self._vscroll_visible = False
+
+    def _refresh_vscroll_visibility(self):
+        """根据内容高度判断是否需要滚动条"""
+        if not hasattr(self, "_content_canvas"):
+            return
+
+        bbox = self._content_canvas.bbox("all")
+        if not bbox:
+            self._set_vscroll_visible(False)
+            return
+
+        canvas_height = self._content_canvas.winfo_height()
+        content_height = bbox[3] - bbox[1]
+        needs_scroll = content_height > max(0, canvas_height - 2)
+        self._set_vscroll_visible(needs_scroll)
+
+        if not needs_scroll:
+            # 避免隐藏后仍停留在非顶部
+            self._content_canvas.yview_moveto(0)
+
+    def _on_content_configure(self, event=None):
+        """内容尺寸变化时更新滚动区域"""
+        if not hasattr(self, "_content_canvas"):
+            return
+        bbox = self._content_canvas.bbox("all")
+        if bbox:
+            self._content_canvas.configure(scrollregion=bbox)
+        self._refresh_vscroll_visibility()
+
+    def _on_canvas_configure(self, event):
+        """画布尺寸变化时，让内部内容宽度自适应"""
+        if hasattr(self, "_content_canvas") and hasattr(self, "_content_window"):
+            self._content_canvas.itemconfigure(self._content_window, width=event.width)
+        self._refresh_vscroll_visibility()
+
+    def _enable_mousewheel(self, event=None):
+        """启用全局滚轮转发到内容画布（进入内容区时）"""
+        if hasattr(self, "_content_canvas"):
+            self._content_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _disable_mousewheel(self, event=None):
+        """禁用全局滚轮转发（离开内容区时）"""
+        if hasattr(self, "_content_canvas"):
+            self._content_canvas.unbind_all("<MouseWheel>")
+
+    def _on_mousewheel(self, event):
+        """滚轮滚动内容区（Windows: event.delta）"""
+        if not hasattr(self, "_content_canvas"):
+            return
+
+        # 不抢占可滚动控件（如 Text/Treeview/Listbox）的滚轮
+        try:
+            widget_class = event.widget.winfo_class()
+        except Exception:
+            widget_class = ""
+
+        if widget_class in {"Text", "Treeview", "Listbox"}:
+            return
+
+        bbox = self._content_canvas.bbox("all")
+        if not bbox:
+            return
+
+        canvas_height = self._content_canvas.winfo_height()
+        content_height = bbox[3] - bbox[1]
+        if content_height <= canvas_height:
+            return
+
+        delta = int(-1 * (event.delta / 120))
+        if delta != 0:
+            self._content_canvas.yview_scroll(delta, "units")
     
     def create_widgets(self):
         """创建页面控件（子类必须实现）"""

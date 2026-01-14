@@ -37,6 +37,63 @@ class HomePage(ModernPage):
         
         # 底部信息
         self._create_info_section()
+
+    def _load_visible_pages(self) -> Dict[str, bool]:
+        """加载页面可见性配置（用于首页内容过滤）"""
+        # 优先复用主应用的实现，避免重复逻辑
+        if hasattr(self.app, '_load_visible_pages'):
+            try:
+                visible = self.app._load_visible_pages()
+                return visible if isinstance(visible, dict) else {}
+            except Exception:
+                return {}
+
+        # 兜底：直接读 config.json
+        import json
+        from pathlib import Path
+
+        config_path = Path("config.json")
+        if not config_path.exists():
+            return {}
+
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            visible_pages = config.get("visible_pages", {})
+            return visible_pages if isinstance(visible_pages, dict) else {}
+        except Exception:
+            return {}
+
+    def _is_page_visible(self, page_key: str) -> bool:
+        """判断页面是否可见（首页始终可见）"""
+        if page_key == "home":
+            return True
+        visible_pages = self._load_visible_pages()
+        return bool(visible_pages.get(page_key, True))
+
+    def refresh_home_content(self):
+        """刷新首页内容：设置变更后立即生效"""
+        if not hasattr(self, 'content'):
+            return
+
+        for child in list(self.content.winfo_children()):
+            try:
+                child.destroy()
+            except Exception:
+                pass
+
+        # 重新创建首页内容
+        self._create_settings_button()
+        self._create_quick_actions()
+        self._create_tool_categories()
+        self._create_info_section()
+
+        # 更新滚动条可见性
+        if hasattr(self, '_refresh_vscroll_visibility'):
+            try:
+                self.after(0, self._refresh_vscroll_visibility)
+            except Exception:
+                pass
     
     def _create_settings_button(self):
         """创建设置按钮"""
@@ -246,12 +303,15 @@ class HomePage(ModernPage):
                 with open(config_path, 'w', encoding='utf-8') as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
                 
-                # 即时刷新侧边栏
+                # 即时刷新侧边栏 + 首页内容
                 if hasattr(self.app, 'refresh_sidebar'):
                     self.app.refresh_sidebar()
+                    self.refresh_home_content()
                     messagebox.showinfo("成功", "设置已保存并生效！", parent=dialog)
                 else:
-                    messagebox.showinfo("成功", "设置已保存！\n重启应用后生效。", parent=dialog)
+                    # 没有侧边栏刷新能力时，首页仍可根据最新配置刷新
+                    self.refresh_home_content()
+                    messagebox.showinfo("成功", "设置已保存！\n部分界面可能需要重启后完全生效。", parent=dialog)
                 
                 dialog.destroy()
             except Exception as e:
@@ -315,8 +375,23 @@ class HomePage(ModernPage):
             ("field_extractor", "📋 字段导出", "提取本地化字段", self.theme.colors["success"]),
             ("csv_converter", "📄 Excel转CSV", "批量转换格式", self.theme.colors["warning"]),
         ]
-        
-        for i, (key, title, desc, color) in enumerate(quick_tools):
+
+        # 根据可见性过滤
+        visible_quick_tools = [t for t in quick_tools if self._is_page_visible(t[0])]
+
+        if not visible_quick_tools:
+            empty_label = tk.Label(
+                grid,
+                text="（快捷入口已全部隐藏，可在功能显示设置中开启）",
+                font=self.theme.FONTS["small"],
+                bg=self.theme.colors["bg_main"],
+                fg=self.theme.colors["text_muted"],
+                anchor=tk.W
+            )
+            empty_label.pack(fill=tk.X)
+            return
+
+        for i, (key, title, desc, color) in enumerate(visible_quick_tools):
             self._create_quick_card(grid, key, title, desc, color, i)
     
     def _create_quick_card(self, parent, key: str, title: str, 
@@ -381,30 +456,29 @@ class HomePage(ModernPage):
         section.columnconfigure(0, weight=1)
         section.columnconfigure(1, weight=1)
         
+        excel_tools = [
+            ("batch_modifier", "⚡", "批量改表", "批量修改Excel配置"),
+            ("field_extractor", "📋", "字段导出", "提取本地化字段"),
+            ("sheet_splitter", "✂️", "分页拆分", "按首列创建分页"),
+            ("config_sync", "🔗", "配置同步", "同步Excel配置"),
+            ("csv_converter", "📄", "Excel转CSV", "批量转换格式"),
+            ("excel_processor", "📊", "数据处理", "A列分组拆分"),
+        ]
+
+        translate_tools = [
+            ("cross_project", "🔄", "跨项目翻译", "翻译映射对照"),
+            ("table_range", "🌐", "多语言提取", "按配置提取翻译"),
+            ("json_detector", "🔍", "JSON检测", "检测格式错误"),
+        ]
+
+        excel_tools = [t for t in excel_tools if self._is_page_visible(t[0])]
+        translate_tools = [t for t in translate_tools if self._is_page_visible(t[0])]
+
         # 左列：Excel 处理工具
-        self._create_category_card(
-            section, 0, 0,
-            "📊 Excel 处理工具",
-            [
-                ("batch_modifier", "⚡", "批量改表", "批量修改Excel配置"),
-                ("field_extractor", "📋", "字段导出", "提取本地化字段"),
-                ("sheet_splitter", "✂️", "分页拆分", "按首列创建分页"),
-                ("config_sync", "🔗", "配置同步", "同步Excel配置"),
-                ("csv_converter", "📄", "Excel转CSV", "批量转换格式"),
-                ("excel_processor", "📊", "数据处理", "A列分组拆分"),
-            ]
-        )
-        
+        self._create_category_card(section, 0, 0, "📊 Excel 处理工具", excel_tools)
+
         # 右列：翻译 & 检测工具
-        self._create_category_card(
-            section, 0, 1,
-            "🌐 翻译 & 检测工具",
-            [
-                ("cross_project", "🔄", "跨项目翻译", "翻译映射对照"),
-                ("table_range", "🌐", "多语言提取", "按配置提取翻译"),
-                ("json_detector", "🔍", "JSON检测", "检测格式错误"),
-            ]
-        )
+        self._create_category_card(section, 0, 1, "🌐 翻译 & 检测工具", translate_tools)
     
     def _create_category_card(self, parent, row: int, col: int, 
                               title: str, tools: List[tuple]):
@@ -433,8 +507,19 @@ class HomePage(ModernPage):
         title_label.pack(fill=tk.X)
         
         # 工具列表
-        for key, icon, name, desc in tools:
-            self._create_tool_item(card, key, icon, name, desc)
+        if tools:
+            for key, icon, name, desc in tools:
+                self._create_tool_item(card, key, icon, name, desc)
+        else:
+            empty = tk.Label(
+                card,
+                text="（此分类已全部隐藏）",
+                font=self.theme.FONTS["small"],
+                bg=self.theme.colors["bg_card"],
+                fg=self.theme.colors["text_muted"],
+                anchor=tk.W
+            )
+            empty.pack(fill=tk.X, padx=16, pady=(0, 8))
         
         # 底部间距
         tk.Frame(card, bg=self.theme.colors["bg_card"], height=8).pack()
