@@ -1,7 +1,7 @@
 {
   "file_hashes": {
     "gui\\base_detector_gui.py": "7c6b24a43f0abc622ae42f5f6e1b4267",
-    "gui\\build_modern.py": "be900966d0caef41abc566f3790c47b8",
+    "gui\\build_modern.py": "318624d6c0e722973dd65c71a5f989f1",
     "gui\\build_unified.py": "7d7717b7cc74b0af4a24b62e4ad3461c",
     "gui\\gametools_modern.py": "a0a93f0de4fa0eb3fa4f7480c9148d9e",
     "gui\\gametools_unified.py": "24fdc9405a1dc1e9237189867cc9b314",
@@ -18,7 +18,7 @@
     "core\\constants.py": "4639ca0af71ca9791167c5b22717b306",
     "core\\cross_project_translator.py": "fdef4942ed9050886ae07f0beb9b2f8e",
     "core\\cross_project_translator_cached.py": "9af9589bae8cc2abb3936d261b3158d0",
-    "core\\error_handler.py": "487c92f2f3dcd0b15e8093c22b44ea7d",
+    "core\\error_handler.py": "ab6b9d21029fc22c2a471ab4bfc37b8c",
     "core\\excel_config_sync.py": "d69c1b8e3b74201e4c544e00e749bcd6",
     "core\\excel_field_extractor.py": "16db1fbaee04590b594ce1fecec1f6ed",
     "core\\excel_sheet_splitter.py": "713df46505c26150e6fc4d4846468ee6",
@@ -36,8 +36,8 @@
     "tools\\gui_startup_profiler.py": "bd2cbdfaf45ba8fbd7582908f7109df6",
     "config.json": "af91e5aa4de77be370bbc37dcdc1fdfc",
     "config_export.json": "c2a30f886a48694949679ed39509da82",
-    "version.py": "a4dab6c2e0783923253d8887691ee831"
+    "version.py": "b3a1b14861402eb3644a21ada530adff"
   },
-  "last_build_time": "2026-01-14T16:01:38.379293",
-  "build_duration": 55.47027277946472
+  "last_build_time": "2026-01-14T20:20:15.688953",
+  "build_duration": 55.49830889701843
 }
