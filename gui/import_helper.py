@@ -19,27 +19,26 @@ def fix_pyinstaller_imports():
         # 设置 numpy 配置
         os.environ.setdefault('NUMPY_EXPERIMENTAL_ARRAY_FUNCTION', '0')
         
-        # 清理 sys.path 中可能导致 numpy 认为在源目录的路径
-        cleaned_path = []
-        for p in sys.path:
-            p_lower = p.lower()
-            # 保留 _MEIPASS 内的路径
-            if meipass.lower() in p_lower:
-                cleaned_path.append(p)
-            # 保留 site-packages 路径
-            elif 'site-packages' in p_lower:
-                cleaned_path.append(p)
-            # 排除可能的 numpy 源目录
-            elif 'numpy' in p_lower:
-                continue
-            else:
-                cleaned_path.append(p)
-        
-        sys.path[:] = cleaned_path
-        
         # 确保 _MEIPASS 在 sys.path 最前面
         if meipass not in sys.path:
             sys.path.insert(0, meipass)
+        
+        # 预导入 gui.pages 模块以确保打包后可用
+        try:
+            import gui.pages
+            import gui.pages.batch_modifier_page
+            import gui.pages.home_page
+            import gui.pages.about_page
+            import gui.pages.json_detector_page
+            import gui.pages.field_extractor_page
+            import gui.pages.csv_converter_page
+            import gui.pages.sheet_splitter_page
+            import gui.pages.config_sync_page
+            import gui.pages.cross_project_page
+            import gui.pages.table_range_page
+            import gui.pages.excel_processor_page
+        except ImportError as e:
+            print(f"预导入页面模块失败: {e}")
     else:
         # 非 PyInstaller 环境，移除可能的 numpy 源目录
         sys.path = [p for p in sys.path if 'numpy' not in p.lower() or 'site-packages' in p.lower()]

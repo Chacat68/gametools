@@ -238,15 +238,20 @@ def main():
     parser.add_argument('--clean', action='store_true', help='完全清理后重新构建')
     parser.add_argument('--verbose', '-v', action='store_true', help='显示详细输出')
     parser.add_argument('--no-copy', action='store_true', help='不复制到项目dist目录')
+    parser.add_argument('--no-bump', action='store_true', help='不自动递增版本号（用于排查打包问题/重复构建）')
     args = parser.parse_args()
     
     # 路径设置
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     
-    # 自动递增版本号
-    print("\n[版本更新] 自动递增版本号...")
-    new_version = increment_version("patch")
+    # 自动递增版本号（可通过 --no-bump 关闭，避免排错时污染版本）
+    if args.no_bump:
+        new_version = get_version()
+        print("\n[版本更新] 已禁用自动递增版本号 (--no-bump)")
+    else:
+        print("\n[版本更新] 自动递增版本号...")
+        new_version = increment_version("patch")
     
     print("=" * 60)
     print(f"[GameTools] 现代化版本打包工具")

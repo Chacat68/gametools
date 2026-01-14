@@ -35,6 +35,20 @@ from gui.modern_theme import ModernTheme
 from gui.components.sidebar import ModernSidebar, SidebarItem
 from gui.components.widgets import ModernStatusBar
 
+# 显式导入所有页面模块（确保 PyInstaller 正确打包）
+from gui.pages.base_page import ModernPage
+from gui.pages.home_page import HomePage
+from gui.pages.about_page import AboutPage
+from gui.pages.batch_modifier_page import BatchModifierPage
+from gui.pages.json_detector_page import JsonDetectorPage
+from gui.pages.field_extractor_page import FieldExtractorPage
+from gui.pages.csv_converter_page import CsvConverterPage
+from gui.pages.sheet_splitter_page import SheetSplitterPage
+from gui.pages.config_sync_page import ConfigSyncPage
+from gui.pages.cross_project_page import CrossProjectPage
+from gui.pages.table_range_page import TableRangePage
+from gui.pages.excel_processor_page import ExcelProcessorPage
+
 # 导入版本信息
 try:
     from version import get_version
@@ -275,44 +289,32 @@ class GameToolsModern:
         return page
     
     def _create_page_by_class(self, page_key: str, class_name: str):
-        """根据类名创建页面"""
-        # 动态导入页面类
-        if class_name == "HomePage":
-            from gui.pages.home_page import HomePage
-            return HomePage(self.content_area, self, self.theme, 
-                          on_navigate=self._navigate_to)
-        elif class_name == "AboutPage":
-            from gui.pages.about_page import AboutPage
-            return AboutPage(self.content_area, self, self.theme)
-        elif class_name == "BatchModifierPage":
-            from gui.pages.batch_modifier_page import BatchModifierPage
-            return BatchModifierPage(self.content_area, self, self.theme)
-        elif class_name == "JsonDetectorPage":
-            from gui.pages.json_detector_page import JsonDetectorPage
-            return JsonDetectorPage(self.content_area, self, self.theme)
-        elif class_name == "FieldExtractorPage":
-            from gui.pages.field_extractor_page import FieldExtractorPage
-            return FieldExtractorPage(self.content_area, self, self.theme)
-        elif class_name == "CsvConverterPage":
-            from gui.pages.csv_converter_page import CsvConverterPage
-            return CsvConverterPage(self.content_area, self, self.theme)
-        elif class_name == "SheetSplitterPage":
-            from gui.pages.sheet_splitter_page import SheetSplitterPage
-            return SheetSplitterPage(self.content_area, self, self.theme)
-        elif class_name == "ConfigSyncPage":
-            from gui.pages.config_sync_page import ConfigSyncPage
-            return ConfigSyncPage(self.content_area, self, self.theme)
-        elif class_name == "ExcelProcessorPage":
-            from gui.pages.excel_processor_page import ExcelProcessorPage
-            return ExcelProcessorPage(self.content_area, self, self.theme)
-        elif class_name == "CrossProjectPage":
-            from gui.pages.cross_project_page import CrossProjectPage
-            return CrossProjectPage(self.content_area, self, self.theme)
-        elif class_name == "TableRangePage":
-            from gui.pages.table_range_page import TableRangePage
-            return TableRangePage(self.content_area, self, self.theme)
-        else:
+        """根据类名创建页面（使用顶层已导入的类）"""
+        # 页面类映射表（使用顶层导入的类）
+        PAGE_CLASSES = {
+            "HomePage": HomePage,
+            "AboutPage": AboutPage,
+            "BatchModifierPage": BatchModifierPage,
+            "JsonDetectorPage": JsonDetectorPage,
+            "FieldExtractorPage": FieldExtractorPage,
+            "CsvConverterPage": CsvConverterPage,
+            "SheetSplitterPage": SheetSplitterPage,
+            "ConfigSyncPage": ConfigSyncPage,
+            "CrossProjectPage": CrossProjectPage,
+            "TableRangePage": TableRangePage,
+            "ExcelProcessorPage": ExcelProcessorPage,
+        }
+        
+        page_class = PAGE_CLASSES.get(class_name)
+        if not page_class:
             return None
+        
+        # HomePage 需要额外的 on_navigate 参数
+        if class_name == "HomePage":
+            return page_class(self.content_area, self, self.theme, 
+                            on_navigate=self._navigate_to)
+        else:
+            return page_class(self.content_area, self, self.theme)
     
     def _create_placeholder_page(self, page_key: str, title: str, 
                                   icon: str, error_msg: str = None):

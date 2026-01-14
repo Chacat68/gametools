@@ -22,6 +22,7 @@ class BatchModifierPage(ModernPage):
     
     def __init__(self, parent, app, theme):
         self.processor = None
+        self.last_result = None  # 保存最后一次执行结果
         super().__init__(parent, app, theme)
     
     def create_widgets(self):
@@ -379,49 +380,49 @@ class BatchModifierPage(ModernPage):
             pady=8,
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
-        ).pack(side=tk.LEFT)
-    
-    def _create_progress_section(self):
-        """创建进度和结果区域"""
-        card = tk.Frame(
-            self.content,
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 显示结果按钮
+        self.show_result_btn = tk.Button(
+            btn_frame,
+            text="📋 显示结果",
+            font=self.theme.FONTS["body"],
+            command=self._show_result_dialog,
             bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=12,
+            pady=8,
             highlightbackground=self.theme.colors["border"],
             highlightthickness=1
         )
-        card.pack(fill=tk.BOTH, expand=True)
+        self.show_result_btn.pack(side=tk.LEFT)
+    
+    def _create_progress_section(self):
+        """创建进度区域"""
+        # 进度条区域（简化版，不再有结果卡片）
+        progress_frame = tk.Frame(self.content, bg=self.theme.colors["bg_main"])
+        progress_frame.pack(fill=tk.X, pady=(0, 8))
         
-        inner = tk.Frame(card, bg=self.theme.colors["bg_card"])
-        inner.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # 标题和状态
-        header = tk.Frame(inner, bg=self.theme.colors["bg_card"])
-        header.pack(fill=tk.X, pady=(0, 12))
-        
-        tk.Label(
-            header,
-            text="📊 处理结果",
-            font=self.theme.FONTS["subheading"],
-            bg=self.theme.colors["bg_card"],
-            fg=self.theme.colors["text_primary"]
-        ).pack(side=tk.LEFT)
-        
+        # 状态标签
         self.status_label = tk.Label(
-            header,
+            progress_frame,
             text="就绪",
             font=self.theme.FONTS["small"],
-            bg=self.theme.colors["bg_card"],
-            fg=self.theme.colors["text_muted"]
+            bg=self.theme.colors["bg_main"],
+            fg=self.theme.colors["text_muted"],
+            anchor=tk.W
         )
-        self.status_label.pack(side=tk.RIGHT)
+        self.status_label.pack(fill=tk.X, pady=(0, 4))
         
         # 进度条
         self.progress_track = tk.Frame(
-            inner,
+            progress_frame,
             bg=self.theme.colors["bg_hover"],
             height=6
         )
-        self.progress_track.pack(fill=tk.X, pady=(0, 12))
+        self.progress_track.pack(fill=tk.X)
         self.progress_track.pack_propagate(False)
         
         self.progress_fill = tk.Frame(
@@ -566,15 +567,11 @@ class BatchModifierPage(ModernPage):
     def _on_complete(self, result):
         """处理完成"""
         self.start_btn.configure(state=tk.NORMAL)
-        self.status_label.configure(text="✅ 处理完成", fg=self.theme.colors["success"])
+        self.status_label.configure(text="✅ 处理完成（点击"显示结果"查看详情）", fg=self.theme.colors["success"])
         self.progress_fill.place(relwidth=1)
         
-        # 显示统计
-        if isinstance(result, dict):
-            msg = f"批量修改已完成！\n\n修改文件数: {result.get('modified_files', 0)}\n修改单元格: {result.get('modified_cells', 0)}\n跳过记录数: {result.get('skipped', 0)}\n错误数: {result.get('errors', 0)}"
-            self.show_info("完成", msg)
-        else:
-            self.show_info("完成", "批量修改已完成！")
+        # 保存结果供后续查看
+        self.last_result = result
     
     def _on_error(self, error_msg: str):
         """处理错误"""
@@ -607,3 +604,30 @@ class BatchModifierPage(ModernPage):
         """清空结果"""
         self.status_label.configure(text="就绪", fg=self.theme.colors["text_muted"])
         self.progress_fill.place(relwidth=0)
+        self.last_result = None
+    
+    def _show_result_dialog(self):
+        """显示结果弹窗"""
+        if self.last_result is None:
+            self.show_warning("提示", "暂无执行结果，请先执行批量修改操作。")
+            return
+        
+        result = self.last_result
+        if isinstance(result, dict):
+            msg = f"批量修改结果\n\n"
+            msg += f"修改文件数: {result.get('modified_files', 0)}\n"
+            msg += f"修改单元格: {result.get('modified_cells', 0)}\n"
+            msg += f"跳过记录数: {result.get('skipped', 0)}\n"
+            msg += f"错误数: {result.get('errors', 0)}"
+            
+            # 如果有错误详情，添加显示
+            if result.get('error_details'):
+                msg += f"\n\n错误详情:\n"
+                for err in result.get('error_details', [])[:10]:  # 最多显示10条
+                    msg += f"  • {err}\n"
+                if len(result.get('error_details', [])) > 10:
+                    msg += f"  ... 还有 {len(result.get('error_details', [])) - 10} 条错误"
+            
+            self.show_info("执行结果", msg)
+        else:
+            self.show_info("执行结果", "批量修改已完成！")

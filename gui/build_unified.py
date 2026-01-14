@@ -468,7 +468,9 @@ exe = EXE(
         spec_content
         .replace('__UPX__', 'True' if upx else 'False')
         .replace('__CONSOLE__', 'True' if console else 'False')
-        .replace('__STRIP__', 'True')  # 默认开启strip以减小体积
+        # Windows 默认禁用 strip：PyInstaller 需要外部 strip 工具，否则会在处理二进制时触发 WinError 2。
+        # 非 Windows 环境默认开启以减小体积。
+        .replace('__STRIP__', 'False' if os.name == 'nt' else 'True')
         .replace('__OPTIMIZE__', str(optimize))
     )
 
@@ -681,6 +683,8 @@ def main():
                        help='禁用UPX压缩以加快构建速度（体积会变大）')
     parser.add_argument('--fast', action='store_true',
                        help='快速构建模式：禁用UPX，减少优化，最快速度')
+    parser.add_argument('--no-bump', action='store_true',
+                       help='不自动递增版本号（用于排查打包问题/重复构建）')
     parser.add_argument('--skip-unchanged', action='store_true',
                        help='如果源文件未变化则跳过构建（适合CI/CD）')
     parser.add_argument('--optimize', type=int, choices=[0, 1, 2], default=2,
@@ -691,9 +695,13 @@ def main():
     script_dir = Path(__file__).resolve().parent
     os.chdir(script_dir)
 
-    # 自动递增版本号
-    print("\n[版本更新] 自动递增版本号...")
-    new_version = increment_version("patch")
+    # 自动递增版本号（可通过 --no-bump 关闭，避免排错时污染版本）
+    if args.no_bump:
+        new_version = get_version()
+        print("\n[版本更新] 已禁用自动递增版本号 (--no-bump)")
+    else:
+        print("\n[版本更新] 自动递增版本号...")
+        new_version = increment_version("patch")
 
     total_start_time = time.time()
     
