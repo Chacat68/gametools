@@ -6,8 +6,12 @@
 
 import os
 import json
+import sys
 import pandas as pd
 from pathlib import Path
+
+# 添加项目根目录到路径（确保可导入 core 包）
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def create_test_folders():
     """创建测试文件夹结构"""

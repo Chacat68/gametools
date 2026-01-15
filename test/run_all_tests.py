@@ -44,9 +44,16 @@ def run_tests():
         print("=" * 70)
         
         try:
+            # 确保子进程可以导入项目根目录下的 core 包
+            env = os.environ.copy()
+            project_root = str(test_dir.parent)
+            existing_pythonpath = env.get('PYTHONPATH', '')
+            env['PYTHONPATH'] = project_root if not existing_pythonpath else (project_root + os.pathsep + existing_pythonpath)
+
             result = subprocess.run(
                 [sys.executable, str(test_file)],
                 cwd=str(test_dir.parent),
+                env=env,
                 capture_output=False
             )
             

@@ -1,0 +1,11 @@
+{
+  "skip_fields": {
+    "test1.xlsx": [
+      "Name",
+      "Description"
+    ],
+    "test2.xlsx": [
+      "Description"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "no_text_tables": [],
+  "text_tables": [
+    {
+      "table_name": "物品配置.xlsx",
+      "sheet_name": "Sheet1",
+      "fields_with_examples": [
+        "id,策划",
+        "name_cn,前端",
+        "desc_cn,后端",
+        "type,策划"
+      ]
+    }
+  ]
+}

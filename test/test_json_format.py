@@ -5,7 +5,12 @@
 验证字段名+字段类型的提取
 """
 
+import sys
 from pathlib import Path
+
+# 添加项目根目录到路径（确保可导入 core 包）
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from core.excel_field_extractor import ExcelFieldExtractor
 
 def test_json_format():

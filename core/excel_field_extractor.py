@@ -32,6 +32,11 @@ class ExcelFieldExtractor:
     
     def __init__(self):
         self.supported_extensions = SUPPORTED_EXCEL_EXTENSIONS
+        # 要过滤的字段名列表（不区分大小写）
+        # 注意：仅在“该列不包含本地化字符”时才会过滤，避免误伤真实的中文/越南文/泰文 name 列。
+        self.excluded_field_names = {
+            'name', 'model', 'id', 'code', 'type'
+        }
         # 错误日志列表
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
@@ -215,10 +220,34 @@ class ExcelFieldExtractor:
                             # 提取字段名
                             field_cell = sheet.cell(row=field_row, column=col_num)
                             field_name = str(field_cell.value) if field_cell.value is not None else f"列{col_num}"
-                            
-                            # 注意：不再基于字段名过滤，因为即使字段名是 name、id 等，
-                            # 只要该列的数据包含中文/越南文/泰文，就应该被提取
-                            # 之前的过滤逻辑会导致 name 字段（包含中文名称）被错误跳过
+
+                            # 字段名过滤（内容检测优先）：
+                            # - 若字段名在 excluded_field_names 中，但该列【不包含】本地化字符（中文/越南文/泰文），则视为代码列过滤掉。
+                            # - 若该列包含本地化字符，则保留，避免过滤真实的 name 列。
+                            if field_name and field_name.strip().lower() in self.excluded_field_names:
+                                has_localized = False
+                                data_start_row = 7
+                                if sheet.max_row >= data_start_row:
+                                    # 仅抽样检查，避免整列扫描带来的性能成本
+                                    checks = 0
+                                    max_checks = 50
+                                    for row_idx in range(data_start_row, sheet.max_row + 1):
+                                        cell_val = sheet.cell(row=row_idx, column=col_num).value
+                                        if cell_val is None:
+                                            continue
+                                        val_str = str(cell_val).strip()
+                                        if not val_str or is_filterable_content(val_str):
+                                            continue
+                                        if contains_localized_text(val_str):
+                                            has_localized = True
+                                            break
+                                        checks += 1
+                                        if checks >= max_checks:
+                                            break
+
+                                if not has_localized:
+                                    # 过滤代码列/ID列等
+                                    continue
                             
                             # 获取列字母（如 A, B, F 等）
                             col_letter = get_column_letter(col_num)

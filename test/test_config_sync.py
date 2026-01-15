@@ -10,8 +10,8 @@ import json
 import shutil
 from pathlib import Path
 
-# 添加模块路径
-sys.path.insert(0, str(Path(__file__).parent))
+# 添加项目根目录到路径（确保可导入 core 包）
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.excel_config_sync import ExcelConfigSync
 

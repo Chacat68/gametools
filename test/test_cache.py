@@ -102,7 +102,8 @@ def test_cache_performance():
         for i in range(iterations):
             cache.set(f"key_{i}", {"index": i, "data": "x" * 100})
         write_time = time.time() - start
-        print(f"    写入耗时: {write_time:.4f}s ({iterations/write_time:.0f} ops/s)")
+        write_ops = (iterations / write_time) if write_time > 0 else float('inf')
+        print(f"    写入耗时: {write_time:.4f}s ({write_ops:.0f} ops/s)")
         
         # 测试读取性能
         print(f"\n[2] 测试读取性能 ({iterations} 次)...")
@@ -112,7 +113,8 @@ def test_cache_performance():
             if cache.get(f"key_{i}") is not None:
                 hits += 1
         read_time = time.time() - start
-        print(f"    读取耗时: {read_time:.4f}s ({iterations/read_time:.0f} ops/s)")
+        read_ops = (iterations / read_time) if read_time > 0 else float('inf')
+        print(f"    读取耗时: {read_time:.4f}s ({read_ops:.0f} ops/s)")
         print(f"    命中率: {hits/iterations*100:.1f}%")
         
         # 测试缓存统计

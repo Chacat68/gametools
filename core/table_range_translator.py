@@ -1013,7 +1013,7 @@ class TableRangeTranslator:
                 exportable_fields = []
                 skipped_count = 0
                 for field_str in fields_with_examples:
-                    field_name, field_type = self.parse_field_with_type(field_str)
+                    field_name, field_type, _ = self.parse_field_with_type(field_str)
                     if self.is_exportable_field(field_type):
                         exportable_fields.append((field_name, field_type))
                     else:
@@ -1220,7 +1220,7 @@ class TableRangeTranslator:
                 exportable_fields = []
                 skipped_count = 0
                 for field_str in fields_with_examples:
-                    field_name, field_type = self.parse_field_with_type(field_str)
+                    field_name, field_type, _ = self.parse_field_with_type(field_str)
                     if self.is_exportable_field(field_type):
                         exportable_fields.append((field_name, field_type))
                     else:

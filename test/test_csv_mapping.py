@@ -6,6 +6,7 @@
 
 import sys
 import os
+import csv
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,9 +27,14 @@ def test_csv_loading():
     test_csv = os.path.join(os.path.dirname(__file__), '测试映射表.csv')
     
     if not os.path.exists(test_csv):
-        print(f"❌ 测试文件不存在: {test_csv}")
-        print("   请先运行 create_test_csv_mapping.py 创建测试文件")
-        return False
+        print(f"⚠️ 测试文件不存在，自动生成: {test_csv}")
+        # 生成一个最小可用的标准批量改表CSV：Table,Classification,ID,VN
+        with open(test_csv, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Table', 'Classification', 'ID', 'VN'])
+            writer.writerow(['items.xlsx', 'name_vn', 1001, 'Kiếm'])
+            writer.writerow(['items.xlsx', 'desc_vn', 1001, 'Mô tả'])
+            writer.writerow(['items.xlsx', 'name_vn', 1002, 'Giáp'])
     
     print(f"\n📂 测试文件: {os.path.basename(test_csv)}")
     

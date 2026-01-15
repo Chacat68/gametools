@@ -262,6 +262,12 @@ class ExcelConfigSync:
         errors = []
         cells_synced = 0
         
+        source_wb = None
+        target_wb = None
+
+        source_wb = None
+        target_wb = None
+
         try:
             # 创建备份
             if self.sync_options['backup_before_sync']:
@@ -271,9 +277,13 @@ class ExcelConfigSync:
                 except Exception as e:
                     logger.warning(f"创建备份失败: {e}")
             
-            # 加载工作簿，保留所有原有结构（VBA、链接、样式、批注等）
-            source_wb = load_workbook(source_path, data_only=False, keep_vba=True, keep_links=True, rich_text=True)
-            target_wb = load_workbook(target_path, data_only=False, keep_vba=True, keep_links=True, rich_text=True)
+            # 加载工作簿
+            # 说明：仅对 xlsm/xltm 启用 keep_vba；避免某些 openpyxl 版本在 keep_links/rich_text
+            # 场景下触发 ZipFile 析构异常（I/O operation on closed file）。
+            source_keep_vba = str(source_path).lower().endswith(('.xlsm', '.xltm'))
+            target_keep_vba = str(target_path).lower().endswith(('.xlsm', '.xltm'))
+            source_wb = load_workbook(source_path, data_only=False, keep_vba=source_keep_vba)
+            target_wb = load_workbook(target_path, data_only=False, keep_vba=target_keep_vba)
             
             # 确定要同步的工作表
             if sync_sheets is None:
@@ -354,13 +364,23 @@ class ExcelConfigSync:
             
             # 保存目标文件
             target_wb.save(target_path)
-            source_wb.close()
-            target_wb.close()
             
         except Exception as e:
             error_msg = f"同步文件失败 [{os.path.basename(source_path)} -> {os.path.basename(target_path)}]: {e}"
             errors.append(error_msg)
             logger.error(error_msg)
+        finally:
+            # 强制关闭资源，避免 openpyxl 的 ZipFile 在析构时触发异常
+            try:
+                if source_wb is not None:
+                    source_wb.close()
+            except Exception:
+                pass
+            try:
+                if target_wb is not None:
+                    target_wb.close()
+            except Exception:
+                pass
         
         return cells_synced, errors
     
@@ -405,16 +425,15 @@ class ExcelConfigSync:
         processed = 0
         for filename, file_info in matching_files.items():
             source_path = file_info['source']
-            
+
             for idx, target_path in enumerate(file_info['targets']):
-                target_dir = os.path.dirname(target_path)
                 target_num = idx + 1
-                
+
                 self._report_progress(
                     f"正在同步: {filename} -> 目标目录{target_num}",
                     5 + (processed / total_files) * 90
                 )
-                
+
                 cells_synced, errors = self.sync_excel_file(source_path, target_path)
                 
                 if errors:

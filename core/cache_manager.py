@@ -17,6 +17,12 @@ import logging
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 
+# 可选依赖：用于估算 DataFrame 内存占用
+try:
+    import pandas as pd  # type: ignore
+except Exception:  # pragma: no cover
+    pd = None
+
 logger = logging.getLogger(__name__)
 
 # Python 3.7+ 兼容性处理
@@ -229,8 +235,8 @@ class MemoryCache:
                 )
             elif isinstance(obj, (list, tuple)):
                 return sys.getsizeof(obj) + sum(self._estimate_size(item) for item in obj)
-            elif isinstance(obj, pd.DataFrame):
-                return obj.memory_usage(deep=True).sum()
+            elif pd is not None and isinstance(obj, pd.DataFrame):
+                return int(obj.memory_usage(deep=True).sum())
             else:
                 return sys.getsizeof(obj)
         except Exception as e:
