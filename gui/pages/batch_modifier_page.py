@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import threading
 import json
+import os
 from pathlib import Path
 
 from gui.pages.base_page import ModernPage
@@ -131,7 +132,22 @@ class BatchModifierPage(ModernPage):
             state='readonly',
             width=12
         )
-        self.language_combo.pack(side=tk.LEFT)
+        self.language_combo.pack(side=tk.LEFT, padx=(0, 8))
+        self.language_combo.bind('<<ComboboxSelected>>', self._on_language_changed)
+        
+        # 刷新语言按钮
+        tk.Button(
+            mapping_row,
+            text="刷新",
+            font=self.theme.FONTS["small"],
+            command=self._refresh_languages,
+            bg=self.theme.colors["bg_hover"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=8,
+            pady=4
+        ).pack(side=tk.LEFT)
         
         # Excel 目录
         self._create_file_row(inner, "Excel目录", "excel_dir_var",
@@ -488,6 +504,85 @@ class BatchModifierPage(ModernPage):
                 self.json_lang_label.config(text="⚠️ 配置文件无语言标记")
         except Exception as e:
             self.json_lang_label.config(text=f"⚠️ 读取失败: {str(e)}")
+    
+    def _refresh_languages(self):
+        """刷新可用的语言列表（从映射表读取列名）"""
+        mapping_file = self.mapping_var.get().strip()
+        
+        if not mapping_file or not os.path.exists(mapping_file):
+            self.show_warning("警告", "请先选择有效的映射表文件")
+            return
+        
+        try:
+            import pandas as pd
+            
+            # 检查文件扩展名
+            file_ext = os.path.splitext(mapping_file)[1].lower()
+            
+            if file_ext == '.csv':
+                # CSV文件，直接读取列名
+                for encoding in ['utf-8', 'gbk', 'gb2312', 'utf-8-sig']:
+                    try:
+                        df = pd.read_csv(mapping_file, nrows=0, encoding=encoding)
+                        columns = df.columns.tolist()
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    df = pd.read_csv(mapping_file, nrows=0, encoding='utf-8', errors='ignore')
+                    columns = df.columns.tolist()
+            else:
+                # Excel文件
+                xl = pd.ExcelFile(mapping_file)
+                
+                # 跳过汇总信息等非数据工作表
+                skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+                data_sheet = None
+                for sheet in xl.sheet_names:
+                    if sheet not in skip_sheets:
+                        data_sheet = sheet
+                        break
+                
+                if not data_sheet:
+                    data_sheet = xl.sheet_names[0] if xl.sheet_names else None
+                
+                if data_sheet:
+                    df = pd.read_excel(mapping_file, sheet_name=data_sheet, nrows=0)
+                    columns = df.columns.tolist()
+                else:
+                    columns = []
+            
+            # 排除常见的非语言列
+            exclude_cols = ['Classification', 'classification', 'ID', 'id', 'Field', 'field', 
+                           '字段', '字段名', '表名', 'Table', 'table', '项目', '值', 'Name', 'name',
+                           'Position', 'position', '位置']
+            lang_cols = [c for c in columns if c not in exclude_cols]
+            
+            if lang_cols:
+                self.language_combo['values'] = lang_cols
+                # 保持当前选择（如果有效）
+                current = self.language_var.get()
+                if current not in lang_cols:
+                    self.language_combo.set(lang_cols[0])
+                self._on_language_changed()
+                self.show_info("刷新成功", f"找到 {len(lang_cols)} 个语言列:\n{', '.join(lang_cols)}")
+            else:
+                self.show_warning("警告", "未找到语言列")
+        except Exception as e:
+            self.show_error("错误", f"获取语言列表失败: {e}")
+    
+    def _on_language_changed(self, event=None):
+        """语言选择变化时更新标签"""
+        selected_lang = self.language_var.get().strip()
+        if selected_lang:
+            # 语言名称映射
+            lang_names = {
+                'VN': '越南语', 'TH': '泰语', 'EN': '英语', 'ZH': '中文', 'CN': '中文',
+                'JP': '日语', 'KR': '韩语', 'TW': '繁体中文', 'Support-CH': '中文(Support)',
+                'Polish-CH': '中文(Polish)', 'VN.1': '越南语(VN.1)'
+            }
+            lang_name = lang_names.get(selected_lang, selected_lang)
+            self.json_lang_label.config(text=f"🎯 目标语言: {lang_name} ({selected_lang})")
     
     # ==================== 操作方法 ====================
     

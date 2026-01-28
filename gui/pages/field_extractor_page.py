@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 GameTools 字段导出页面（现代化版本）
+支持多语言目录配置
 """
 
 import tkinter as tk
@@ -17,7 +18,7 @@ class FieldExtractorPage(ModernPage):
     PAGE_KEY = "field_extractor"
     PAGE_TITLE = "表字段导出"
     PAGE_ICON = "📋"
-    PAGE_DESCRIPTION = "扫描Excel文件，提取包含文本的列字段信息"
+    PAGE_DESCRIPTION = "扫描Excel文件，提取包含文本的列字段信息（支持多语言目录）"
     
     def __init__(self, parent, app, theme):
         self.extractor = None
@@ -26,7 +27,7 @@ class FieldExtractorPage(ModernPage):
     
     def create_widgets(self):
         """创建页面控件"""
-        # 目录选择卡片
+        # 目录选择卡片（多语言）
         self._create_directory_card()
         
         # 选项卡片
@@ -39,7 +40,7 @@ class FieldExtractorPage(ModernPage):
         self._create_result_section()
     
     def _create_directory_card(self):
-        """创建目录选择卡片"""
+        """创建多语言目录选择卡片"""
         card = tk.Frame(
             self.content,
             bg=self.theme.colors["bg_card"],
@@ -54,28 +55,45 @@ class FieldExtractorPage(ModernPage):
         # 标题
         tk.Label(
             inner,
-            text="📁 目录配置",
+            text="📁 多语言目录配置（从物理行第5行提取字段名）",
             font=self.theme.FONTS["subheading"],
             bg=self.theme.colors["bg_card"],
             fg=self.theme.colors["text_primary"],
             anchor=tk.W
         ).pack(fill=tk.X, pady=(0, 16))
         
-        # 输入目录
-        self._create_dir_row(inner, "输入目录", "input_dir_var",
-                             lambda: self.browse_directory("选择Excel目录", self.input_dir_var),
-                             "(Excel文件所在目录)")
+        # 中文目录
+        self._create_lang_dir_row(inner, "🇨🇳 中文目录", "zh_dir_var", "zh_check_var", True)
         
-        # 输出文件
-        self._create_dir_row(inner, "输出文件", "output_file_var",
-                             self._browse_output_file,
-                             "(字段配置JSON)")
+        # 越南语目录
+        self._create_lang_dir_row(inner, "🇻🇳 越南语目录", "vn_dir_var", "vn_check_var", True)
+        
+        # 泰语目录
+        self._create_lang_dir_row(inner, "🇹🇭 泰语目录", "th_dir_var", "th_check_var", True)
+        
+        # 输出目录
+        self._create_dir_row(inner, "📤 输出目录", "output_dir_var",
+                             self._browse_output_dir,
+                             "(结果输出目录)")
     
-    def _create_dir_row(self, parent, label: str, var_name: str,
-                        browse_cmd, hint: str = ""):
-        """创建目录/文件选择行"""
+    def _create_lang_dir_row(self, parent, label: str, var_name: str, 
+                             check_var_name: str, default_checked: bool = True):
+        """创建带勾选框的语言目录选择行"""
         row = tk.Frame(parent, bg=self.theme.colors["bg_card"])
         row.pack(fill=tk.X, pady=(0, 12))
+        
+        # 勾选框
+        check_var = tk.BooleanVar(value=default_checked)
+        setattr(self, check_var_name, check_var)
+        
+        tk.Checkbutton(
+            row,
+            text="",
+            variable=check_var,
+            bg=self.theme.colors["bg_card"],
+            activebackground=self.theme.colors["bg_card"],
+            selectcolor=self.theme.colors["bg_input"]
+        ).pack(side=tk.LEFT)
         
         tk.Label(
             row,
@@ -83,7 +101,72 @@ class FieldExtractorPage(ModernPage):
             font=self.theme.FONTS["body"],
             bg=self.theme.colors["bg_card"],
             fg=self.theme.colors["text_primary"],
-            width=10,
+            width=12,
+            anchor=tk.W
+        ).pack(side=tk.LEFT)
+        
+        var = tk.StringVar()
+        setattr(self, var_name, var)
+        
+        entry_frame = tk.Frame(
+            row,
+            bg=self.theme.colors["bg_input"],
+            highlightbackground=self.theme.colors["border"],
+            highlightthickness=1
+        )
+        entry_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+        
+        tk.Entry(
+            entry_frame,
+            textvariable=var,
+            font=self.theme.FONTS["body"],
+            bg=self.theme.colors["bg_input"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            highlightthickness=0
+        ).pack(fill=tk.X, padx=8, pady=6)
+        
+        tk.Button(
+            row,
+            text="浏览",
+            font=self.theme.FONTS["small"],
+            command=lambda v=var: self._browse_lang_directory(v),
+            bg=self.theme.colors["bg_hover"],
+            fg=self.theme.colors["text_primary"],
+            relief=tk.FLAT,
+            cursor="hand2",
+            padx=12,
+            pady=4
+        ).pack(side=tk.LEFT)
+    
+    def _browse_lang_directory(self, var: tk.StringVar):
+        """浏览语言目录"""
+        directory = filedialog.askdirectory(title="选择Excel目录")
+        if directory:
+            var.set(directory)
+    
+    def _browse_output_dir(self):
+        """浏览输出目录"""
+        directory = filedialog.askdirectory(title="选择输出目录")
+        if directory:
+            self.output_dir_var.set(directory)
+    
+    def _create_dir_row(self, parent, label: str, var_name: str,
+                        browse_cmd, hint: str = ""):
+        """创建目录/文件选择行"""
+        row = tk.Frame(parent, bg=self.theme.colors["bg_card"])
+        row.pack(fill=tk.X, pady=(0, 12))
+        
+        # 占位符，与语言行对齐
+        tk.Frame(row, width=24, bg=self.theme.colors["bg_card"]).pack(side=tk.LEFT)
+        
+        tk.Label(
+            row,
+            text=label,
+            font=self.theme.FONTS["body"],
+            bg=self.theme.colors["bg_card"],
+            fg=self.theme.colors["text_primary"],
+            width=12,
             anchor=tk.W
         ).pack(side=tk.LEFT)
         
@@ -190,51 +273,42 @@ class FieldExtractorPage(ModernPage):
             selectcolor=self.theme.colors["bg_input"]
         ).pack(side=tk.LEFT, padx=(0, 24))
         
-        # 行号设置
-        row2 = tk.Frame(inner, bg=self.theme.colors["bg_card"])
-        row2.pack(fill=tk.X)
+        # 输出格式选择
+        format_row = tk.Frame(inner, bg=self.theme.colors["bg_card"])
+        format_row.pack(fill=tk.X, pady=(0, 12))
         
         tk.Label(
-            row2,
-            text="字段行号:",
+            format_row,
+            text="输出格式:",
             font=self.theme.FONTS["body"],
             bg=self.theme.colors["bg_card"],
             fg=self.theme.colors["text_primary"]
         ).pack(side=tk.LEFT, padx=(0, 8))
         
-        self.field_row_var = tk.StringVar(value="5")
-        tk.Entry(
-            row2,
-            textvariable=self.field_row_var,
-            font=self.theme.FONTS["body"],
-            width=5,
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            highlightbackground=self.theme.colors["border"],
-            highlightthickness=1
-        ).pack(side=tk.LEFT, padx=(0, 16))
+        self.output_format_var = tk.StringVar(value="json")
+        for fmt, text in [("json", "JSON"), ("csv", "CSV"), ("excel", "Excel")]:
+            tk.Radiobutton(
+                format_row,
+                text=text,
+                variable=self.output_format_var,
+                value=fmt,
+                font=self.theme.FONTS["body"],
+                bg=self.theme.colors["bg_card"],
+                fg=self.theme.colors["text_primary"],
+                activebackground=self.theme.colors["bg_card"],
+                selectcolor=self.theme.colors["bg_input"]
+            ).pack(side=tk.LEFT, padx=(0, 16))
         
-        tk.Label(
-            row2,
-            text="数据起始行:",
-            font=self.theme.FONTS["body"],
+        # 提示信息
+        tip_label = tk.Label(
+            inner,
+            text="💡 选择需要导出的语言分支，JSON格式会合并输出带语言标记的结果",
+            font=self.theme.FONTS["small"],
             bg=self.theme.colors["bg_card"],
-            fg=self.theme.colors["text_primary"]
-        ).pack(side=tk.LEFT, padx=(0, 8))
-        
-        self.data_start_row_var = tk.StringVar(value="7")
-        tk.Entry(
-            row2,
-            textvariable=self.data_start_row_var,
-            font=self.theme.FONTS["body"],
-            width=5,
-            bg=self.theme.colors["bg_input"],
-            fg=self.theme.colors["text_primary"],
-            relief=tk.FLAT,
-            highlightbackground=self.theme.colors["border"],
-            highlightthickness=1
-        ).pack(side=tk.LEFT)
+            fg=self.theme.colors["primary"],
+            anchor=tk.W
+        )
+        tip_label.pack(fill=tk.X)
     
     def _create_action_buttons(self):
         """创建操作按钮"""
@@ -331,22 +405,33 @@ class FieldExtractorPage(ModernPage):
     
     def _start_extraction(self):
         """开始提取"""
-        input_dir = self.input_dir_var.get()
-        if not input_dir:
-            self.show_warning("警告", "请选择输入目录")
+        # 检查至少有一个勾选的语言目录
+        selected_dirs = {}
+        if self.zh_check_var.get() and self.zh_dir_var.get():
+            selected_dirs['zh'] = self.zh_dir_var.get()
+        if self.vn_check_var.get() and self.vn_dir_var.get():
+            selected_dirs['vn'] = self.vn_dir_var.get()
+        if self.th_check_var.get() and self.th_dir_var.get():
+            selected_dirs['th'] = self.th_dir_var.get()
+        
+        if not selected_dirs:
+            self.show_warning("警告", "请选择至少一个语言目录")
             return
         
-        if not Path(input_dir).exists():
-            self.show_error("错误", f"目录不存在: {input_dir}")
-            return
+        # 验证目录是否存在
+        for lang, dir_path in selected_dirs.items():
+            if not Path(dir_path).exists():
+                lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+                self.show_error("错误", f"{lang_names.get(lang, lang)}目录不存在: {dir_path}")
+                return
         
         self.extract_btn.configure(state=tk.DISABLED)
         self.stats_label.configure(text="提取中...")
         
-        thread = threading.Thread(target=self._do_extraction, daemon=True)
+        thread = threading.Thread(target=self._do_extraction, args=(selected_dirs,), daemon=True)
         thread.start()
     
-    def _do_extraction(self):
+    def _do_extraction(self, selected_dirs: dict):
         """执行提取"""
         try:
             from core.excel_field_extractor import ExcelFieldExtractor
@@ -354,23 +439,22 @@ class FieldExtractorPage(ModernPage):
             if not self.extractor:
                 self.extractor = ExcelFieldExtractor()
             
-            input_dir = self.input_dir_var.get()
-            output_file = self.output_file_var.get() or None
+            # 清空之前的日志
+            self.extractor.clear_logs()
+            
+            output_dir = self.output_dir_var.get() or None
             recursive = self.recursive_var.get()
-            field_row = int(self.field_row_var.get())
-            data_start_row = int(self.data_start_row_var.get())
+            output_format = self.output_format_var.get()
             
             def progress_callback(msg, pct=None):
                 self.after(0, lambda: self._update_progress(msg, pct))
             
-            self.extractor.set_progress_callback(progress_callback)
-            
-            result = self.extractor.extract_fields(
-                input_directory=input_dir,
-                output_file=output_file,
-                recursive=recursive,
-                field_row=field_row,
-                data_start_row=data_start_row
+            # 使用多语言处理方法
+            result = self.extractor.process_multi_language_directories(
+                directories=selected_dirs,
+                output_folder=output_dir,
+                output_format=output_format,
+                recursive=recursive
             )
             
             self.after(0, lambda: self._on_complete(result))
@@ -393,8 +477,21 @@ class FieldExtractorPage(ModernPage):
         self.last_result = result
         
         if isinstance(result, dict):
-            tables = result.get('tables', {})
-            self.stats_label.configure(text=f"✅ 完成（点击【显示结果】查看详情）", fg=self.theme.colors["success"])
+            total_files = result.get('total_files', 0)
+            total_sheets = result.get('total_sheets', 0)
+            total_fields = result.get('total_fields', 0)
+            languages = result.get('languages', {})
+            output_files = result.get('output_files', [])
+            
+            lang_str = ", ".join([v.get('name', k) for k, v in languages.items()])
+            self.stats_label.configure(
+                text=f"✅ 完成：{len(languages)}个语言({lang_str})，{total_files}个文件，{total_fields}个字段", 
+                fg=self.theme.colors["success"]
+            )
+            
+            # 显示输出文件路径
+            if output_files:
+                self.show_info("提取完成", f"已生成 {len(output_files)} 个输出文件:\n\n" + "\n".join(output_files))
         else:
             self.stats_label.configure(text="✅ 完成", fg=self.theme.colors["success"])
     
@@ -418,21 +515,33 @@ class FieldExtractorPage(ModernPage):
         
         result = self.last_result
         if isinstance(result, dict):
-            tables = result.get('tables', {})
-            total_fields = sum(len(t.get('fields', [])) for t in tables.values())
+            total_files = result.get('total_files', 0)
+            total_sheets = result.get('total_sheets', 0)
+            total_fields = result.get('total_fields', 0)
+            languages = result.get('languages', {})
+            output_files = result.get('output_files', [])
             
             msg = f"字段提取结果\n\n"
-            msg += f"扫描表数: {len(tables)}\n"
+            msg += f"处理语言数: {len(languages)}\n"
+            msg += f"总文件数: {total_files}\n"
+            msg += f"总工作表数: {total_sheets}\n"
             msg += f"总字段数: {total_fields}\n\n"
             
-            # 显示各表详情（最多显示10个）
-            if tables:
-                msg += "各表详情:\n"
-                for i, (table_name, table_info) in enumerate(list(tables.items())[:10]):
-                    fields = table_info.get('fields', [])
-                    msg += f"  • {table_name}: {len(fields)} 个字段\n"
-                if len(tables) > 10:
-                    msg += f"  ... 还有 {len(tables) - 10} 个表"
+            # 显示各语言详情
+            if languages:
+                msg += "各语言详情:\n"
+                for lang_code, lang_info in languages.items():
+                    lang_name = lang_info.get('name', lang_code)
+                    stats = lang_info.get('stats', {})
+                    files = stats.get('total_files', 0)
+                    fields = stats.get('total_fields', 0)
+                    msg += f"  • {lang_name}: {files} 个文件, {fields} 个字段\n"
+            
+            # 显示输出文件
+            if output_files:
+                msg += f"\n输出文件:\n"
+                for f in output_files:
+                    msg += f"  • {f}\n"
             
             self.show_info("执行结果", msg)
         else:

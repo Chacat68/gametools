@@ -46,6 +46,12 @@ gametools/
 └── README.md               # 项目说明
 ```
 
+## 📸 界面预览
+
+![GameTools 主界面](docs/images/screenshot_main.png)
+
+*GameTools 现代化界面 - 集成多种游戏策划工具*
+
 ## 功能特点
 
 ### 🎯 统一界面
