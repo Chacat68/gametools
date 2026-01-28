@@ -82,8 +82,6 @@ class TabVisibilityConfig:
     field_extractor: bool = True  # 字段导出
     table_range_translator: bool = True  # 多语言提取
     batch_modifier: bool = True  # 批量改表
-    config_sync: bool = True  # 配置同步
-    csv_converter: bool = True  # CSV转换
     
 
 @dataclass
