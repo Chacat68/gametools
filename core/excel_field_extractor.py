@@ -40,6 +40,47 @@ class ExcelFieldExtractor:
         # 错误日志列表
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
+        
+        # 边界检测关键字（检测到此关键字后停止导出）
+        self.boundary_keyword = 'over'
+    
+    def _check_row_boundary(self, sheet, row_idx: int) -> bool:
+        """
+        检查某一行是否包含边界关键字（over）
+        如果该行任意单元格包含边界关键字，则返回True表示到达边界
+        
+        Args:
+            sheet: openpyxl工作表对象
+            row_idx: 行号（从1开始）
+            
+        Returns:
+            bool: True表示到达边界，应停止处理
+        """
+        if row_idx > sheet.max_row:
+            return False
+        
+        for cell in sheet[row_idx]:
+            if cell.value is not None:
+                cell_str = str(cell.value).strip().lower()
+                if cell_str == self.boundary_keyword:
+                    return True
+        return False
+    
+    def _find_boundary_row(self, sheet, start_row: int = 7) -> int:
+        """
+        在工作表中查找边界行（包含'over'关键字的行）
+        
+        Args:
+            sheet: openpyxl工作表对象
+            start_row: 开始搜索的行号（默认从第7行开始）
+            
+        Returns:
+            int: 边界行号，如果未找到返回sheet.max_row + 1
+        """
+        for row_idx in range(start_row, sheet.max_row + 1):
+            if self._check_row_boundary(sheet, row_idx):
+                return row_idx
+        return sheet.max_row + 1
     
     def is_excel_file(self, file_path: Path) -> bool:
         """
@@ -140,11 +181,14 @@ class ExcelFieldExtractor:
                         total_data_rows = 0
 
                         data_start_row = 7  # 第7行开始是数据
-                        if sheet.max_row >= data_start_row:
-                            total_data_rows = sheet.max_row - data_start_row + 1
+                        # 查找边界行（包含'over'关键字的行）
+                        boundary_row = self._find_boundary_row(sheet, data_start_row)
+                        
+                        if boundary_row > data_start_row:
+                            total_data_rows = boundary_row - data_start_row
                             for row in sheet.iter_rows(
                                 min_row=data_start_row,
-                                max_row=sheet.max_row,
+                                max_row=boundary_row - 1,  # 不包含边界行
                                 min_col=start_col,
                                 max_col=end_col,
                             ):
@@ -227,11 +271,16 @@ class ExcelFieldExtractor:
                             if field_name and field_name.strip().lower() in self.excluded_field_names:
                                 has_localized = False
                                 data_start_row = 7
-                                if sheet.max_row >= data_start_row:
+                                # 查找边界行
+                                boundary_row = self._find_boundary_row(sheet, data_start_row)
+                                if boundary_row > data_start_row:
                                     # 仅抽样检查，避免整列扫描带来的性能成本
                                     checks = 0
                                     max_checks = 50
-                                    for row_idx in range(data_start_row, sheet.max_row + 1):
+                                    for row_idx in range(data_start_row, boundary_row):  # 不超过边界行
+                                        # 检查是否到达边界
+                                        if self._check_row_boundary(sheet, row_idx):
+                                            break
                                         cell_val = sheet.cell(row=row_idx, column=col_num).value
                                         if cell_val is None:
                                             continue
