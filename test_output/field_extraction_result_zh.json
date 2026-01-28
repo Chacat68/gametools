@@ -1,0 +1,22 @@
+{
+  "no_text_tables": [],
+  "text_tables": [
+    {
+      "table_name": "物品配置.xlsx",
+      "sheet_name": "Sheet1",
+      "fields_with_examples": [
+        "name_cn,前端,B",
+        "desc_cn,后端,C"
+      ],
+      "field_column_letters": [
+        "B",
+        "C"
+      ],
+      "field_count": 2
+    }
+  ],
+  "language": {
+    "code": "zh",
+    "name": "中文"
+  }
+}
