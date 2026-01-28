@@ -446,8 +446,11 @@ class FieldExtractorPage(ModernPage):
             recursive = self.recursive_var.get()
             output_format = self.output_format_var.get()
             
+            # 设置进度回调（关键！）
             def progress_callback(msg, pct=None):
                 self.after(0, lambda: self._update_progress(msg, pct))
+            
+            self.extractor.set_progress_callback(progress_callback)
             
             # 使用多语言处理方法
             result = self.extractor.process_multi_language_directories(

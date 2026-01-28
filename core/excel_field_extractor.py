@@ -42,8 +42,29 @@ class ExcelFieldExtractor:
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
         
         # 边界检测关键字（检测到此关键字后停止导出）
-        self.boundary_keyword = 'over'
+        self.boundary_keyword = 'over'        
+        # 进度回调函数
+        self.progress_callback = None
     
+    def set_progress_callback(self, callback):
+        """
+        设置进度回调函数
+        
+        Args:
+            callback: 回调函数，签名为 callback(message: str, percentage: float = None)
+        """
+        self.progress_callback = callback
+    
+    def _report_progress(self, message: str, percentage: float = None):
+        """
+        报告处理进度
+        
+        Args:
+            message: 进度消息
+            percentage: 进度百分比 (0-100)
+        """
+        if self.progress_callback:
+            self.progress_callback(message, percentage)    
     def _check_row_boundary(self, sheet, row_idx: int) -> bool:
         """
         检查某一行是否包含边界关键字（over）
@@ -371,13 +392,18 @@ class ExcelFieldExtractor:
         
         return results
     
-    def scan_directory(self, directory: Path, recursive: bool = True) -> List[Dict]:
+    def scan_directory(self, directory: Path, recursive: bool = True, 
+                        lang_name: str = None, lang_progress_base: float = 0,
+                        lang_progress_range: float = 100) -> List[Dict]:
         """
         扫描目录中的所有Excel文件
         
         Args:
             directory: 要扫描的目录
             recursive: 是否递归扫描子目录
+            lang_name: 当前处理的语言名称（用于进度显示）
+            lang_progress_base: 当前语言的进度基准值
+            lang_progress_range: 当前语言的进度范围
             
         Returns:
             List[Dict]: 所有Excel文件的字段信息
@@ -388,16 +414,31 @@ class ExcelFieldExtractor:
             print(f"目录不存在: {directory}")
             return all_results
         
+        # 报告开始扫描
+        lang_prefix = f"[{lang_name}] " if lang_name else ""
+        self._report_progress(f"{lang_prefix}正在扫描目录...", lang_progress_base)
+        
         # 获取所有Excel文件
         if recursive:
             excel_files = [f for f in directory.rglob("*") if self.is_excel_file(f)]
         else:
             excel_files = [f for f in directory.glob("*") if self.is_excel_file(f)]
         
-        print(f"找到 {len(excel_files)} 个Excel文件")
+        total_files = len(excel_files)
+        print(f"找到 {total_files} 个Excel文件")
+        self._report_progress(f"{lang_prefix}找到 {total_files} 个Excel文件", lang_progress_base)
         
         for idx, file_path in enumerate(excel_files, 1):
-            print(f"处理文件 {idx}/{len(excel_files)}: {file_path.name}")
+            # 计算当前进度
+            file_progress = lang_progress_base + (idx / total_files) * lang_progress_range if total_files > 0 else lang_progress_base
+            
+            # 报告文件处理进度
+            self._report_progress(
+                f"{lang_prefix}处理 ({idx}/{total_files}): {file_path.name}", 
+                file_progress
+            )
+            print(f"处理文件 {idx}/{total_files}: {file_path.name}")
+            
             results = self.extract_fields_from_excel(file_path)
             all_results.extend(results)
         
@@ -638,7 +679,9 @@ class ExcelFieldExtractor:
                          output_format: str = 'json',
                          recursive: bool = True,
                          language: str = None,
-                         write_output: bool = True) -> Dict:
+                         write_output: bool = True,
+                         lang_progress_base: float = 0,
+                         lang_progress_range: float = 100) -> Dict:
         """
         处理目录并导出结果
         
@@ -649,6 +692,8 @@ class ExcelFieldExtractor:
             recursive: 是否递归扫描
             language: 语言代码 ('zh', 'vn', 'th')，用于输出文件命名和JSON语言标记
             write_output: 是否写入输出文件
+            lang_progress_base: 当前语言的进度基准值
+            lang_progress_range: 当前语言的进度范围
             
         Returns:
             Dict: 处理统计信息，包含results数据
@@ -664,9 +709,18 @@ class ExcelFieldExtractor:
             output_dir.mkdir(parents=True, exist_ok=True)
         
         # 扫描目录
-        lang_str = f" [{self.SUPPORTED_LANGUAGES[language]['name']}]" if language and language in self.SUPPORTED_LANGUAGES else ""
+        lang_name = self.SUPPORTED_LANGUAGES[language]['name'] if language and language in self.SUPPORTED_LANGUAGES else None
+        lang_str = f" [{lang_name}]" if lang_name else ""
         print(f"开始扫描目录{lang_str}: {directory}")
-        results = self.scan_directory(directory, recursive=recursive)
+        self._report_progress(f"{lang_str} 开始扫描...", lang_progress_base)
+        
+        results = self.scan_directory(
+            directory, 
+            recursive=recursive,
+            lang_name=lang_name,
+            lang_progress_base=lang_progress_base,
+            lang_progress_range=lang_progress_range * 0.9  # 90% 用于扫描
+        )
 
         # 重新排序：无文本表优先，其次按文件名与工作表名
         results.sort(key=lambda r: (0 if not r.get('has_text', True) else 1, r['excel_file'], r['sheet_name']))
@@ -765,20 +819,32 @@ class ExcelFieldExtractor:
         
         merged_json_data = {}
         
-        # 依次处理每个语言目录
+        # 计算有效的语言目录数量，用于进度计算
+        valid_languages = []
         for lang_code, dir_path in directories.items():
-            if not dir_path or not Path(dir_path).exists():
-                print(f"跳过语言 {lang_code}: 目录未指定或不存在")
-                continue
-            
-            if lang_code not in self.SUPPORTED_LANGUAGES:
-                print(f"跳过语言 {lang_code}: 不支持的语言代码")
-                continue
-            
+            if dir_path and Path(dir_path).exists() and lang_code in self.SUPPORTED_LANGUAGES:
+                valid_languages.append((lang_code, dir_path))
+        
+        total_languages = len(valid_languages)
+        if total_languages == 0:
+            self._report_progress("没有有效的语言目录", 100)
+            return all_stats
+        
+        # 每个语言占用的进度范围
+        progress_per_lang = 100.0 / total_languages
+        
+        # 依次处理每个语言目录
+        for lang_idx, (lang_code, dir_path) in enumerate(valid_languages):
             lang_name = self.SUPPORTED_LANGUAGES[lang_code]['name']
+            
+            # 计算当前语言的进度范围
+            lang_progress_base = lang_idx * progress_per_lang
+            
             print(f"\n{'='*60}")
             print(f"开始处理 {lang_name} 目录...")
             print(f"{'='*60}")
+            
+            self._report_progress(f"正在处理 {lang_name} ({lang_idx + 1}/{total_languages})...", lang_progress_base)
             
             # 如果是JSON格式，暂时不写入单个文件，而是收集数据合并
             should_write = (output_format != 'json')
@@ -790,7 +856,9 @@ class ExcelFieldExtractor:
                 output_format=output_format,
                 recursive=recursive,
                 language=lang_code,
-                write_output=should_write
+                write_output=should_write,
+                lang_progress_base=lang_progress_base,
+                lang_progress_range=progress_per_lang
             )
             
             # 如果是JSON格式，收集数据
