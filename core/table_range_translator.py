@@ -56,6 +56,48 @@ class TableRangeTranslator:
         }
         
         self.error_logs = []
+        
+        # 边界检测关键字（检测到此关键字后停止导出）
+        self.boundary_keyword = 'over'
+    
+    def _check_row_boundary(self, df: pd.DataFrame, row_idx: int) -> bool:
+        """
+        检查某一行是否包含边界关键字（over）
+        如果该行任意单元格包含边界关键字，则返回True表示到达边界
+        
+        Args:
+            df: pandas DataFrame
+            row_idx: 行索引
+            
+        Returns:
+            bool: True表示到达边界，应停止处理
+        """
+        if row_idx >= len(df):
+            return False
+        
+        row_data = df.iloc[row_idx]
+        for cell_value in row_data:
+            if pd.notna(cell_value):
+                cell_str = str(cell_value).strip().lower()
+                if cell_str == self.boundary_keyword:
+                    return True
+        return False
+    
+    def _find_boundary_row(self, df: pd.DataFrame, start_row: int = 6) -> Optional[int]:
+        """
+        在DataFrame中查找边界行（包含'over'关键字的行）
+        
+        Args:
+            df: pandas DataFrame
+            start_row: 开始搜索的行索引（默认从第7行/索引6开始）
+            
+        Returns:
+            Optional[int]: 边界行索引，如果未找到返回None
+        """
+        for row_idx in range(start_row, len(df)):
+            if self._check_row_boundary(df, row_idx):
+                return row_idx
+        return None
     
     def load_json_config(self, json_path: str, target_language: str = None) -> Dict:
         """
@@ -342,8 +384,8 @@ class TableRangeTranslator:
                 log_progress(f"   🔍 提取字段数据:")
                 table_extracted_count = 0
                 
-                # 构建ID映射
-                id_to_row_by_lang = {lang: self._build_id_to_row_index(df) 
+                # 构建ID映射（考虑边界行）
+                id_to_row_by_lang = {lang: self._build_id_to_row_index(df, self._find_boundary_row(df)) 
                                     for lang, df in table_data_by_lang.items()}
                 
                 for field_name, field_type, col_letter in exportable_fields:
@@ -396,8 +438,12 @@ class TableRangeTranslator:
                     
                     excel_col = self.column_index_to_letter(anchor_col_idx)
                     
-                    # 遍历数据行
-                    for anchor_row_idx in range(6, len(anchor_df)):
+                    # 查找边界行（包含'over'关键字的行）
+                    boundary_row = self._find_boundary_row(anchor_df)
+                    end_row = boundary_row if boundary_row is not None else len(anchor_df)
+                    
+                    # 遍历数据行（到边界行或表格末尾为止）
+                    for anchor_row_idx in range(6, end_row):
                         anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
                         
                         lang_contents: Dict[str, str] = {}
@@ -607,13 +653,25 @@ class TableRangeTranslator:
                 return prefix
         return value_str
 
-    def _build_id_to_row_index(self, df: pd.DataFrame) -> Dict[str, int]:
-        """为一个语言版本的表构建 ID -> 行索引 映射（数据区从第7行开始，索引6）。"""
+    def _build_id_to_row_index(self, df: pd.DataFrame, boundary_row: Optional[int] = None) -> Dict[str, int]:
+        """为一个语言版本的表构建 ID -> 行索引 映射（数据区从第7行开始，索引6）。
+        
+        Args:
+            df: pandas DataFrame
+            boundary_row: 可选的边界行索引，如果提供则只处理到该行之前
+        """
         id_to_row: Dict[str, int] = {}
         if df is None or len(df) < 7 or len(df.columns) == 0:
             return id_to_row
+        
+        # 确定结束行
+        end_row = boundary_row if boundary_row is not None else len(df)
 
-        for row_idx in range(6, len(df)):
+        for row_idx in range(6, end_row):
+            # 检查是否到达边界行（包含'over'关键字）
+            if self._check_row_boundary(df, row_idx):
+                break
+            
             id_key = self._normalize_id_value(df.iloc[row_idx, 0])
             if not id_key:
                 continue
@@ -717,8 +775,12 @@ class TableRangeTranslator:
                     logger.warning(f"未找到字段: {field_name}")
                     continue
                 
-                # 从第7行开始提取数据
-                for row_idx in range(6, len(df)):  # 从索引6开始（第7行）
+                # 查找边界行（包含'over'关键字的行）
+                boundary_row = self._find_boundary_row(df)
+                end_row = boundary_row if boundary_row is not None else len(df)
+                
+                # 从第7行开始提取数据（到边界行或表格末尾为止）
+                for row_idx in range(6, end_row):  # 从索引6开始（第7行）
                     cell_value = df.iloc[row_idx, col_idx]
                     
                     # 跳过空值
@@ -1091,10 +1153,15 @@ class TableRangeTranslator:
 
                     excel_col = self.column_index_to_letter(anchor_col_idx)
 
-                    # 为每个语言版本构建ID -> 行索引映射，支持按ID对齐行
-                    id_to_row_by_lang = {lang: self._build_id_to_row_index(df) for lang, df in table_data_by_lang.items()}
+                    # 查找边界行（包含'over'关键字的行）
+                    boundary_row = self._find_boundary_row(anchor_df)
+                    end_row = boundary_row if boundary_row is not None else len(anchor_df)
 
-                    for anchor_row_idx in range(6, len(anchor_df)):
+                    # 为每个语言版本构建ID -> 行索引映射，支持按ID对齐行
+                    id_to_row_by_lang = {lang: self._build_id_to_row_index(df, self._find_boundary_row(df)) for lang, df in table_data_by_lang.items()}
+
+                    # 遍历数据行（到边界行或表格末尾为止）
+                    for anchor_row_idx in range(6, end_row):
                         anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
 
                         lang_contents: Dict[str, str] = {}
@@ -1295,9 +1362,15 @@ class TableRangeTranslator:
                                 break
 
                     excel_col = self.column_index_to_letter(anchor_col_idx)
-                    id_to_row_by_lang = {lang: self._build_id_to_row_index(df) for lang, df in table_data_by_lang.items()}
+                    
+                    # 查找边界行（包含'over'关键字的行）
+                    boundary_row = self._find_boundary_row(anchor_df)
+                    end_row = boundary_row if boundary_row is not None else len(anchor_df)
+                    
+                    id_to_row_by_lang = {lang: self._build_id_to_row_index(df, self._find_boundary_row(df)) for lang, df in table_data_by_lang.items()}
 
-                    for anchor_row_idx in range(6, len(anchor_df)):
+                    # 遍历数据行（到边界行或表格末尾为止）
+                    for anchor_row_idx in range(6, end_row):
                         anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
 
                         lang_contents: Dict[str, str] = {}

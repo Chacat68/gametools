@@ -7,14 +7,22 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.46.23"
-__version_info__ = (1, 46, 23)
-__build_date__ = "2026-01-14"
+__version__ = "1.46.24"
+__version_info__ = (1, 46, 24)
+__build_date__ = "2026-01-28"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能、GUI启动优化"
 
 # 版本历史（仅保留最近5个版本，更早版本请查看 docs/VERSION_HISTORY_ARCHIVE.md）
 VERSION_HISTORY = {
+    "1.46.24": {
+        "date": "2026-01-28",
+        "changes": [
+            "✨ 翻译提取功能新增边界检测规则",
+            "🛑 检测到Excel行包含'over'字段时自动停止该表的导出",
+            "📊 后续行的文本不再被提取，支持策划表格数据边界标记"
+        ]
+    },
     "1.46.0": {
         "date": "2026-01-13",
         "changes": [
