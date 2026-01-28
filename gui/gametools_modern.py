@@ -44,7 +44,6 @@ from gui.pages.json_detector_page import JsonDetectorPage
 from gui.pages.field_extractor_page import FieldExtractorPage
 from gui.pages.cross_project_page import CrossProjectPage
 from gui.pages.table_range_page import TableRangePage
-from gui.pages.table_range_page import TableRangePage
 from gui.pages.excel_processor_page import ExcelProcessorPage
 
 # 导入版本信息
