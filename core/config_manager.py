@@ -78,7 +78,6 @@ class TabVisibilityConfig:
     cross_project_translator: bool = True  # 跨项目翻译
     json_detector: bool = True  # JSON检测
     excel_data_processor: bool = True  # Excel数据处理
-    sheet_splitter: bool = True  # 分页拆分
     field_extractor: bool = True  # 字段导出
     table_range_translator: bool = True  # 多语言提取
     batch_modifier: bool = True  # 批量改表

@@ -42,8 +42,8 @@ from gui.pages.about_page import AboutPage
 from gui.pages.batch_modifier_page import BatchModifierPage
 from gui.pages.json_detector_page import JsonDetectorPage
 from gui.pages.field_extractor_page import FieldExtractorPage
-from gui.pages.sheet_splitter_page import SheetSplitterPage
 from gui.pages.cross_project_page import CrossProjectPage
+from gui.pages.table_range_page import TableRangePage
 from gui.pages.table_range_page import TableRangePage
 from gui.pages.excel_processor_page import ExcelProcessorPage
 
@@ -64,7 +64,6 @@ class GameToolsModern:
         ("home", "首页", "🏠", "main", "HomePage"),
         ("batch_modifier", "批量改表", "⚡", "excel", "BatchModifierPage"),
         ("field_extractor", "字段导出", "📋", "excel", "FieldExtractorPage"),
-        ("sheet_splitter", "分页拆分", "✂️", "excel", "SheetSplitterPage"),
         ("excel_processor", "数据处理", "📊", "excel", "ExcelProcessorPage"),
         ("cross_project", "跨项目翻译", "🔄", "translate", "CrossProjectPage"),
         ("table_range", "多语言提取", "🌐", "translate", "TableRangePage"),
