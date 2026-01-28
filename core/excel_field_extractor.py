@@ -44,7 +44,32 @@ class ExcelFieldExtractor:
         # 边界检测关键字（检测到此关键字后停止导出）
         self.boundary_keyword = 'over'        
         # 进度回调函数
-        self.progress_callback = None
+        self.progress_callback = None        
+        # 警告输出控制：避免大量警告导致卡顿
+        self.verbose_warnings = False  # 是否输出每条警告到控制台
+        self.max_printed_warnings = 10  # 最多打印的警告数量
+        self._printed_warning_count = 0  # 已打印的警告计数
+        
+        # 警告级别控制（默认关闭非关键警告）
+        self.warn_empty_field_type = False  # 是否警告字段类型为空（默认关闭，因为很多表没有第6行类型）
+        self.warn_missing_c_marker = False  # 是否警告缺少 c_ 标记（默认关闭，会自动全表扫描）
+    
+    def _add_warning(self, warning_msg: str):
+        """
+        添加警告信息（控制输出频率避免卡顿）
+        
+        Args:
+            warning_msg: 警告消息
+        """
+        self.extraction_warnings.append(warning_msg)
+        
+        # 控制打印输出，避免大量警告导致卡顿
+        if self.verbose_warnings or self._printed_warning_count < self.max_printed_warnings:
+            print(warning_msg)
+            self._printed_warning_count += 1
+        elif self._printed_warning_count == self.max_printed_warnings:
+            print(f"... 后续警告已省略，共 {len(self.extraction_warnings)} 条警告将记录在日志中")
+            self._printed_warning_count += 1
     
     def set_progress_callback(self, callback):
         """
@@ -235,13 +260,13 @@ class ExcelFieldExtractor:
                     column_range = self.find_column_range_between_markers(sheet)
 
                     if column_range is None:
-                        warning_msg = (
-                            f"⚠️ 未找到两个 c_ 标记，改为全表扫描 | "
-                            f"文件: {file_path.name} | "
-                            f"工作表: {sheet_name}"
-                        )
-                        self.extraction_warnings.append(warning_msg)
-                        print(warning_msg)
+                        if self.warn_missing_c_marker:
+                            warning_msg = (
+                                f"⚠️ 未找到两个 c_ 标记，改为全表扫描 | "
+                                f"文件: {file_path.name} | "
+                                f"工作表: {sheet_name}"
+                            )
+                            self._add_warning(warning_msg)
                         start_col, end_col = 1, sheet.max_column
                         text_columns, _, _ = scan_text_columns_in_range(start_col, end_col)
                     else:
@@ -249,13 +274,13 @@ class ExcelFieldExtractor:
                         text_columns, _, _ = scan_text_columns_in_range(start_col, end_col)
 
                         if not text_columns:
-                            warning_msg = (
-                                f"⚠️ c_ 标记范围未检测到文本列，改为全表扫描 | "
-                                f"文件: {file_path.name} | "
-                                f"工作表: {sheet_name}"
-                            )
-                            self.extraction_warnings.append(warning_msg)
-                            print(warning_msg)
+                            if self.warn_missing_c_marker:
+                                warning_msg = (
+                                    f"⚠️ c_ 标记范围未检测到文本列，改为全表扫描 | "
+                                    f"文件: {file_path.name} | "
+                                    f"工作表: {sheet_name}"
+                                )
+                                self._add_warning(warning_msg)
                             start_col, end_col = 1, sheet.max_column
                             text_columns, _, _ = scan_text_columns_in_range(start_col, end_col)
                     
@@ -331,7 +356,7 @@ class ExcelFieldExtractor:
                                 field_type = str(type_cell.value) if type_cell.value is not None else ""
                                 
                                 # 检查字段类型是否为空
-                                if not field_type or field_type.strip() == "":
+                                if self.warn_empty_field_type and (not field_type or field_type.strip() == ""):
                                     warning_msg = (
                                         f"⚠️ 字段类型为空 | "
                                         f"文件: {file_path.name} | "
@@ -339,8 +364,7 @@ class ExcelFieldExtractor:
                                         f"字段: {field_name} | "
                                         f"位置: 第6行,第{col_num}列({col_letter}6)"
                                     )
-                                    self.extraction_warnings.append(warning_msg)
-                                    print(warning_msg)
+                                    self._add_warning(warning_msg)
                                 
                                 # 格式：字段名,字段类型,列字母
                                 field_with_type = f"{field_name},{field_type},{col_letter}"
@@ -353,8 +377,7 @@ class ExcelFieldExtractor:
                                     f"字段: {field_name} | "
                                     f"当前行数: {sheet.max_row} (需要至少6行)"
                                 )
-                                self.extraction_warnings.append(warning_msg)
-                                print(warning_msg)
+                                self._add_warning(warning_msg)
                                 field_with_type = f"{field_name},,{col_letter}"
                             
                             field_with_types.append(field_with_type)
@@ -409,6 +432,9 @@ class ExcelFieldExtractor:
             List[Dict]: 所有Excel文件的字段信息
         """
         all_results = []
+        
+        # 重置警告打印计数
+        self._printed_warning_count = 0
         
         if not directory.exists():
             print(f"目录不存在: {directory}")
@@ -732,6 +758,7 @@ class ExcelFieldExtractor:
                 'total_files': 0,
                 'total_sheets': 0,
                 'total_fields': 0,
+                'output_file': None,
                 'results': [],
                 'language': language
             }
@@ -936,6 +963,7 @@ class ExcelFieldExtractor:
         """清除所有日志"""
         self.error_logs.clear()
         self.extraction_warnings.clear()
+        self._printed_warning_count = 0  # 重置警告打印计数
     
     def save_logs_to_file(self, output_file: Path):
         """
