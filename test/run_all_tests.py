@@ -12,7 +12,8 @@ from pathlib import Path
 # 强制 UTF-8 输出
 if sys.platform == 'win32':
     try:
-        subprocess.run(['chcp', '65001'], shell=False, capture_output=True, check=False)
+        # chcp is a shell built-in, requires shell=True on Windows
+        subprocess.run(['chcp', '65001'], shell=True, capture_output=True, check=False)
     except Exception:
         pass  # 如果失败，继续执行
 

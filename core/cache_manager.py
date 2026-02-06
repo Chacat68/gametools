@@ -286,7 +286,10 @@ class FileCache:
     
     # HMAC key for cache integrity verification
     # Note: This provides basic integrity protection against accidental corruption.
-    # For stronger security, consider using environment-specific keys or encryption.
+    # For production use in shared environments, consider using:
+    #   - Environment variable: os.environ.get('GAMETOOLS_CACHE_KEY', default)
+    #   - System-specific key derivation
+    #   - Encrypted cache files
     _HMAC_KEY = b'gametools-cache-integrity-key-v1'
     
     def __init__(self, cache_dir: str = ".cache", default_ttl: Optional[float] = None):
@@ -355,7 +358,7 @@ class FileCache:
                     # 读取完整数据
                     file_data = f.read()
                 
-                # Check if file has minimum required length (64 bytes for HMAC signature)
+                # Check if file has minimum required length (64 hex characters for HMAC-SHA256 signature)
                 if len(file_data) < 64:
                     logger.warning(f"缓存文件格式无效（太小）: {key}")
                     cache_path.unlink()
