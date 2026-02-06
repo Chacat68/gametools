@@ -9,7 +9,9 @@ import os
 import json
 import pickle
 import hashlib
+import hmac
 import time
+from io import BytesIO
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 from threading import RLock
@@ -282,6 +284,10 @@ class MemoryCache:
 class FileCache:
     """文件缓存管理器 - 持久化缓存"""
     
+    # 用于HMAC签名的密钥（每个实例随机生成）
+    # 注意：这只是基本的完整性保护，不是加密安全
+    _HMAC_KEY = b'gametools-cache-integrity-key-v1'
+    
     def __init__(self, cache_dir: str = ".cache", default_ttl: Optional[float] = None):
         """
         初始化文件缓存
@@ -295,6 +301,32 @@ class FileCache:
         self.default_ttl = default_ttl
         self._lock = RLock()
     
+    def _compute_hmac(self, data: bytes) -> str:
+        """
+        计算数据的HMAC签名
+        
+        Args:
+            data: 要签名的数据
+            
+        Returns:
+            十六进制HMAC签名
+        """
+        return hmac.new(self._HMAC_KEY, data, hashlib.sha256).hexdigest()
+    
+    def _verify_hmac(self, data: bytes, signature: str) -> bool:
+        """
+        验证HMAC签名
+        
+        Args:
+            data: 原始数据
+            signature: 要验证的签名
+            
+        Returns:
+            签名是否有效
+        """
+        expected = self._compute_hmac(data)
+        return hmac.compare_digest(expected, signature)
+    
     def _get_cache_path(self, key: str) -> Path:
         """获取缓存文件路径"""
         # 使用SHA-256替代MD5以避免潜在的碰撞问题
@@ -303,7 +335,7 @@ class FileCache:
     
     def get(self, key: str) -> Optional[Any]:
         """
-        从文件中获取缓存
+        从文件中获取缓存（带HMAC验证）
         
         Args:
             key: 缓存键
@@ -319,8 +351,27 @@ class FileCache:
             
             try:
                 with open(cache_path, 'rb') as f:
-                    entry_data = pickle.load(f)
+                    # 读取完整数据
+                    file_data = f.read()
                 
+                # 检查是否有HMAC签名（新格式）
+                if len(file_data) < 64:  # HMAC长度至少64字节（SHA256的十六进制）
+                    logger.warning(f"缓存文件格式无效（太小）: {key}")
+                    cache_path.unlink()
+                    return None
+                
+                # 分离签名和数据（签名在文件末尾）
+                signature = file_data[-64:].decode('ascii')
+                pickled_data = file_data[:-64]
+                
+                # 验证HMAC签名
+                if not self._verify_hmac(pickled_data, signature):
+                    logger.warning(f"缓存文件HMAC验证失败，可能被篡改: {key}")
+                    cache_path.unlink()  # 删除可疑文件
+                    return None
+                
+                # 反序列化数据
+                entry_data = pickle.load(BytesIO(pickled_data))
                 entry = CacheEntry(**entry_data['entry'])
                 
                 # 检查过期
@@ -332,13 +383,17 @@ class FileCache:
                 logger.debug(f"文件缓存命中: {key}")
                 return entry_data['value']
             
+            except (pickle.UnpicklingError, ValueError, KeyError) as e:
+                logger.error(f"读取文件缓存失败（格式错误）{key}: {e}")
+                cache_path.unlink()  # 删除损坏文件
+                return None
             except Exception as e:
                 logger.error(f"读取文件缓存失败 {key}: {e}")
                 return None
     
     def set(self, key: str, value: Any, ttl: Optional[float] = None) -> bool:
         """
-        设置文件缓存
+        设置文件缓存（带HMAC签名）
         
         Args:
             key: 缓存键
@@ -359,8 +414,16 @@ class FileCache:
                     'value': value
                 }
                 
+                # 序列化数据
+                pickled_data = pickle.dumps(cache_data, protocol=pickle.HIGHEST_PROTOCOL)
+                
+                # 计算HMAC签名
+                signature = self._compute_hmac(pickled_data)
+                
+                # 写入文件：数据 + 签名
                 with open(cache_path, 'wb') as f:
-                    pickle.dump(cache_data, f)
+                    f.write(pickled_data)
+                    f.write(signature.encode('ascii'))
                 
                 logger.debug(f"文件缓存已设置: {key}")
                 return True
@@ -397,24 +460,48 @@ class FileCache:
             return count
     
     def cleanup_expired(self) -> int:
-        """清理过期的文件缓存"""
+        """清理过期的文件缓存（带HMAC验证）"""
         with self._lock:
             count = 0
             try:
                 for cache_file in self.cache_dir.glob("*.cache"):
                     try:
                         with open(cache_file, 'rb') as f:
-                            cache_data = pickle.load(f)
+                            file_data = f.read()
                         
+                        # 检查文件格式
+                        if len(file_data) < 64:
+                            cache_file.unlink()
+                            count += 1
+                            continue
+                        
+                        # 分离签名和数据
+                        signature = file_data[-64:].decode('ascii')
+                        pickled_data = file_data[:-64]
+                        
+                        # 验证HMAC签名
+                        if not self._verify_hmac(pickled_data, signature):
+                            logger.warning(f"清理：HMAC验证失败 {cache_file}")
+                            cache_file.unlink()
+                            count += 1
+                            continue
+                        
+                        cache_data = pickle.load(BytesIO(pickled_data))
                         entry = CacheEntry(**cache_data['entry'])
                         if entry.is_expired():
                             cache_file.unlink()
                             count += 1
                     except Exception as e:
                         logger.warning(f"清理文件缓存失败 {cache_file}: {e}")
+                        # 删除损坏的缓存文件
+                        try:
+                            cache_file.unlink()
+                            count += 1
+                        except Exception:
+                            pass
                 
                 if count > 0:
-                    logger.info(f"清理过期文件缓存: {count} 个文件")
+                    logger.info(f"清理过期/损坏文件缓存: {count} 个文件")
             
             except Exception as e:
                 logger.error(f"清理文件缓存失败: {e}")
