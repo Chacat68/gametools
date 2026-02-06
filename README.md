@@ -119,14 +119,18 @@ gametools/
 ### 方法2: 使用源码运行
 
 ```bash
-# 安装依赖
-pip install -r core/requirements.txt
+# Linux用户需要先安装tkinter系统依赖
+# Ubuntu/Debian:
+sudo apt-get update && sudo apt-get install python3-tk
+
+# 安装Python依赖包
+pip install -r requirements.txt
 
 # 运行统一界面
 python gui/run_unified.py
 ```
 
-或双击 `gui/启动gametools.bat`
+或双击 `gui/启动gametools.bat` (仅Windows)
 
 ### 方法3: 使用启动脚本
 
@@ -226,10 +230,28 @@ python gui/build_unified.py
 
 ## 依赖包
 
-- tkinter (通常随Python安装)
+### Python包依赖
 - pandas (数据处理)
 - xlwings (默认Excel修改引擎，需要安装Excel)
+- openpyxl (备用Excel处理引擎)
 - PyInstaller (用于打包)
+
+### 系统依赖
+- **tkinter** (图形界面库)
+  - Windows: 通常随Python安装，无需额外操作
+  - Linux: 需要手动安装
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get update
+    sudo apt-get install python3-tk
+    
+    # Fedora/RHEL
+    sudo yum install python3-tkinter
+    
+    # Arch Linux
+    sudo pacman -S tk
+    ```
+  - macOS: 通常随Python安装，无需额外操作
 
 ## 版本信息
 

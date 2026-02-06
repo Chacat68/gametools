@@ -98,7 +98,19 @@ python test_cache.py --perf   # 只测试性能
 
 ## ⚠️ 注意事项
 
+### 系统依赖
+在Linux系统上运行测试前，需要先安装tkinter：
+```bash
+# Ubuntu/Debian
+sudo apt-get update && sudo apt-get install python3-tk
+
+# 或使用项目提供的自动安装脚本
+./setup_linux.sh
+```
+
+### 测试数据
 1. 运行测试前请先生成测试数据：`python create_test_data.py --all`
 2. 测试输出目录 `test_output/` 已加入 `.gitignore`
 3. 测试数据目录的内容可由 `create_test_data.py` 重新生成
+4. 所有`.xlsx`和`.bak`测试文件已从git追踪中移除，可自动重新生成
 
