@@ -3,7 +3,7 @@
     "gui\\base_detector_gui.py": "7c6b24a43f0abc622ae42f5f6e1b4267",
     "gui\\build_modern.py": "318624d6c0e722973dd65c71a5f989f1",
     "gui\\build_unified.py": "7d7717b7cc74b0af4a24b62e4ad3461c",
-    "gui\\gametools_modern.py": "400e47d173a95184b67d594003b7c6d9",
+    "gui\\gametools_modern.py": "b278b8074366070e816b93b5515d7ddd",
     "gui\\gametools_unified.py": "b1b3dfcf36301e10fcdb7873ef19edd3",
     "gui\\gui_utils.py": "72257258b484883391075493a7204eb6",
     "gui\\hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
@@ -20,7 +20,7 @@
     "core\\cross_project_translator_cached.py": "9af9589bae8cc2abb3936d261b3158d0",
     "core\\error_handler.py": "ab6b9d21029fc22c2a471ab4bfc37b8c",
     "core\\excel_config_sync.py": "324ab61531a34fc6688326c866cd4f7b",
-    "core\\excel_field_extractor.py": "1e3dad6185c6452ec1168c9bf4c551a6",
+    "core\\excel_field_extractor.py": "23cd2ebfb6f62689435d31ece34f8d8b",
     "core\\excel_sheet_splitter.py": "713df46505c26150e6fc4d4846468ee6",
     "core\\excel_to_csv_converter.py": "e769c46afc9ae0140be8000a9d9a54aa",
     "core\\log_manager.py": "d254ed0066c1e687d20e85ab5f6fa3c7",
@@ -36,8 +36,8 @@
     "tools\\gui_startup_profiler.py": "bd2cbdfaf45ba8fbd7582908f7109df6",
     "config.json": "0616042e56342cd1d67bdacbb3e35add",
     "config_export.json": "c2a30f886a48694949679ed39509da82",
-    "version.py": "c3a01d68a40c238dbf267c0ed029973a"
+    "version.py": "1f386440b430c20de3c7be4d22bd9f7b"
   },
-  "last_build_time": "2026-01-28T16:20:27.951670",
-  "build_duration": 34.50301647186279
+  "last_build_time": "2026-01-28T22:34:39.875221",
+  "build_duration": 33.895960092544556
 }
