@@ -128,17 +128,18 @@ dist/*.exe
 dist/*/
 !dist/README.md
 # 测试输出文件（可重新生成）
-test/test_output/*
-!test/test_output/.gitkeep
+test_output/*
+!test_output/.gitkeep
 
 # 测试生成的Excel和数据文件
 test/test_excel_files/field_extraction_result.*
 test/test_table_range/translation_master_*.xlsx
-test/test_config_sync/*.bak
-test/test_config_sync/*/*.bak
-test/test_config_sync/sync_report.xlsx
-test/test_config_sync/*/*.xlsx
-test/test_multi_lang/*/*.xlsx
+test_config_sync/*.bak
+test_config_sync/*/*.bak
+test_config_sync/*.xlsx
+test_config_sync/*/*.xlsx
+test_multi_lang/*.xlsx
+test_multi_lang/*/*.xlsx
 
 # 构建目录
 gui/build/
