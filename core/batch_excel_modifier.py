@@ -106,6 +106,12 @@ class BatchExcelModifier:
         # xlwings Excel 应用实例（延迟初始化）
         self._excel_app = None
     
+    def __del__(self):
+        """
+        析构函数：确保Excel应用实例被关闭
+        """
+        self._close_excel_app()
+    
     def set_progress_callback(self, callback):
         """设置进度回调函数"""
         self.progress_callback = callback
@@ -1351,8 +1357,9 @@ class BatchExcelModifier:
             progress = (processed_files / total_files) * 100
             self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -1720,8 +1727,9 @@ class BatchExcelModifier:
             progress = (processed_sheets / total_sheets) * 100
             self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -1762,40 +1770,41 @@ class BatchExcelModifier:
         self.error_logs = []
         self.modification_logs = []
         
-        self._report_progress("开始加载映射表...")
-        
-        # 加载映射表
-        df, columns = self.load_mapping_table(mapping_path, mapping_sheet)
-        if df.empty:
-            return self.processing_stats
-        
-        self._report_progress(f"映射表加载完成，共 {len(df)} 行数据")
-        
-        # 按表名分组修改
-        grouped_modifications = {}
-        
-        for idx, row in df.iterrows():
-            parsed = self.parse_mapping_row(row, columns, table_col, id_col, modify_cols)
+        try:
+            self._report_progress("开始加载映射表...")
             
-            if not parsed or not parsed.get('table_name') or not parsed.get('modify_values'):
-                self.processing_stats['skipped_rows'] += 1
-                continue
+            # 加载映射表
+            df, columns = self.load_mapping_table(mapping_path, mapping_sheet)
+            if df.empty:
+                return self.processing_stats
             
-            table_name = parsed['table_name']
+            self._report_progress(f"映射表加载完成，共 {len(df)} 行数据")
             
-            if table_name not in grouped_modifications:
-                grouped_modifications[table_name] = []
+            # 按表名分组修改
+            grouped_modifications = {}
             
-            grouped_modifications[table_name].append({
-                'id': parsed['id'],
-                'modify_values': parsed['modify_values']
-            })
-        
-        self._report_progress(f"需要修改 {len(grouped_modifications)} 个文件")
-        
-        # 处理每个文件
-        total_files = len(grouped_modifications)
-        processed_files = 0
+            for idx, row in df.iterrows():
+                parsed = self.parse_mapping_row(row, columns, table_col, id_col, modify_cols)
+                
+                if not parsed or not parsed.get('table_name') or not parsed.get('modify_values'):
+                    self.processing_stats['skipped_rows'] += 1
+                    continue
+                
+                table_name = parsed['table_name']
+                
+                if table_name not in grouped_modifications:
+                    grouped_modifications[table_name] = []
+                
+                grouped_modifications[table_name].append({
+                    'id': parsed['id'],
+                    'modify_values': parsed['modify_values']
+                })
+            
+            self._report_progress(f"需要修改 {len(grouped_modifications)} 个文件")
+            
+            # 处理每个文件
+            total_files = len(grouped_modifications)
+            processed_files = 0
         
         for table_name, modifications in grouped_modifications.items():
             # 构建文件路径
@@ -1842,8 +1851,9 @@ class BatchExcelModifier:
             progress = (processed_files / total_files) * 100
             self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -2322,8 +2332,9 @@ class BatchExcelModifier:
             progress = (processed_sheets / total_sheets) * 100
             self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
