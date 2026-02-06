@@ -297,7 +297,8 @@ class FileCache:
     
     def _get_cache_path(self, key: str) -> Path:
         """获取缓存文件路径"""
-        key_hash = hashlib.md5(key.encode()).hexdigest()
+        # 使用SHA-256替代MD5以避免潜在的碰撞问题
+        key_hash = hashlib.sha256(key.encode()).hexdigest()
         return self.cache_dir / f"{key_hash}.cache"
     
     def get(self, key: str) -> Optional[Any]:

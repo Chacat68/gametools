@@ -265,9 +265,6 @@ class ExcelConfigSync:
         source_wb = None
         target_wb = None
 
-        source_wb = None
-        target_wb = None
-
         try:
             # 创建备份
             if self.sync_options['backup_before_sync']:

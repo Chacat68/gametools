@@ -197,7 +197,7 @@ class ExcelSheetSplitter:
                 filename = value_str
             
             return filename
-        except:
+        except Exception:
             return value_str
     
     def _clean_sheet_name(self, name: str, max_length: int = 31) -> str:
@@ -359,7 +359,7 @@ class ExcelSheetSplitter:
                             cell_length = len(str(cell.value))
                             if cell_length > max_length:
                                 max_length = cell_length
-                    except:
+                    except Exception:
                         pass
             
             # 设置列宽（最大50，最小10）
