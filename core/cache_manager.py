@@ -284,8 +284,9 @@ class MemoryCache:
 class FileCache:
     """文件缓存管理器 - 持久化缓存"""
     
-    # 用于HMAC签名的密钥（每个实例随机生成）
-    # 注意：这只是基本的完整性保护，不是加密安全
+    # HMAC key for cache integrity verification
+    # Note: This provides basic integrity protection against accidental corruption.
+    # For stronger security, consider using environment-specific keys or encryption.
     _HMAC_KEY = b'gametools-cache-integrity-key-v1'
     
     def __init__(self, cache_dir: str = ".cache", default_ttl: Optional[float] = None):
@@ -354,14 +355,20 @@ class FileCache:
                     # 读取完整数据
                     file_data = f.read()
                 
-                # 检查是否有HMAC签名（新格式）
-                if len(file_data) < 64:  # HMAC长度至少64字节（SHA256的十六进制）
+                # Check if file has minimum required length (64 bytes for HMAC signature)
+                if len(file_data) < 64:
                     logger.warning(f"缓存文件格式无效（太小）: {key}")
                     cache_path.unlink()
                     return None
                 
-                # 分离签名和数据（签名在文件末尾）
-                signature = file_data[-64:].decode('ascii')
+                # Separate signature and data (signature is at the end of file)
+                try:
+                    signature = file_data[-64:].decode('ascii')
+                except UnicodeDecodeError:
+                    logger.warning(f"缓存文件签名格式无效: {key}")
+                    cache_path.unlink()
+                    return None
+                    
                 pickled_data = file_data[:-64]
                 
                 # 验证HMAC签名
