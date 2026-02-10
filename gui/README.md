@@ -1,54 +1,6 @@
 # GameTools GUI 模块
 
-基于 tkinter 的图形界面，提供传统版本和现代化版本两种选择。
-
-## 🆕 现代化版本（推荐）
-
-现代化版本采用全新的侧边栏导航设计，界面更美观、操作更便捷。
-
-### 快速启动
-
-```bash
-# 方法1: 运行启动脚本
-python run_modern.py
-
-# 方法2: 使用批处理文件（Windows）
-双击 ../启动现代化工具.bat
-```
-
-### 特性
-
-- 🎨 **现代扁平化设计** - 采用现代UI风格，简洁美观
-- 📱 **侧边栏导航** - 左侧导航栏 + 右侧内容区布局
-- 🏠 **仪表盘首页** - 快捷入口，一目了然
-- ⚡ **延迟加载** - 页面按需加载，启动速度快
-- 🎯 **统一组件库** - 标准化的按钮、输入框、进度条等组件
-
-### 目录结构
-
-```
-gui/
-├── gametools_modern.py     # 现代化界面主程序
-├── run_modern.py           # 现代化版本启动脚本
-├── build_modern.py         # 现代化版本打包脚本
-├── modern_theme.py         # 主题配置（颜色、字体、尺寸）
-├── components/             # 现代化UI组件
-│   ├── __init__.py
-│   ├── sidebar.py          # 侧边栏导航组件
-│   └── widgets.py          # 通用组件（按钮、卡片、进度条等）
-├── pages/                  # 功能页面
-│   ├── __init__.py
-│   ├── base_page.py        # 页面基类
-│   ├── home_page.py        # 首页/仪表盘
-│   ├── about_page.py       # 关于页面
-│   ├── batch_modifier_page.py
-│   ├── json_detector_page.py
-│   ├── field_extractor_page.py
-│   └── csv_converter_page.py
-└── ...
-```
-
----
+基于 tkinter 的图形界面，使用传统 Tab 页签设计。
 
 ## 传统版本
 
@@ -111,23 +63,8 @@ gui/
 
 ## 打包发布
 
-### 现代化版本打包
-
 ```bash
-# 运行现代化版本打包脚本
-python build_modern.py
-
-# 完整清理后打包
-python build_modern.py --clean
-
-# 输出位置
-dist/gametools_v{版本号}.exe
-```
-
-### 传统版本打包
-
-```bash
-# 运行传统版本打包脚本
+# 运行打包脚本
 python build_unified.py
 
 # 输出位置

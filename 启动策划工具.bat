@@ -1,10 +1,9 @@
 @echo off
 chcp 65001 >nul
-title GameTools - 游戏策划工具集（现代化版本）
+title GameTools - 游戏策划工具集
 cd /d "%~dp0"
 echo ========================================
 echo   gametools - 游戏策划工具集
-echo   [现代化版本]
 echo ========================================
 echo.
 echo 功能模块:
@@ -20,7 +19,7 @@ echo   - JSON检测
 echo.
 echo 正在启动...
 echo.
-python gui\run_modern.py
+python gui\run_unified.py
 if errorlevel 1 (
     echo.
     echo 启动失败，请确保已安装Python和所需依赖

@@ -23,22 +23,16 @@ def fix_pyinstaller_imports():
         if meipass not in sys.path:
             sys.path.insert(0, meipass)
         
-        # 预导入 gui.pages 模块以确保打包后可用
+        # 预导入核心模块以确保打包后可用
         try:
-            import gui.pages
-            import gui.pages.batch_modifier_page
-            import gui.pages.home_page
-            import gui.pages.about_page
-            import gui.pages.json_detector_page
-            import gui.pages.field_extractor_page
-            import gui.pages.csv_converter_page
-            import gui.pages.sheet_splitter_page
-            import gui.pages.config_sync_page
-            import gui.pages.cross_project_page
-            import gui.pages.table_range_page
-            import gui.pages.excel_processor_page
+            import core
+            import core.batch_excel_modifier
+            import core.excel_field_extractor
+            import core.table_range_translator
+            import core.cross_project_translator
+            import tools.json_error_detector
         except ImportError as e:
-            print(f"预导入页面模块失败: {e}")
+            print(f"预导入核心模块失败: {e}")
     else:
         # 非 PyInstaller 环境，移除可能的 numpy 源目录
         sys.path = [p for p in sys.path if 'numpy' not in p.lower() or 'site-packages' in p.lower()]
