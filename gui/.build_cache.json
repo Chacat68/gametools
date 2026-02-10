@@ -1,16 +1,12 @@
 {
   "file_hashes": {
     "gui\\base_detector_gui.py": "7c6b24a43f0abc622ae42f5f6e1b4267",
-    "gui\\build_modern.py": "318624d6c0e722973dd65c71a5f989f1",
     "gui\\build_unified.py": "7d7717b7cc74b0af4a24b62e4ad3461c",
-    "gui\\gametools_modern.py": "b278b8074366070e816b93b5515d7ddd",
     "gui\\gametools_unified.py": "b1b3dfcf36301e10fcdb7873ef19edd3",
     "gui\\gui_utils.py": "72257258b484883391075493a7204eb6",
     "gui\\hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
     "gui\\import_helper.py": "b891f65c5a5a309cb9090be86205e178",
-    "gui\\modern_theme.py": "c4035ff3a2844df0c2669e0743dee61b",
     "gui\\pyi_rth_numpy_fix.py": "adc81e20ab624a0701d030428492d647",
-    "gui\\run_modern.py": "20ae2a736c031b6698144f2cbe3b0451",
     "gui\\run_unified.py": "a76306ff1067628fa6abcf82d3a4582d",
     "core\\batch_excel_modifier.py": "a0cb1f76868c186f3995d2531deca212",
     "core\\cache_manager.py": "4ea404f3f3860f07dc548d2782cbc50d",
