@@ -53,7 +53,7 @@ class GameToolsUnified:
         # 设置窗口图标
         try:
             self.root.iconbitmap("icon.ico")
-        except:
+        except Exception:
             pass
         
         # 设置样式

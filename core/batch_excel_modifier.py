@@ -853,7 +853,7 @@ class BatchExcelModifier:
         if self._excel_app is not None:
             try:
                 self._excel_app.quit()
-            except:
+            except Exception:
                 pass
             self._excel_app = None
     
@@ -1112,7 +1112,7 @@ class BatchExcelModifier:
             if wb is not None:
                 try:
                     wb.close()
-                except:
+                except Exception:
                     pass
         
         return modified_count, errors, skipped_same_value
@@ -1476,7 +1476,7 @@ class BatchExcelModifier:
                         
                         if detected_lang_column:
                             break
-                    except:
+                    except Exception:
                         continue
             
             if detected_lang_column:

@@ -171,16 +171,19 @@ def test_config_sync():
     print(f"     Description (应保持原值): {desc_value}")
     
     # 验证：Name应该保持原值，Value应该被同步
+    success = True
     if name_value == '目标1-A' and value_value == 100:
         print("   ✓ 过滤同步成功！Name保持原值，Value被同步")
     else:
         print("   ✗ 同步结果不符合预期！")
+        success = False
     
     wb.close()
     
     print("\n" + "=" * 60)
     print("测试完成")
     print("=" * 60)
+    return success
 
 
 def cleanup_test_data():
@@ -193,8 +196,12 @@ def cleanup_test_data():
 
 if __name__ == "__main__":
     try:
-        test_config_sync()
+        success = test_config_sync()
+    except Exception as e:
+        print(f"\n❌ 测试异常: {e}")
+        success = False
     finally:
         # 可选：清理测试数据
         # cleanup_test_data()
         pass
+    sys.exit(0 if success else 1)

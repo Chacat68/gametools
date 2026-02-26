@@ -24,7 +24,7 @@ class BaseDetectorGUI(ABC):
         # 设置窗口图标
         try:
             self.root.iconbitmap("icon.ico")
-        except:
+        except Exception:
             pass
         
         # 初始化检测器（子类实现）
@@ -195,7 +195,7 @@ def run_detector_gui(gui_class, title="检测工具"):
     style = ttk.Style()
     try:
         style.theme_use('clam')
-    except:
+    except Exception:
         pass
     
     app = gui_class(root)

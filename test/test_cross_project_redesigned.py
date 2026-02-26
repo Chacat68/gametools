@@ -32,12 +32,12 @@ def test_cross_project_translation():
     
     # 检查文件是否存在
     if not os.path.exists(mapping_file):
-        print(f"错误: 映射文件不存在 - {mapping_file}")
-        return
+        print(f"⚠️ 跳过: 映射文件不存在 - {mapping_file}")
+        return True  # 资源缺失视为跳过，不算失败
     
     if not os.path.exists(project_directory):
-        print(f"错误: 项目目录不存在 - {project_directory}")
-        return
+        print(f"⚠️ 跳过: 项目目录不存在 - {project_directory}")
+        return True  # 资源缺失视为跳过，不算失败
     
     # 处理翻译映射
     results = translator.process_translation_mapping(mapping_file, project_directory)
@@ -73,9 +73,12 @@ def test_cross_project_translation():
         print("- 电视 (vietnamese_test1.xlsx的C3位置)")
         print("- 三国 (vietnamese_test1.xlsx的C1位置)")
         
+        return True
     else:
         print("处理失败，没有生成结果")
+        return False
 
 
 if __name__ == "__main__":
-    test_cross_project_translation()
+    success = test_cross_project_translation()
+    sys.exit(0 if success else 1)

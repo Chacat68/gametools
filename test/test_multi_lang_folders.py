@@ -190,8 +190,12 @@ def test_extraction():
         
         # 显示报告
         print("\n" + translator.get_processing_report())
+        return True
     else:
         print("✗ 提取失败")
+        return False
 
 if __name__ == "__main__":
-    test_extraction()
+    import sys
+    success = test_extraction()
+    sys.exit(0 if success else 1)

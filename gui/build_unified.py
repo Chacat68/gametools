@@ -171,7 +171,7 @@ def check_dependencies(parallel: bool = True):
     try:
         python_version = sys.version_info
         print(f"Python版本: {python_version.major}.{python_version.minor}.{python_version.micro}")
-    except:
+    except Exception:
         print("[ERROR] Python未安装或版本不正确")
         return False
     

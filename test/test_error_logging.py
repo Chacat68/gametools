@@ -182,4 +182,5 @@ def test_error_logging():
     return success
 
 if __name__ == "__main__":
-    test_error_logging()
+    success = test_error_logging()
+    sys.exit(0 if success else 1)

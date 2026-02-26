@@ -26,9 +26,9 @@ def test_json_format():
     test_dir = Path("test_excel_files")
     
     if not test_dir.exists():
-        print(f"⚠️ 测试目录不存在: {test_dir}")
+        print(f"⚠️ 跳过: 测试目录不存在: {test_dir}")
         print("请先创建测试Excel文件")
-        return
+        return True  # 资源缺失视为跳过
     
     # 处理目录并导出JSON
     output_dir = Path("test_output")
@@ -86,6 +86,8 @@ def test_json_format():
                     print(f"    字段+类型: {item['fields_with_examples'][:2]}")
     
     print("\n✅ 测试完成！")
+    return True
 
 if __name__ == "__main__":
-    test_json_format()
+    success = test_json_format()
+    sys.exit(0 if success else 1)
