@@ -1,14 +1,14 @@
 {
   "file_hashes": {
-    "gui\\base_detector_gui.py": "7c6b24a43f0abc622ae42f5f6e1b4267",
-    "gui\\build_unified.py": "7d7717b7cc74b0af4a24b62e4ad3461c",
-    "gui\\gametools_unified.py": "b1b3dfcf36301e10fcdb7873ef19edd3",
+    "gui\\base_detector_gui.py": "c7c3ac7fec2ea9ecce672d219087f48f",
+    "gui\\build_unified.py": "94dba0de8894319932d58317e5a3b7b4",
+    "gui\\gametools_unified.py": "b9d5fb7598ef42953dd78cd1ac6597bd",
     "gui\\gui_utils.py": "72257258b484883391075493a7204eb6",
     "gui\\hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
-    "gui\\import_helper.py": "b891f65c5a5a309cb9090be86205e178",
+    "gui\\import_helper.py": "63f6faf92e8941fca7079f8d4488c257",
     "gui\\pyi_rth_numpy_fix.py": "adc81e20ab624a0701d030428492d647",
     "gui\\run_unified.py": "a76306ff1067628fa6abcf82d3a4582d",
-    "core\\batch_excel_modifier.py": "a0cb1f76868c186f3995d2531deca212",
+    "core\\batch_excel_modifier.py": "1c1b60ed9afe5fec468552cddb9e4274",
     "core\\cache_manager.py": "4ea404f3f3860f07dc548d2782cbc50d",
     "core\\config_manager.py": "7e18fdea292822bb09fb8da3f20a6952",
     "core\\constants.py": "4639ca0af71ca9791167c5b22717b306",
@@ -17,10 +17,10 @@
     "core\\error_handler.py": "ab6b9d21029fc22c2a471ab4bfc37b8c",
     "core\\excel_config_sync.py": "324ab61531a34fc6688326c866cd4f7b",
     "core\\excel_field_extractor.py": "23cd2ebfb6f62689435d31ece34f8d8b",
-    "core\\excel_sheet_splitter.py": "713df46505c26150e6fc4d4846468ee6",
+    "core\\excel_sheet_splitter.py": "22f669260e4416db4fb9a1ffde2e7be4",
     "core\\excel_to_csv_converter.py": "e769c46afc9ae0140be8000a9d9a54aa",
     "core\\log_manager.py": "d254ed0066c1e687d20e85ab5f6fa3c7",
-    "core\\output_formats.py": "ab10acb2c953db14e75090bf4a6168b1",
+    "core\\output_formats.py": "a9c78eb388f26d5f698977123978b6bb",
     "core\\progress_tracker.py": "aeea634f16c3e0d743e9e066ab02463a",
     "core\\result_filter.py": "d08af7be90e8fd8b74b82e5270dadfed",
     "core\\table_range_translator.py": "b15839b43169bad754d3764300a71e4f",
@@ -32,8 +32,8 @@
     "tools\\gui_startup_profiler.py": "bd2cbdfaf45ba8fbd7582908f7109df6",
     "config.json": "0616042e56342cd1d67bdacbb3e35add",
     "config_export.json": "c2a30f886a48694949679ed39509da82",
-    "version.py": "1f386440b430c20de3c7be4d22bd9f7b"
+    "version.py": "e819a7cc305cb6db9d52c65fc4270179"
   },
-  "last_build_time": "2026-01-28T22:34:39.875221",
-  "build_duration": 33.895960092544556
+  "last_build_time": "2026-02-26T22:04:10.821473",
+  "build_duration": 55.34532928466797
 }
