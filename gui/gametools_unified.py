@@ -144,7 +144,7 @@ class GameToolsUnified:
                 highlightbackground=self.palette['sidebar_hover'],
                 cursor='hand2',
             )
-            card.pack(fill=tk.X, pady=(0, 8))
+            card.pack(fill=tk.X, pady=(0, 5))
 
             title_label = tk.Label(
                 card,
@@ -152,35 +152,42 @@ class GameToolsUnified:
                 bg=self.palette['sidebar_bg'],
                 fg=self.palette['sidebar_text'],
                 anchor='w',
-                padx=12,
+                padx=10,
                 pady=8,
-                font=('Microsoft YaHei UI', 10, 'bold'),
+                font=('Microsoft YaHei UI', 9, 'bold'),
             )
             title_label.pack(fill=tk.X)
 
-            desc_label = tk.Label(
-                card,
-                text=meta['description'],
-                bg=self.palette['sidebar_bg'],
-                fg=self.palette['sidebar_muted'],
-                anchor='w',
-                justify=tk.LEFT,
-                wraplength=190,
-                padx=12,
-                pady=0,
-                font=('Microsoft YaHei UI', 9),
-            )
-            desc_label.pack(fill=tk.X, pady=(0, 10))
-
-            for widget in (card, title_label, desc_label):
+            for widget in (card, title_label):
                 widget.bind('<Button-1>', lambda _event, tab_key=meta['key']: self.select_tab(tab_key))
 
-            self.nav_widgets[meta['key']] = (card, title_label, desc_label)
+            self.nav_widgets[meta['key']] = (card, title_label)
+
+    def _update_nav_scrollregion(self, _event=None):
+        """同步导航滚动区域。"""
+        self.nav_canvas.configure(scrollregion=self.nav_canvas.bbox('all'))
+
+    def _update_nav_canvas_width(self, event):
+        """让导航内容宽度跟随侧栏宽度变化。"""
+        self.nav_canvas.itemconfigure(self.nav_canvas_window, width=event.width)
+
+    def _bind_nav_mousewheel(self, _event=None):
+        """鼠标进入导航区域后启用滚轮滚动。"""
+        self.nav_canvas.bind_all('<MouseWheel>', self._on_nav_mousewheel)
+
+    def _unbind_nav_mousewheel(self, _event=None):
+        """鼠标离开导航区域后取消滚轮绑定，避免影响其他区域。"""
+        self.nav_canvas.unbind_all('<MouseWheel>')
+
+    def _on_nav_mousewheel(self, event):
+        """处理 Windows 下的鼠标滚轮滚动。"""
+        if event.delta:
+            self.nav_canvas.yview_scroll(int(-event.delta / 120), 'units')
 
     def _update_navigation_state(self, active_key):
         """刷新导航高亮状态。"""
         for key, widgets in self.nav_widgets.items():
-            card, title_label, desc_label = widgets
+            card, title_label = widgets
             is_active = key == active_key
             card.configure(
                 bg=self.palette['sidebar_active'] if is_active else self.palette['sidebar_bg'],
@@ -190,10 +197,6 @@ class GameToolsUnified:
                 bg=self.palette['sidebar_active'] if is_active else self.palette['sidebar_bg'],
                 fg=self.palette['sidebar_text'],
             )
-            desc_label.configure(
-                bg=self.palette['sidebar_active'] if is_active else self.palette['sidebar_bg'],
-                fg=self.palette['sidebar_text'] if is_active else self.palette['sidebar_muted'],
-            )
 
     def _sync_header_with_current_tab(self, _event=None):
         """根据当前页面刷新头部说明。"""
@@ -201,7 +204,6 @@ class GameToolsUnified:
         for meta in self.tab_registry:
             if str(meta['frame']) == selected:
                 self.page_title_var.set(meta['title'])
-                self.page_desc_var.set(meta['description'])
                 self.status_hint_var.set(f"当前模块: {meta['title']}")
                 self._update_navigation_state(meta['key'])
                 break
@@ -227,13 +229,14 @@ class GameToolsUnified:
         app_frame.columnconfigure(1, weight=1)
         app_frame.rowconfigure(0, weight=1)
 
-        sidebar_frame = tk.Frame(app_frame, bg=self.palette['sidebar_bg'], width=240)
-        sidebar_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 14))
+        sidebar_frame = tk.Frame(app_frame, bg=self.palette['sidebar_bg'], width=228)
+        sidebar_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 12))
         sidebar_frame.grid_propagate(False)
+        sidebar_frame.columnconfigure(0, weight=1)
         sidebar_frame.rowconfigure(1, weight=1)
 
         brand_frame = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
-        brand_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=16, pady=(18, 14))
+        brand_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=14, pady=(16, 10))
 
         ttk.Label(brand_frame, text="GameTools", style='SidebarTitle.TLabel').pack(anchor=tk.W)
         ttk.Label(
@@ -241,23 +244,36 @@ class GameToolsUnified:
             text=f"v{get_version()}  ·  单窗口轻量界面",
             style='SidebarMeta.TLabel',
         ).pack(anchor=tk.W, pady=(4, 0))
-        ttk.Label(
-            brand_frame,
-            text="保留全部工具能力，统一视觉和交互入口。",
-            style='SidebarMeta.TLabel',
-        ).pack(anchor=tk.W, pady=(10, 0))
 
-        self.nav_items_frame = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
-        self.nav_items_frame.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=12)
+        nav_container = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        nav_container.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=(10, 6), pady=(0, 8))
+        nav_container.columnconfigure(0, weight=1)
+        nav_container.rowconfigure(0, weight=1)
+
+        self.nav_canvas = tk.Canvas(
+            nav_container,
+            bg=self.palette['sidebar_bg'],
+            highlightthickness=0,
+            borderwidth=0,
+            relief='flat',
+        )
+        self.nav_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+
+        nav_scrollbar = ttk.Scrollbar(nav_container, orient='vertical', command=self.nav_canvas.yview)
+        nav_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        self.nav_canvas.configure(yscrollcommand=nav_scrollbar.set)
+
+        self.nav_items_frame = tk.Frame(self.nav_canvas, bg=self.palette['sidebar_bg'])
+        self.nav_canvas_window = self.nav_canvas.create_window((0, 0), window=self.nav_items_frame, anchor='nw')
+        self.nav_items_frame.bind('<Configure>', self._update_nav_scrollregion)
+        self.nav_canvas.bind('<Configure>', self._update_nav_canvas_width)
+        self.nav_canvas.bind('<Enter>', self._bind_nav_mousewheel)
+        self.nav_canvas.bind('<Leave>', self._unbind_nav_mousewheel)
+        self.nav_items_frame.bind('<Enter>', self._bind_nav_mousewheel)
+        self.nav_items_frame.bind('<Leave>', self._unbind_nav_mousewheel)
 
         sidebar_footer = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
-        sidebar_footer.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=16, pady=(10, 18))
-        ttk.Label(
-            sidebar_footer,
-            text="延迟加载\n多线程执行\n低打扰导航",
-            style='SidebarFoot.TLabel',
-            justify=tk.LEFT,
-        ).pack(anchor=tk.W)
+        sidebar_footer.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=14, pady=(4, 14))
 
         workspace_frame = ttk.Frame(app_frame, style='App.TFrame')
         workspace_frame.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
@@ -276,21 +292,17 @@ class GameToolsUnified:
         header_frame.grid_columnconfigure(0, weight=1)
 
         self.page_title_var = tk.StringVar(value="工具工作台")
-        self.page_desc_var = tk.StringVar(value="统一后的界面保留全部功能，交互更聚焦。")
         self.status_hint_var = tk.StringVar(value="就绪")
 
         ttk.Label(header_frame, textvariable=self.page_title_var, style='HeaderTitle.TLabel').grid(
             row=0, column=0, sticky=tk.W
         )
-        ttk.Label(header_frame, textvariable=self.page_desc_var, style='HeaderSubtitle.TLabel').grid(
-            row=1, column=0, sticky=tk.W, pady=(6, 0)
-        )
         ttk.Label(header_frame, textvariable=self.status_hint_var, style='Info.TLabel').grid(
-            row=2, column=0, sticky=tk.W, pady=(10, 0)
+            row=1, column=0, sticky=tk.W, pady=(10, 0)
         )
 
         badge_frame = tk.Frame(header_frame, bg=self.palette['surface_alt'])
-        badge_frame.grid(row=0, column=1, rowspan=3, sticky=tk.E)
+        badge_frame.grid(row=0, column=1, rowspan=2, sticky=tk.E)
         ttk.Label(badge_frame, text="简洁布局", style='Badge.TLabel').pack(anchor=tk.E)
         ttk.Label(badge_frame, text="性能优先", style='Badge.TLabel').pack(anchor=tk.E, pady=(6, 0))
         ttk.Label(badge_frame, text="统一主题", style='Badge.TLabel').pack(anchor=tk.E, pady=(6, 0))
