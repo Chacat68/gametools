@@ -10,6 +10,7 @@
 - 右侧工作区专注当前任务
 - 统一样式、减少多套 UI 并存带来的维护成本
 - 延迟加载处理器，优先保证启动速度和响应性
+- 历史上的拆分页签方案和 modern 打包入口已移除，避免继续分叉
 
 ### 快速启动
 
@@ -33,11 +34,6 @@ gui/
 ├── build_unified.py        # 统一界面打包脚本
 ├── ui_theme.py             # 公共主题配置
 ├── gametools_unified.spec  # PyInstaller 配置文件
-├── tabs/                   # 功能页签实现
-│   ├── base_tab.py         # 页签基类
-│   ├── batch_modifier_tab.py
-│   ├── config_sync_tab.py
-│   └── ...
 └── ...
 ```
 
