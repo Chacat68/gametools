@@ -1,10 +1,15 @@
 # GameTools GUI 模块
 
-基于 tkinter 的图形界面，使用传统 Tab 页签设计。
+基于 tkinter 的图形界面，现统一为单窗口侧边导航方案。
 
-## 传统版本
+## 当前界面
 
-传统版本使用 Tab 页签设计，保持向后兼容。
+当前版本保留原有功能模块，但收敛为一套轻量主题和单入口布局：
+
+- 左侧导航切换功能模块
+- 右侧工作区专注当前任务
+- 统一样式、减少多套 UI 并存带来的维护成本
+- 延迟加载处理器，优先保证启动速度和响应性
 
 ### 快速启动
 
@@ -23,11 +28,12 @@ python gametools_unified.py
 
 ```
 gui/
-├── gametools_unified.py    # 传统界面主程序
-├── run_unified.py          # 传统版本启动脚本
-├── build_unified.py        # 传统版本打包脚本
+├── gametools_unified.py    # 统一界面主程序
+├── run_unified.py          # 统一界面启动脚本
+├── build_unified.py        # 统一界面打包脚本
+├── ui_theme.py             # 公共主题配置
 ├── gametools_unified.spec  # PyInstaller 配置文件
-├── tabs/                   # 传统版本页签模块
+├── tabs/                   # 功能页签实现
 │   ├── base_tab.py         # 页签基类
 │   ├── batch_modifier_tab.py
 │   ├── config_sync_tab.py
@@ -49,12 +55,12 @@ gui/
 | 配置同步 | Excel配置一致性检查 | `excel_config_sync.py` |
 | Excel转CSV | 批量转换格式 | `excel_to_csv_converter.py` |
 
-## 页签可见性设置
+## 模块可见性设置
 
-用户可以在「关于」页面中点击「界面设置」按钮来自定义显示哪些功能页签：
+用户可以在「关于」页面中点击「界面设置」按钮来自定义显示哪些功能模块：
 
-1. 打开「关于」页签
-2. 点击「⚙️ 界面设置」按钮
+1. 打开「关于」页面
+2. 点击「界面设置」按钮
 3. 在弹窗中勾选/取消勾选需要显示的功能页签
 4. 点击「保存」
 5. 重启程序后生效

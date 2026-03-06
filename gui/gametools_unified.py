@@ -20,9 +20,11 @@ import logging
 if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
     # PyInstaller 环境使用绝对导入
     from gui.import_helper import fix_pyinstaller_imports
+    from gui.ui_theme import apply_ui_theme
 else:
     # 开发环境使用相对导入
     from .import_helper import fix_pyinstaller_imports
+    from .ui_theme import apply_ui_theme
 fix_pyinstaller_imports()
 
 # 添加模块路径（仅在非 PyInstaller 环境）
@@ -47,8 +49,8 @@ class GameToolsUnified:
     def __init__(self, root):
         self.root = root
         self.root.title(f"gametools v{get_version()}")
-        self.root.geometry("900x650")
-        self.root.minsize(800, 550)
+        self.root.geometry("1180x760")
+        self.root.minsize(980, 640)
         
         # 设置窗口图标
         try:
@@ -116,32 +118,191 @@ class GameToolsUnified:
     
     def setup_styles(self):
         """设置界面样式"""
-        style = ttk.Style()
-        style.theme_use('clam')
-        
-        # 配置样式
-        style.configure('Title.TLabel', font=('Microsoft YaHei', 14, 'bold'))
-        style.configure('Heading.TLabel', font=('Microsoft YaHei', 11, 'bold'))
-        style.configure('Info.TLabel', font=('Microsoft YaHei', 9))
-        style.configure('Success.TLabel', font=('Microsoft YaHei', 9), foreground='green')
-        style.configure('Error.TLabel', font=('Microsoft YaHei', 9), foreground='red')
-        style.configure('Accent.TButton', font=('Microsoft YaHei', 9, 'bold'))
+        self.palette, self.style = apply_ui_theme(self.root)
+
+    def _register_tab(self, key, title, description, padding="16"):
+        """注册主工作区页面并保存导航信息。"""
+        frame = ttk.Frame(self.notebook, padding=padding, style='Page.TFrame')
+        self.notebook.add(frame, text=title)
+        self.tab_registry.append({
+            'key': key,
+            'title': title,
+            'description': description,
+            'frame': frame,
+        })
+        self.tab_lookup[key] = self.tab_registry[-1]
+        return frame
+
+    def _build_navigation(self):
+        """构建左侧导航。"""
+        self.nav_widgets = {}
+        for meta in self.tab_registry:
+            card = tk.Frame(
+                self.nav_items_frame,
+                bg=self.palette['sidebar_bg'],
+                highlightthickness=1,
+                highlightbackground=self.palette['sidebar_hover'],
+                cursor='hand2',
+            )
+            card.pack(fill=tk.X, pady=(0, 8))
+
+            title_label = tk.Label(
+                card,
+                text=meta['title'],
+                bg=self.palette['sidebar_bg'],
+                fg=self.palette['sidebar_text'],
+                anchor='w',
+                padx=12,
+                pady=8,
+                font=('Microsoft YaHei UI', 10, 'bold'),
+            )
+            title_label.pack(fill=tk.X)
+
+            desc_label = tk.Label(
+                card,
+                text=meta['description'],
+                bg=self.palette['sidebar_bg'],
+                fg=self.palette['sidebar_muted'],
+                anchor='w',
+                justify=tk.LEFT,
+                wraplength=190,
+                padx=12,
+                pady=(0, 10),
+                font=('Microsoft YaHei UI', 9),
+            )
+            desc_label.pack(fill=tk.X)
+
+            for widget in (card, title_label, desc_label):
+                widget.bind('<Button-1>', lambda _event, tab_key=meta['key']: self.select_tab(tab_key))
+
+            self.nav_widgets[meta['key']] = (card, title_label, desc_label)
+
+    def _update_navigation_state(self, active_key):
+        """刷新导航高亮状态。"""
+        for key, widgets in self.nav_widgets.items():
+            card, title_label, desc_label = widgets
+            is_active = key == active_key
+            card.configure(
+                bg=self.palette['sidebar_active'] if is_active else self.palette['sidebar_bg'],
+                highlightbackground=self.palette['accent'] if is_active else self.palette['sidebar_hover'],
+            )
+            title_label.configure(
+                bg=self.palette['sidebar_active'] if is_active else self.palette['sidebar_bg'],
+                fg=self.palette['sidebar_text'],
+            )
+            desc_label.configure(
+                bg=self.palette['sidebar_active'] if is_active else self.palette['sidebar_bg'],
+                fg=self.palette['sidebar_text'] if is_active else self.palette['sidebar_muted'],
+            )
+
+    def _sync_header_with_current_tab(self, _event=None):
+        """根据当前页面刷新头部说明。"""
+        selected = self.notebook.select()
+        for meta in self.tab_registry:
+            if str(meta['frame']) == selected:
+                self.page_title_var.set(meta['title'])
+                self.page_desc_var.set(meta['description'])
+                self.status_hint_var.set(f"当前模块: {meta['title']}")
+                self._update_navigation_state(meta['key'])
+                break
+
+    def select_tab(self, key):
+        """通过侧边导航切换页面。"""
+        meta = self.tab_lookup.get(key)
+        if not meta:
+            return
+        self.notebook.select(meta['frame'])
+        self._sync_header_with_current_tab()
     
     def create_widgets(self):
         """创建界面控件"""
-        # 主框架
-        main_frame = ttk.Frame(self.root, padding="5")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        # 配置网格权重
+        self.tab_registry = []
+        self.tab_lookup = {}
+
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(0, weight=1)
-        
-        # 创建笔记本控件（页签）
-        self.notebook = ttk.Notebook(main_frame)
+
+        app_frame = ttk.Frame(self.root, style='App.TFrame', padding=14)
+        app_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        app_frame.columnconfigure(1, weight=1)
+        app_frame.rowconfigure(0, weight=1)
+
+        sidebar_frame = tk.Frame(app_frame, bg=self.palette['sidebar_bg'], width=240)
+        sidebar_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 14))
+        sidebar_frame.grid_propagate(False)
+        sidebar_frame.rowconfigure(1, weight=1)
+
+        brand_frame = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        brand_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=16, pady=(18, 14))
+
+        ttk.Label(brand_frame, text="GameTools", style='SidebarTitle.TLabel').pack(anchor=tk.W)
+        ttk.Label(
+            brand_frame,
+            text=f"v{get_version()}  ·  单窗口轻量界面",
+            style='SidebarMeta.TLabel',
+        ).pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(
+            brand_frame,
+            text="保留全部工具能力，统一视觉和交互入口。",
+            style='SidebarMeta.TLabel',
+        ).pack(anchor=tk.W, pady=(10, 0))
+
+        self.nav_items_frame = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        self.nav_items_frame.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=12)
+
+        sidebar_footer = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        sidebar_footer.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=16, pady=(10, 18))
+        ttk.Label(
+            sidebar_footer,
+            text="延迟加载\n多线程执行\n低打扰导航",
+            style='SidebarFoot.TLabel',
+            justify=tk.LEFT,
+        ).pack(anchor=tk.W)
+
+        workspace_frame = ttk.Frame(app_frame, style='App.TFrame')
+        workspace_frame.grid(row=0, column=1, sticky=(tk.N, tk.S, tk.E, tk.W))
+        workspace_frame.columnconfigure(0, weight=1)
+        workspace_frame.rowconfigure(1, weight=1)
+
+        header_frame = tk.Frame(
+            workspace_frame,
+            bg=self.palette['surface_alt'],
+            highlightthickness=1,
+            highlightbackground=self.palette['border'],
+            padx=20,
+            pady=18,
+        )
+        header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 14))
+        header_frame.grid_columnconfigure(0, weight=1)
+
+        self.page_title_var = tk.StringVar(value="工具工作台")
+        self.page_desc_var = tk.StringVar(value="统一后的界面保留全部功能，交互更聚焦。")
+        self.status_hint_var = tk.StringVar(value="就绪")
+
+        ttk.Label(header_frame, textvariable=self.page_title_var, style='HeaderTitle.TLabel').grid(
+            row=0, column=0, sticky=tk.W
+        )
+        ttk.Label(header_frame, textvariable=self.page_desc_var, style='HeaderSubtitle.TLabel').grid(
+            row=1, column=0, sticky=tk.W, pady=(6, 0)
+        )
+        ttk.Label(header_frame, textvariable=self.status_hint_var, style='Info.TLabel').grid(
+            row=2, column=0, sticky=tk.W, pady=(10, 0)
+        )
+
+        badge_frame = tk.Frame(header_frame, bg=self.palette['surface_alt'])
+        badge_frame.grid(row=0, column=1, rowspan=3, sticky=tk.E)
+        ttk.Label(badge_frame, text="简洁布局", style='Badge.TLabel').pack(anchor=tk.E)
+        ttk.Label(badge_frame, text="性能优先", style='Badge.TLabel').pack(anchor=tk.E, pady=(6, 0))
+        ttk.Label(badge_frame, text="统一主题", style='Badge.TLabel').pack(anchor=tk.E, pady=(6, 0))
+
+        content_frame = ttk.Frame(workspace_frame, style='App.TFrame')
+        content_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        content_frame.columnconfigure(0, weight=1)
+        content_frame.rowconfigure(0, weight=1)
+
+        self.notebook = ttk.Notebook(content_frame, style='Navigation.TNotebook')
         self.notebook.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.notebook.bind('<<NotebookTabChanged>>', self._sync_header_with_current_tab)
         
         # 获取页签可见性配置
         tabs_config = config_manager.config.tabs
@@ -162,17 +323,22 @@ class GameToolsUnified:
         
         # 关于页签（始终显示）
         self.create_about_tab()
-        
-        # 状态栏
+
+        self._build_navigation()
+        if self.tab_registry:
+            self.select_tab(self.tab_registry[0]['key'])
+
         self.status_var = tk.StringVar(value="就绪")
-        status_bar = ttk.Label(main_frame, textvariable=self.status_var, 
-                              relief=tk.SUNKEN, anchor=tk.W, padding="3")
-        status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(2, 0))
+        status_bar = ttk.Label(workspace_frame, textvariable=self.status_var, style='Status.TLabel', anchor=tk.W)
+        status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(12, 0))
     
     def create_cross_project_translator_tab(self):
         """创建跨项目翻译对应页签"""
-        translator_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(translator_frame, text="跨项目翻译")
+        translator_frame = self._register_tab(
+            'cross_project_translator',
+            '跨项目翻译',
+            '根据映射表和项目目录批量生成翻译对应结果。'
+        )
         
         translator_frame.columnconfigure(0, weight=1)
         
@@ -222,8 +388,11 @@ class GameToolsUnified:
     def create_json_detector_tab(self):
         """创建JSON错误检测工具页签"""
         # JSON检测工具框架
-        json_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(json_frame, text="JSON检测")
+        json_frame = self._register_tab(
+            'json_detector',
+            'JSON检测',
+            '检测 JSON 文件夹或单文件中的语法、结构和编码问题。'
+        )
         
         # 配置网格
         json_frame.columnconfigure(0, weight=1)
@@ -249,31 +418,34 @@ class GameToolsUnified:
         button_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
         # 主要操作按钮
-        self.json_detect_button = ttk.Button(button_frame, text="🔍 开始检测", 
+        self.json_detect_button = ttk.Button(button_frame, text="开始检测", 
                                             command=self.start_json_detection, 
                                             style='Accent.TButton')
         self.json_detect_button.pack(side=tk.LEFT, padx=(0, 8))
         
         # 辅助操作按钮
-        self.json_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+        self.json_clear_button = ttk.Button(button_frame, text="清空结果", 
                                            command=self.clear_json_results)
         self.json_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.json_save_button = ttk.Button(button_frame, text="💾 保存报告", 
+        self.json_save_button = ttk.Button(button_frame, text="保存报告", 
                                           command=self.save_json_report, 
                                           state="disabled")
         self.json_save_button.pack(side=tk.LEFT, padx=(0, 8))
         
         # 查看结果按钮
-        self.json_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+        self.json_view_results_button = ttk.Button(button_frame, text="查看结果", 
                                                   command=lambda: self.show_results_dialog('json_detector'))
         self.json_view_results_button.pack(side=tk.LEFT)
     
     def create_excel_data_processor_tab(self):
         """创建Excel数据处理工具页签"""
         # Excel数据处理工具框架
-        excel_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(excel_frame, text="数据处理")
+        excel_frame = self._register_tab(
+            'excel_data_processor',
+            '数据处理',
+            '按列分组整合 Excel 数据，并生成汇总工作表。'
+        )
         
         # 配置网格
         excel_frame.columnconfigure(0, weight=1)
@@ -313,6 +485,7 @@ class GameToolsUnified:
         # 输出文件名
         ttk.Label(output_frame, text="输出文件名:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(5, 0))
         self.excel_output_filename_var = tk.StringVar(value="整合结果.xlsx")
+        self.excel_output_var = tk.StringVar()
         self.excel_output_filename_entry = ttk.Entry(output_frame, textvariable=self.excel_output_filename_var, 
                                                    width=25, font=("Microsoft YaHei", 9))
         self.excel_output_filename_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 10), pady=(5, 0))
@@ -348,31 +521,34 @@ class GameToolsUnified:
         button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
         # 主要操作按钮
-        self.excel_process_button = ttk.Button(button_frame, text="⚙️ 开始整合", 
+        self.excel_process_button = ttk.Button(button_frame, text="开始整合", 
                                                command=self.start_excel_consolidation, 
                                                style='Accent.TButton')
         self.excel_process_button.pack(side=tk.LEFT, padx=(0, 8))
         
         # 辅助操作按钮
-        self.excel_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+        self.excel_clear_button = ttk.Button(button_frame, text="清空结果", 
                                              command=self.clear_excel_results)
         self.excel_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.excel_preview_button = ttk.Button(button_frame, text="👁️ 预览数据", 
+        self.excel_preview_button = ttk.Button(button_frame, text="预览数据", 
                                                command=self.preview_excel_data,
                                                state="disabled")
         self.excel_preview_button.pack(side=tk.LEFT, padx=(0, 8))
         
         # 查看结果按钮
-        self.excel_view_results_button = ttk.Button(button_frame, text="📊 查看结果", 
+        self.excel_view_results_button = ttk.Button(button_frame, text="查看结果", 
                                                    command=lambda: self.show_results_dialog('excel_processor'))
         self.excel_view_results_button.pack(side=tk.LEFT)
     
     def create_field_extractor_tab(self):
         """创建表字段导出页签"""
         # 字段导出器框架
-        field_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(field_frame, text="字段导出")
+        field_frame = self._register_tab(
+            'field_extractor',
+            '字段导出',
+            '扫描多语言 Excel 目录，导出字段和示例文本。'
+        )
         
         # 配置网格
         field_frame.columnconfigure(0, weight=1)
@@ -463,7 +639,7 @@ class GameToolsUnified:
         
         # 说明信息
         info_label = ttk.Label(options_frame, 
-                              text="💡 选择需要导出的语言分支，输出JSON带语言标记", 
+                      text="选择需要导出的语言分支，输出结果会自动带语言标记。", 
                               style='Info.TLabel', foreground='blue')
         info_label.grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
         
@@ -471,32 +647,35 @@ class GameToolsUnified:
         button_frame = ttk.Frame(field_frame)
         button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
-        self.field_extract_button = ttk.Button(button_frame, text="📊 开始提取", 
+        self.field_extract_button = ttk.Button(button_frame, text="开始提取", 
                                               command=self.start_field_extraction, 
                                               style='Accent.TButton')
         self.field_extract_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.field_copy_button = ttk.Button(button_frame, text="📋 复制JSON", 
+        self.field_copy_button = ttk.Button(button_frame, text="复制JSON", 
                                            command=self.copy_field_json_result)
         self.field_copy_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.field_error_log_button = ttk.Button(button_frame, text="⚠️ 错误日志", 
+        self.field_error_log_button = ttk.Button(button_frame, text="错误日志", 
                                                 command=self.show_field_error_logs)
         self.field_error_log_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.field_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+        self.field_clear_button = ttk.Button(button_frame, text="清空结果", 
                                             command=self.clear_field_results)
         self.field_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.field_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
+        self.field_view_results_button = ttk.Button(button_frame, text="查看结果", 
                                                    command=lambda: self.show_results_dialog('field_extractor'))
         self.field_view_results_button.pack(side=tk.LEFT)
     
     def create_table_range_translator_tab(self):
         """创建多语言翻译提取页签"""
         # 多语言翻译提取器框架
-        trt_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(trt_frame, text="多语言提取")
+        trt_frame = self._register_tab(
+            'table_range_translator',
+            '多语言提取',
+            '读取合并配置并从多语言目录中提取翻译内容。'
+        )
         
         # 配置网格
         trt_frame.columnconfigure(0, weight=1)
@@ -575,7 +754,7 @@ class GameToolsUnified:
         self.trt_output_dir_browse_button.grid(row=0, column=2)
         
         # 输出格式说明
-        ttk.Label(output_frame, text="💡 输出格式: 翻译提取_YYYYMMDD_HHMMSS.csv", 
+        ttk.Label(output_frame, text="输出格式: 翻译提取_YYYYMMDD_HHMMSS.csv", 
                  foreground='gray').grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
         
         # 兼容旧变量
@@ -590,26 +769,29 @@ class GameToolsUnified:
         button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
         # 主要操作按钮
-        self.trt_process_button = ttk.Button(button_frame, text="🚀 开始提取", 
+        self.trt_process_button = ttk.Button(button_frame, text="开始提取", 
                                             command=self.start_table_range_translation, 
                                             style='Accent.TButton')
         self.trt_process_button.pack(side=tk.LEFT, padx=(0, 8))
         
         # 辅助操作按钮
-        self.trt_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+        self.trt_clear_button = ttk.Button(button_frame, text="清空结果", 
                                           command=self.clear_trt_results)
         self.trt_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
         # 查看结果按钮
-        self.trt_view_results_button = ttk.Button(button_frame, text="👁️ 查看结果", 
+        self.trt_view_results_button = ttk.Button(button_frame, text="查看结果", 
                                                  command=lambda: self.show_results_dialog('table_range_translator'))
         self.trt_view_results_button.pack(side=tk.LEFT)
     
     def create_batch_modifier_tab(self):
         """创建批量改表页签"""
         # 批量改表框架
-        batch_frame = ttk.Frame(self.notebook, padding="10")
-        self.notebook.add(batch_frame, text="批量改表")
+        batch_frame = self._register_tab(
+            'batch_modifier',
+            '批量改表',
+            '按 JSON 配置和映射表批量修改 Excel 内容。'
+        )
         
         # 配置网格
         batch_frame.columnconfigure(0, weight=1)
@@ -717,7 +899,7 @@ class GameToolsUnified:
                                                    width=5, font=("Microsoft YaHei", 9))
         self.batch_data_start_row_entry.pack(side=tk.LEFT, padx=(0, 10))
         
-        ttk.Label(row2_frame, text="⚠️ 小于此行号的将不会被修改（保护表头）", 
+        ttk.Label(row2_frame, text="小于此行号的内容不会被修改，用于保护表头。", 
                  foreground="orange").pack(side=tk.LEFT, padx=(0, 20))
         
         ttk.Label(row2_frame, text="字段行:").pack(side=tk.LEFT, padx=(0, 5))
@@ -731,7 +913,7 @@ class GameToolsUnified:
         row3_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
         
         mode_label = ttk.Label(row3_frame, 
-                              text="💡 定位模式：有Position列→直接定位单元格 | 无Position列→ID作为行号", 
+                      text="定位模式: 有 Position 列时直接定位单元格，没有时使用 ID 作为行号。", 
                               foreground="blue")
         mode_label.pack(side=tk.LEFT)
         
@@ -739,27 +921,31 @@ class GameToolsUnified:
         button_frame = ttk.Frame(batch_frame)
         button_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(8, 0))
         
-        self.batch_process_button = ttk.Button(button_frame, text="🚀 开始修改", 
+        self.batch_process_button = ttk.Button(button_frame, text="开始修改", 
                                               command=self.start_batch_modification, 
                                               style='Accent.TButton')
         self.batch_process_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.batch_preview_button = ttk.Button(button_frame, text="👁️ 预览映射表", 
+        self.batch_preview_button = ttk.Button(button_frame, text="预览映射表", 
                                               command=self.preview_batch_mapping)
         self.batch_preview_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.batch_clear_button = ttk.Button(button_frame, text="🗑️ 清空结果", 
+        self.batch_clear_button = ttk.Button(button_frame, text="清空结果", 
                                             command=self.clear_batch_results)
         self.batch_clear_button.pack(side=tk.LEFT, padx=(0, 8))
         
-        self.batch_view_results_button = ttk.Button(button_frame, text="📝 查看结果", 
+        self.batch_view_results_button = ttk.Button(button_frame, text="查看结果", 
                                                    command=lambda: self.show_results_dialog('batch_modifier'))
         self.batch_view_results_button.pack(side=tk.LEFT)
     
     def create_about_tab(self):
         """创建关于页签"""
-        about_frame = ttk.Frame(self.notebook, padding="20")
-        self.notebook.add(about_frame, text="关于")
+        about_frame = self._register_tab(
+            'about',
+            '关于',
+            '查看版本说明、使用方法和界面设置。',
+            padding="20"
+        )
         
         # 配置网格
         about_frame.columnconfigure(0, weight=1)
@@ -794,20 +980,22 @@ class GameToolsUnified:
         left_frame.columnconfigure(0, weight=1)
 
         features_text = (
-            "📊 JSON格式检测工具\n"
-            "  检测JSON文件中text字段的格式一致性\n\n"
-            "📈 Excel数据处理工具\n"
-            "  根据指定列对Excel数据进行分组和处理\n\n"
-            "� 表字段导出工具\n"
-            "  扫描Excel文件，提取包含文本的列的字段信息\n\n"
-            "🌐 多语言翻译提取工具\n"
-            "  根据字段导出的JSON配置，智能提取多语言翻译内容\n\n"
-            f"📋 版本信息\n  当前版本: v{get_version()}\n  项目描述: {get_description()}"
+            "JSON 格式检测\n"
+            "  检测 JSON 文件中的语法、结构和编码问题。\n\n"
+            "Excel 数据处理\n"
+            "  根据指定列进行分组、整合与汇总输出。\n\n"
+            "表字段导出\n"
+            "  扫描 Excel 文件并提取包含文本的字段信息。\n\n"
+            "多语言翻译提取\n"
+            "  根据配置自动匹配目录并导出翻译结果。\n\n"
+            f"版本信息\n  当前版本: v{get_version()}\n  项目描述: {get_description()}"
         )
 
         features_textbox = tk.Text(left_frame, wrap='word', height=15, padx=6, pady=6,
                                    font=("Microsoft YaHei", 10), relief='flat',
-                                   background='SystemButtonFace')
+                                   background=self.palette['surface_alt'],
+                                   foreground=self.palette['text'],
+                                   insertbackground=self.palette['text'])
         features_textbox.insert('1.0', features_text)
         features_textbox.configure(state='disabled')
         features_textbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -825,18 +1013,18 @@ class GameToolsUnified:
         changes_text = "\n".join([f"• {change}" for change in latest_changes])
 
         tech_text = (
-            "🛠️ 技术栈:\n"
+            "技术栈:\n"
             "• Python 3.7+\n"
             "• Tkinter (GUI界面)\n"
             "• pandas (数据处理)\n"
             "• xlwings (Excel修改引擎，需要安装Excel)\n\n"
-            "✨ 主要特性:\n"
+            "主要特性:\n"
             "• 支持多种文件格式\n"
-            "• 图形化界面，操作简单\n"
+            "• 单窗口导航，界面层级更清晰\n"
             "• 多线程处理，界面响应流畅\n"
-            "• 支持exe文件打包和分发\n\n"
-            f"🆕 最新更新 (v{get_version()}):\n{changes_text}\n\n"
-            "⚠️ 注意事项:\n"
+            "• 支持 exe 文件打包和分发\n\n"
+            f"最新更新 (v{get_version()}):\n{changes_text}\n\n"
+            "注意事项:\n"
             "• 确保文件格式正确\n"
             "• 大文件处理可能需要较长时间\n"
             "• 建议在检测前备份重要文件"
@@ -844,7 +1032,9 @@ class GameToolsUnified:
 
         tech_textbox = tk.Text(right_frame, wrap='word', height=15, padx=6, pady=6,
                                font=("Microsoft YaHei", 10), relief='flat',
-                               background='SystemButtonFace')
+                               background=self.palette['surface_alt'],
+                               foreground=self.palette['text'],
+                               insertbackground=self.palette['text'])
         tech_textbox.insert('1.0', tech_text)
         tech_textbox.configure(state='disabled')
         tech_textbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -862,20 +1052,20 @@ class GameToolsUnified:
         settings_frame = ttk.Frame(bottom_frame)
         settings_frame.grid(row=0, column=0, pady=(0, 15))
         
-        settings_btn = ttk.Button(settings_frame, text="⚙️ 界面设置", 
+        settings_btn = ttk.Button(settings_frame, text="界面设置", 
                                   command=self.show_settings_dialog,
                                   style='Accent.TButton')
         settings_btn.pack()
         
         # 使用方法
-        usage_text = "📖 使用方法: 选择相应的功能页签 → 按照界面提示操作 → 查看检测结果"
+        usage_text = "使用方法: 从左侧选择功能模块，按提示填写参数后开始处理。"
         usage_label = ttk.Label(bottom_frame, text=usage_text, 
                                font=("Microsoft YaHei", 10), 
                                style='Info.TLabel')
         usage_label.grid(row=0, column=0, pady=(0, 10))
         
         # 版权信息
-        copyright_text = "💬 技术支持: 如有问题或建议，请联系开发团队\n© 2024 gametools - 版权所有"
+        copyright_text = "技术支持: 如有问题或建议，请联系开发团队\n© 2024 gametools - 版权所有"
         copyright_label = ttk.Label(bottom_frame, text=copyright_text, 
                                    font=("Microsoft YaHei", 9), 
                                    style='Info.TLabel')
@@ -1041,7 +1231,7 @@ class GameToolsUnified:
             dialog.clipboard_append(result_content)
             messagebox.showinfo("成功", "结果已复制到剪贴板")
         
-        copy_button = ttk.Button(button_frame, text="📋 复制到剪贴板", 
+        copy_button = ttk.Button(button_frame, text="复制到剪贴板", 
                                 command=copy_to_clipboard)
         copy_button.pack(side=tk.LEFT, padx=(0, 5))
         
@@ -1060,7 +1250,7 @@ class GameToolsUnified:
                 except Exception as e:
                     messagebox.showerror("错误", f"保存失败: {str(e)}")
         
-        save_button = ttk.Button(button_frame, text="💾 保存到文件", 
+        save_button = ttk.Button(button_frame, text="保存到文件", 
                                 command=save_to_file)
         save_button.pack(side=tk.LEFT, padx=(0, 5))
         
@@ -1172,11 +1362,11 @@ class GameToolsUnified:
         )
         if file_path:
             self.excel_input_var.set(file_path)
-            # 自动设置输出文件名
-            if not self.excel_output_var.get():
+            if not self.excel_output_folder_var.get():
+                self.excel_output_folder_var.set(str(Path(file_path).parent))
+            if not self.excel_output_filename_var.get() or self.excel_output_filename_var.get() == "整合结果.xlsx":
                 input_path = Path(file_path)
-                output_path = input_path.parent / f"{input_path.stem}_整合{input_path.suffix}"
-                self.excel_output_var.set(str(output_path))
+                self.excel_output_filename_var.set(f"{input_path.stem}_整合{input_path.suffix}")
     
     def browse_excel_output_folder(self):
         """浏览Excel输出文件夹"""

@@ -11,6 +11,11 @@ import os
 import threading
 from abc import ABC, abstractmethod
 
+try:
+    from .ui_theme import apply_ui_theme
+except ImportError:
+    from gui.ui_theme import apply_ui_theme
+
 
 class BaseDetectorGUI(ABC):
     """检测工具GUI基类"""
@@ -26,6 +31,8 @@ class BaseDetectorGUI(ABC):
             self.root.iconbitmap("icon.ico")
         except Exception:
             pass
+
+        self.palette, self.style = apply_ui_theme(self.root)
         
         # 初始化检测器（子类实现）
         self.detector = self._create_detector()
@@ -59,7 +66,7 @@ class BaseDetectorGUI(ABC):
     
     def _create_main_frame(self):
         """创建主框架"""
-        self.main_frame = ttk.Frame(self.root, padding="10")
+        self.main_frame = ttk.Frame(self.root, padding="10", style='App.TFrame')
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 配置网格权重
@@ -96,7 +103,10 @@ class BaseDetectorGUI(ABC):
         self.result_text = scrolledtext.ScrolledText(result_frame, 
                                                     wrap=tk.WORD, 
                                                     font=("Consolas", 10),
-                                                    height=20)
+                                                    height=20,
+                                                    background=self.palette['surface_alt'],
+                                                    foreground=self.palette['text'],
+                                                    insertbackground=self.palette['text'])
         self.result_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # 进度条
@@ -190,13 +200,6 @@ class BaseDetectorGUI(ABC):
 def run_detector_gui(gui_class, title="检测工具"):
     """通用的GUI启动函数"""
     root = tk.Tk()
-    
-    # 设置主题样式
-    style = ttk.Style()
-    try:
-        style.theme_use('clam')
-    except Exception:
-        pass
     
     app = gui_class(root)
     
