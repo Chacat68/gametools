@@ -106,7 +106,9 @@ class MemoryCache:
             
             # 检查过期
             if entry.is_expired():
+                expired_size = self._estimate_size(entry.value)
                 del self.cache[key]
+                self.current_memory_bytes -= expired_size
                 self.miss_count += 1
                 logger.debug(f"缓存已过期: {key}")
                 return None

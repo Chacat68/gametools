@@ -755,11 +755,21 @@ class BatchExcelModifier:
                 return []
             else:
                 # Excel文件，返回工作表列表
-                xl = pd.ExcelFile(mapping_path)
-                return xl.sheet_names
+                with pd.ExcelFile(mapping_path) as xl:
+                    return xl.sheet_names
         except Exception as e:
             logger.error(f"获取工作表列表失败: {e}")
             return []
+
+    def close(self):
+        """显式释放批量改表过程中持有的 Excel 应用实例。"""
+        self._close_excel_app()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
     
     def parse_mapping_row(self, row: pd.Series, columns: List[str], 
                          table_col: str, id_col: str, 
@@ -1439,8 +1449,8 @@ class BatchExcelModifier:
                 sheet_names = [t.replace('.xlsx', '').replace('.xls', '') for t in unique_tables]
                 self._report_progress(f"映射表为CSV格式，包含 {len(sheet_names)} 个表文件")
             else:
-                xl = pd.ExcelFile(mapping_path)
-                sheet_names = xl.sheet_names
+                with pd.ExcelFile(mapping_path) as xl:
+                    sheet_names = xl.sheet_names
                 self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
         except Exception as e:
             error_msg = f"无法读取映射表: {e}"
@@ -1993,24 +2003,23 @@ class BatchExcelModifier:
                     columns = df.columns.tolist()
             else:
                 # Excel文件
-                xl = pd.ExcelFile(mapping_path)
-                
-                # 跳过汇总信息等非数据工作表
-                skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
-                data_sheet = None
-                for sheet in xl.sheet_names:
-                    if sheet not in skip_sheets:
-                        data_sheet = sheet
-                        break
-                
-                if not data_sheet:
-                    data_sheet = xl.sheet_names[0] if xl.sheet_names else None
-                
-                if data_sheet:
-                    df = pd.read_excel(mapping_path, sheet_name=data_sheet, nrows=0)
-                    columns = df.columns.tolist()
-                else:
-                    return []
+                with pd.ExcelFile(mapping_path) as xl:
+                    # 跳过汇总信息等非数据工作表
+                    skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+                    data_sheet = None
+                    for sheet in xl.sheet_names:
+                        if sheet not in skip_sheets:
+                            data_sheet = sheet
+                            break
+
+                    if not data_sheet:
+                        data_sheet = xl.sheet_names[0] if xl.sheet_names else None
+
+                    if data_sheet:
+                        df = pd.read_excel(xl, sheet_name=data_sheet, nrows=0)
+                        columns = df.columns.tolist()
+                    else:
+                        return []
             
             # 过滤出语言列
             if columns:
@@ -2108,8 +2117,8 @@ class BatchExcelModifier:
                 sheet_names = [t.replace('.xlsx', '').replace('.xls', '') for t in unique_tables]
                 self._report_progress(f"映射表为CSV格式，包含 {len(sheet_names)} 个表文件")
             else:
-                xl = pd.ExcelFile(mapping_path)
-                sheet_names = xl.sheet_names
+                with pd.ExcelFile(mapping_path) as xl:
+                    sheet_names = xl.sheet_names
                 self._report_progress(f"映射表包含 {len(sheet_names)} 个工作表")
         except Exception as e:
             error_msg = f"无法读取映射表: {e}"
@@ -2292,13 +2301,13 @@ class BatchExcelModifier:
                     shutil.copy2(excel_path, backup_path)
                 except Exception as e:
                     logger.warning(f"创建备份失败: {e}")
-            
+
             self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改){'[Position模式]' if use_position_mode else ''}")
-            
+
             # 修改文件（传递field_row和data_start_row以保护表头）
             modified_count, errors, skipped_same = self.modify_excel_file(
-                excel_path, 
-                modifications, 
+                excel_path,
+                modifications,
                 field_mapping=None,
                 field_row=field_row,
                 data_start_row=data_start_row,

@@ -2270,24 +2270,23 @@ class GameToolsUnified:
                     columns = df.columns.tolist()
             else:
                 # Excel文件
-                xl = pd.ExcelFile(mapping_file)
-                
-                # 跳过汇总信息等非数据工作表，找到第一个数据工作表
-                skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
-                data_sheet = None
-                for sheet in xl.sheet_names:
-                    if sheet not in skip_sheets:
-                        data_sheet = sheet
-                        break
-                
-                if not data_sheet:
-                    data_sheet = xl.sheet_names[0] if xl.sheet_names else None
-                
-                if data_sheet:
-                    df = pd.read_excel(mapping_file, sheet_name=data_sheet, nrows=0)
-                    columns = df.columns.tolist()
-                else:
-                    columns = []
+                with pd.ExcelFile(mapping_file) as xl:
+                    # 跳过汇总信息等非数据工作表，找到第一个数据工作表
+                    skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
+                    data_sheet = None
+                    for sheet in xl.sheet_names:
+                        if sheet not in skip_sheets:
+                            data_sheet = sheet
+                            break
+
+                    if not data_sheet:
+                        data_sheet = xl.sheet_names[0] if xl.sheet_names else None
+
+                    if data_sheet:
+                        df = pd.read_excel(xl, sheet_name=data_sheet, nrows=0)
+                        columns = df.columns.tolist()
+                    else:
+                        columns = []
             
             # 排除一些常见的非语言列
             exclude_cols = ['Classification', 'classification', 'ID', 'id', 'Field', 'field', 
@@ -2682,6 +2681,11 @@ Excel目录: {excel_dir}
             self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
         
         finally:
+            if hasattr(self, 'batch_modifier') and self.batch_modifier is not None:
+                try:
+                    self.batch_modifier.close()
+                except Exception:
+                    pass
             # 恢复按钮状态
             self.root.after(0, lambda: self.batch_process_button.config(state="normal"))
             self.root.after(0, lambda: self.status_var.set("就绪"))

@@ -23,6 +23,11 @@ class CrossProjectTranslator:
         self.supported_formats = ['.xlsx', '.xls']
         self.project_files = {}  # 存储项目文件缓存
         self.translation_results = []
+
+    def clear_runtime_cache(self):
+        """清理单次运行之外的内存缓存，避免 GUI 长时间保留大量 DataFrame。"""
+        self.project_files.clear()
+        self.translation_results = []
     
     def parse_cell_reference(self, cell_ref: str) -> Tuple[int, int]:
         """
@@ -157,6 +162,9 @@ class CrossProjectTranslator:
         try:
             logger.info(f"开始处理翻译映射文件: {mapping_file}")
             logger.info(f"项目目录: {project_directory}")
+
+            # 每次新任务开始前释放上一次运行保留的 DataFrame 引用。
+            self.clear_runtime_cache()
             
             # 读取映射文件
             mapping_df = pd.read_excel(mapping_file)

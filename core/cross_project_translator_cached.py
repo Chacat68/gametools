@@ -96,18 +96,17 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
             # 缓存未命中，读取文件
             logger.info(f"读取并缓存文件: {file_path}")
             self.cache_misses += 1
-            
-            excel_file = pd.ExcelFile(file_path)
             sheets_data = {}
-            
-            for sheet_name in excel_file.sheet_names:
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                    sheets_data[sheet_name] = df
-                    logger.info(f"成功加载工作表: {sheet_name} ({len(df)} 行)")
-                except Exception as e:
-                    logger.error(f"加载工作表失败 {sheet_name}: {e}")
-                    continue
+
+            with pd.ExcelFile(file_path) as excel_file:
+                for sheet_name in excel_file.sheet_names:
+                    try:
+                        df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
+                        sheets_data[sheet_name] = df
+                        logger.info(f"成功加载工作表: {sheet_name} ({len(df)} 行)")
+                    except Exception as e:
+                        logger.error(f"加载工作表失败 {sheet_name}: {e}")
+                        continue
             
             # 将数据存入缓存
             self.cache_manager.set(cache_key, sheets_data)
@@ -255,6 +254,8 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
         try:
             logger.info(f"开始处理翻译映射文件: {mapping_file}")
             logger.info(f"项目目录: {project_directory}")
+
+            self.translation_results = []
             
             # 读取映射文件
             mapping_df = pd.read_excel(mapping_file)
