@@ -320,7 +320,8 @@ class TableRangeTranslatorTab(BaseTab):
                     "没有提取到数据，请检查JSON配置和Excel文件"))
         
         except Exception as e:
-            error_msg = f"处理过程中发生错误: {str(e)}"
+            details = str(e) or e.__class__.__name__
+            error_msg = f"处理过程中发生错误: {details}"
             self.schedule_ui(lambda: self.append_result(self.result_key, 
                 f"\n✗ {error_msg}\n"))
             self.schedule_ui(lambda: messagebox.showerror("错误", error_msg))

@@ -73,18 +73,19 @@ class CrossProjectTranslator:
                 logger.error(f"文件不存在: {file_path}")
                 return {}
             
-            # 读取Excel文件的所有工作表
-            excel_file = pd.ExcelFile(file_path)
+            # 读取Excel文件的所有工作表。使用 header=None 保留物理行号，
+            # 使 C2 这类坐标与 Excel 中看到的位置一致。
             sheets_data = {}
-            
-            for sheet_name in excel_file.sheet_names:
-                try:
-                    df = pd.read_excel(file_path, sheet_name=sheet_name)
-                    sheets_data[sheet_name] = df
-                    logger.info(f"成功加载工作表: {sheet_name} ({len(df)} 行)")
-                except Exception as e:
-                    logger.error(f"加载工作表失败 {sheet_name}: {e}")
-                    continue
+
+            with pd.ExcelFile(file_path) as excel_file:
+                for sheet_name in excel_file.sheet_names:
+                    try:
+                        df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
+                        sheets_data[sheet_name] = df
+                        logger.info(f"成功加载工作表: {sheet_name} ({len(df)} 行)")
+                    except Exception as e:
+                        logger.error(f"加载工作表失败 {sheet_name}: {e}")
+                        continue
             
             # 缓存文件数据
             self.project_files[file_path] = sheets_data

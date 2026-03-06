@@ -50,8 +50,9 @@ class ExcelFieldExtractor:
         self.max_printed_warnings = 10  # 最多打印的警告数量
         self._printed_warning_count = 0  # 已打印的警告计数
         
-        # 警告级别控制（默认关闭非关键警告）
-        self.warn_empty_field_type = False  # 是否警告字段类型为空（默认关闭，因为很多表没有第6行类型）
+        # 警告级别控制
+        # 字段类型为空会直接影响后续翻译提取与日志排障，默认开启。
+        self.warn_empty_field_type = True  # 是否警告字段类型为空
         self.warn_missing_c_marker = False  # 是否警告缺少 c_ 标记（默认关闭，会自动全表扫描）
     
     def _add_warning(self, warning_msg: str):

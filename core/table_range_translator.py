@@ -30,6 +30,10 @@ from core.text_patterns import (
 logger = logging.getLogger(__name__)
 
 
+class TableRangeTranslatorError(RuntimeError):
+    """多语言翻译提取过程中发生的致命错误。"""
+
+
 class TableRangeTranslator:
     """多语言翻译提取器"""
     
@@ -59,6 +63,29 @@ class TableRangeTranslator:
         
         # 边界检测关键字（检测到此关键字后停止导出）
         self.boundary_keyword = 'over'
+
+    def reset_runtime_state(self):
+        """重置一次提取任务的运行态，避免多次执行之间相互污染。"""
+        self.translation_results = []
+        self.processing_stats = {
+            'total_tables': 0,
+            'processed_tables': 0,
+            'skipped_tables': 0,
+            'total_fields': 0,
+            'exported_fields': 0,
+            'skipped_fields': 0,
+            'total_rows': 0
+        }
+        self.error_logs = []
+
+    def _raise_processing_error(self, message: str, exc: Exception = None):
+        """统一记录并抛出处理错误，避免上层把失败误判为空结果。"""
+        if exc is not None:
+            logger.exception(message)
+        else:
+            logger.error(message)
+        self.error_logs.append(message)
+        raise TableRangeTranslatorError(message) from exc
     
     def _check_row_boundary(self, df: pd.DataFrame, row_idx: int) -> bool:
         """
@@ -239,14 +266,17 @@ class TableRangeTranslator:
             if progress_callback:
                 progress_callback(msg)
         
+        self.reset_runtime_state()
+
         try:
             lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
             
             # 加载合并的JSON配置
             merged_config = self.load_merged_json_config(json_path)
             if not merged_config:
-                log_progress("✗ 加载JSON配置失败")
-                return []
+                error_msg = f"加载合并JSON配置失败: {json_path}"
+                log_progress(f"✗ {error_msg}")
+                self._raise_processing_error(error_msg)
             
             # 识别JSON中的语言配置
             lang_configs = {}
@@ -257,8 +287,9 @@ class TableRangeTranslator:
                     log_progress(f"✓ 检测到{lang_names.get(lang_code, lang_code)}配置")
             
             if not lang_configs:
-                log_progress("✗ JSON中未找到有效的语言配置（ZH/VN/TH）")
-                return []
+                error_msg = "JSON中未找到有效的语言配置（ZH/VN/TH）"
+                log_progress(f"✗ {error_msg}")
+                self._raise_processing_error(error_msg)
             
             # 合并所有语言的表格配置
             # 以表名+工作表名为键，合并字段信息（包含列字母）
@@ -512,10 +543,9 @@ class TableRangeTranslator:
             return all_data
         
         except Exception as e:
-            logger.error(f"处理失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return []
+            if isinstance(e, TableRangeTranslatorError):
+                raise
+            self._raise_processing_error(f"处理失败: {e}", e)
     
     def is_exportable_field(self, field_type: str) -> bool:
         """
@@ -834,11 +864,13 @@ class TableRangeTranslator:
         Returns:
             List[Dict]: 所有提取的数据
         """
+        self.reset_runtime_state()
+
         try:
             # 加载JSON配置
             config = self.load_json_config(json_path)
             if not config:
-                return []
+                self._raise_processing_error(f"加载JSON配置失败: {json_path}")
             
             # 获取text_tables列表（跳过no_text_tables）
             text_tables = config.get('text_tables', [])
@@ -872,8 +904,9 @@ class TableRangeTranslator:
             return all_data
         
         except Exception as e:
-            logger.error(f"处理失败: {e}")
-            return []
+            if isinstance(e, TableRangeTranslatorError):
+                raise
+            self._raise_processing_error(f"处理失败: {e}", e)
     
     def generate_translation_master_table(self, output_path: str, 
                                           chinese_dir: str = None,
@@ -1002,6 +1035,8 @@ class TableRangeTranslator:
             if progress_callback:
                 progress_callback(msg)
         
+        self.reset_runtime_state()
+
         try:
             lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
             
@@ -1018,8 +1053,9 @@ class TableRangeTranslator:
                     log_progress(f"✓ 加载{lang_names.get(lang_code, lang_code)}JSON配置成功")
             
             if not all_configs:
-                log_progress("✗ 没有成功加载任何JSON配置")
-                return []
+                error_msg = "没有成功加载任何JSON配置"
+                log_progress(f"✗ {error_msg}")
+                self._raise_processing_error(error_msg)
             
             # 合并所有JSON配置的表格列表（不同语言版本可能存在表/字段差异）
             table_key_to_infos: Dict[Tuple[str, str], List[Dict]] = {}
@@ -1230,10 +1266,9 @@ class TableRangeTranslator:
             return all_data
         
         except Exception as e:
-            logger.error(f"处理失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return []
+            if isinstance(e, TableRangeTranslatorError):
+                raise
+            self._raise_processing_error(f"处理失败: {e}", e)
     
     def process_with_json_config_multi_lang(self, json_path: str, lang_dirs: Dict[str, str], 
                                             progress_callback=None) -> List[Dict]:
@@ -1254,11 +1289,13 @@ class TableRangeTranslator:
             if progress_callback:
                 progress_callback(msg)
         
+        self.reset_runtime_state()
+
         try:
             # 加载JSON配置
             config = self.load_json_config(json_path)
             if not config:
-                return []
+                self._raise_processing_error(f"加载JSON配置失败: {json_path}")
             
             # 获取text_tables列表
             text_tables = config.get('text_tables', [])
@@ -1438,10 +1475,9 @@ class TableRangeTranslator:
             return all_data
         
         except Exception as e:
-            logger.error(f"处理失败: {e}")
-            import traceback
-            traceback.print_exc()
-            return []
+            if isinstance(e, TableRangeTranslatorError):
+                raise
+            self._raise_processing_error(f"处理失败: {e}", e)
     
     def generate_translation_master_table_multi_lang(self, output_path: str) -> bool:
         """
@@ -1545,8 +1581,6 @@ class TableRangeTranslator:
         
         except Exception as e:
             logger.error(f"生成翻译总表失败: {e}")
-            import traceback
-            traceback.print_exc()
             return False
     
     def generate_translation_csv(self, output_path: str) -> bool:
@@ -1594,8 +1628,6 @@ class TableRangeTranslator:
         
         except Exception as e:
             logger.error(f"生成翻译CSV失败: {e}")
-            import traceback
-            traceback.print_exc()
             return False
     
     @staticmethod
