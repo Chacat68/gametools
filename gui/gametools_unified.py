@@ -167,10 +167,10 @@ class GameToolsUnified:
                 justify=tk.LEFT,
                 wraplength=190,
                 padx=12,
-                pady=(0, 10),
+                pady=0,
                 font=('Microsoft YaHei UI', 9),
             )
-            desc_label.pack(fill=tk.X)
+            desc_label.pack(fill=tk.X, pady=(0, 10))
 
             for widget in (card, title_label, desc_label):
                 widget.bind('<Button-1>', lambda _event, tab_key=meta['key']: self.select_tab(tab_key))
