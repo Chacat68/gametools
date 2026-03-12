@@ -35,13 +35,13 @@ test/
 │   └── run_tests.bat                    # Windows批处理脚本
 │
 ├── 📊 测试数据目录
-│   ├── test_excel_files/                # Excel测试文件
-│   ├── test_config_sync/                # 配置同步测试数据
-│   ├── test_multi_lang/                 # 多语言测试数据
-│   └── test_table_range/                # 表范围翻译测试数据
+│   ├── test_excel_files/                # Excel测试文件（按需生成）
+│   ├── test_config_sync/                # 配置同步测试最小配置
+│   ├── test_multi_lang/                 # 多语言测试最小配置
+│   └── test_table_range/                # 表范围翻译测试数据（按需生成）
 │
-└── 📁 输出目录
-    └── test_output/                     # 测试输出（已加入.gitignore）
+└── 📁 运行产物
+    └── test_output/                     # 测试运行时自动创建，不再提交到仓库
 ```
 
 ## 🚀 快速开始
@@ -98,7 +98,7 @@ python test_cache.py --perf   # 只测试性能
 
 ## ⚠️ 注意事项
 
-1. 运行测试前请先生成测试数据：`python create_test_data.py --all`
-2. 测试输出目录 `test_output/` 已加入 `.gitignore`
-3. 测试数据目录的内容可由 `create_test_data.py` 重新生成
+1. 运行测试前如缺少样例文件，请先执行 `python create_test_data.py --all`
+2. `test_output/` 和部分 Excel 样例属于运行产物，测试时会按需自动创建
+3. 根目录下的 `test_config_sync/`、`test_multi_lang/` 只保留最小配置，样例 Excel 可由测试脚本重新生成
 
