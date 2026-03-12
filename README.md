@@ -33,14 +33,18 @@ gametools/
 │   └── excel_sheet_splitter.py   # 分页拆分命令行入口
 ├── gui/                     # GUI和打包相关文件
 │   ├── gametools_unified.py      # 统一界面主程序
-│   ├── tabs/                     # 各功能页签模块
 │   ├── build_unified.py          # 统一版本构建脚本
 │   └── run_unified.py            # GUI启动脚本
 ├── test/                    # 测试文件夹
 │   ├── test_*.py                 # 功能测试脚本
-│   ├── create_test_*.py          # 测试数据生成
+│   ├── create_test_data.py       # 测试数据生成工具
 │   ├── run_all_tests.py          # 运行所有测试脚本
+│   ├── test_config_sync/         # 随仓库提交的最小配置夹具
+│   ├── test_multi_lang/          # 随仓库提交的最小配置夹具
 │   └── README.md                 # 测试文档
+├── test_config_sync/        # 配置同步测试运行时工作目录（按需生成）
+├── test_multi_lang/         # 多语言测试运行时工作目录（按需生成）
+├── test_output/             # 测试运行输出目录（按需生成）
 ├── docs/                    # 文档目录
 ├── dist/                    # 输出文件目录
 └── README.md               # 项目说明
@@ -120,7 +124,7 @@ gametools/
 
 ```bash
 # 安装依赖
-pip install -r core/requirements.txt
+pip install -r requirements.txt
 
 # 运行统一界面
 python gui/run_unified.py
@@ -185,25 +189,22 @@ python gui/run_unified.py
 
 ```
 test/
-├── test_cache_basic.py          # ⭐ 缓存系统基本功能测试
-├── test_cache_performance.py    # ⭐ 缓存性能对比测试
-├── test_new_column_names.py     # 新列名兼容性测试
-├── test_fixed_compatibility.py  # 兼容性修复测试
-├── test_cross_project_redesigned.py # 跨项目翻译设计测试
-├── create_test_excel.py         # 创建测试数据工具
-├── create_test_mapping_file.py  # 创建映射文件工具
-├── check_mixed_test.py          # 混合文本检测测试
-├── test_layout.py               # GUI布局测试
+├── test_*.py                    # 功能测试脚本
+├── create_test_data.py          # 测试数据生成工具
 ├── run_all_tests.py             # 运行所有测试脚本
 ├── run_tests.bat                # 测试启动脚本
+├── test_config_sync/            # 随仓库提交的最小配置夹具
+├── test_multi_lang/             # 随仓库提交的最小配置夹具
 └── README.md                    # 详细测试文档
 ```
+
+另外，项目根目录下的 `test_config_sync/`、`test_multi_lang/`、`test_output/` 属于测试运行时工作目录或输出目录，都会按需自动生成，不需要长期保留样例 Excel 和导出文件。
 
 ### 🧪 运行测试
 
 ```bash
 # 快速运行单个测试
-python test\test_cache_basic.py
+python test\test_cache.py
 
 # 运行所有测试
 python test\run_all_tests.py

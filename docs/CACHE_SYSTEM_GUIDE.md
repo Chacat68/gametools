@@ -311,16 +311,17 @@ print(f"查询级别命中率: {stats['custom']['hit_rate']}")
 ### 运行性能测试
 
 ```bash
-cd tools
-python test_cache_performance.py
+python test/test_cache.py
 ```
 
-测试将生成以下结果：
+该测试包含缓存基本功能和性能对比两部分，将输出以下结果：
 - 原始工具处理时间
 - 缓存工具冷启动时间
 - 缓存工具热启动时间
 - 性能改进百分比
 - 缓存命中率统计
+
+说明：历史上的 `test_cache_performance.py` 已并入 `test/test_cache.py`，不再单独保留。
 
 ### 测试文件结构
 

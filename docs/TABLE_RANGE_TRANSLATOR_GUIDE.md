@@ -87,13 +87,15 @@ python core/table_range_translator.py <JSON配置文件> <Excel目录> --output 
 python core/table_range_translator.py field_config.json excel_files/ --output 翻译总表.xlsx
 ```
 
+说明：`--output` 对应的 Excel 文件属于运行时导出产物，文件名和保存位置都可以自定义；示例中的 `翻译总表.xlsx` 只是演示名称。
+
 ---
 
 ## 📊 输出格式
 
 ### 翻译总表结构
 
-生成的Excel文件包含多个工作表，每个工作表对应一个源表格文件：
+生成的 Excel 文件包含多个工作表，每个工作表对应一个源表格文件。下面以 `翻译总表.xlsx` 为示例文件名：
 
 ```
 翻译总表.xlsx

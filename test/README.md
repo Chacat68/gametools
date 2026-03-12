@@ -34,10 +34,10 @@ test/
 │   ├── run_all_tests.py                 # 运行所有测试
 │   └── run_tests.bat                    # Windows批处理脚本
 │
-├── 📊 测试数据目录
+├── 📊 test/ 内置测试夹具
 │   ├── test_excel_files/                # Excel测试文件（按需生成）
-│   ├── test_config_sync/                # 配置同步测试最小配置
-│   ├── test_multi_lang/                 # 多语言测试最小配置
+│   ├── test_config_sync/                # 随仓库提交的最小配置夹具
+│   ├── test_multi_lang/                 # 随仓库提交的最小配置夹具
 │   └── test_table_range/                # 表范围翻译测试数据（按需生成）
 │
 └── 📁 运行产物
@@ -100,5 +100,6 @@ python test_cache.py --perf   # 只测试性能
 
 1. 运行测试前如缺少样例文件，请先执行 `python create_test_data.py --all`
 2. `test_output/` 和部分 Excel 样例属于运行产物，测试时会按需自动创建
-3. 根目录下的 `test_config_sync/`、`test_multi_lang/` 只保留最小配置，样例 Excel 可由测试脚本重新生成
+3. `test/` 下的 `test_config_sync/`、`test_multi_lang/` 是随仓库提交的最小配置夹具，不是运行产物
+4. 项目根目录下的 `test_config_sync/`、`test_multi_lang/` 是测试脚本运行时使用的工作目录，里面的 Excel 和导出文件可以重新生成
 
