@@ -113,6 +113,12 @@ class GameToolsUnified:
     @property
     def batch_modifier(self):
         return self._get_processor('batch_modifier', BatchExcelModifier)
+
+    def _replace_processor(self, name, factory):
+        """用新的处理器实例替换缓存，适用于必须隔离运行态的任务。"""
+        processor = factory()
+        self._processors[name] = processor
+        return processor
     
     # ==================== 懒加载处理器属性 结束 ====================
     
@@ -1185,6 +1191,95 @@ class GameToolsUnified:
     def get_result(self, result_type):
         """获取结果存储内容"""
         return self.results_storage.get(result_type, '')
+
+    def _call_on_ui_thread(self, callback, *args, **kwargs):
+        """确保UI更新总是在主线程执行。"""
+        self.root.after(0, lambda: callback(*args, **kwargs))
+
+    def _append_result_async(self, result_type, text):
+        """在线程中安全地追加结果文本。"""
+        self._call_on_ui_thread(self.append_result, result_type, text)
+
+    def _append_result_batch(self, result_type, *parts):
+        """一次性追加多段文本，减少零碎的结果拼接调用。"""
+        self.append_result(result_type, ''.join(parts))
+
+    def _append_result_batch_async(self, result_type, *parts):
+        """在线程中安全地批量追加多段文本。"""
+        self._call_on_ui_thread(self._append_result_batch, result_type, *parts)
+
+    def _clear_result_async(self, result_type):
+        """在线程中安全地清空结果文本。"""
+        self._call_on_ui_thread(self.clear_result, result_type)
+
+    def _set_status_async(self, text):
+        """在线程中安全地更新状态栏。"""
+        self._call_on_ui_thread(self.status_var.set, text)
+
+    def _configure_widget_async(self, widget, **kwargs):
+        """在线程中安全地更新控件属性。"""
+        self._call_on_ui_thread(widget.config, **kwargs)
+
+    def _show_message(self, kind, title, message):
+        """统一封装消息框调用，便于后台任务复用和测试替身。"""
+        handlers = {
+            'info': messagebox.showinfo,
+            'warning': messagebox.showwarning,
+            'error': messagebox.showerror,
+        }
+        handlers[kind](title, message)
+
+    def _show_message_async(self, kind, title, message):
+        """在线程中安全地弹出消息框。"""
+        self._call_on_ui_thread(self._show_message, kind, title, message)
+
+    def _format_banner_block(self, title, width=60, char='=', leading_newline=False):
+        """格式化常见的标题分隔块。"""
+        prefix = '\n' if leading_newline else ''
+        line = char * width
+        return f"{prefix}{line}\n{title}\n{line}\n"
+
+    def _format_key_value_lines(self, items):
+        """格式化键值行列表。"""
+        return ''.join(f"{label}: {value}\n" for label, value in items)
+
+    def _format_prefixed_lines(self, items, prefix="  - "):
+        """格式化带统一前缀的多行文本。"""
+        return ''.join(f"{prefix}{item}\n" for item in items)
+
+    def _start_background_task(self, target, args=(), status_message=None, widgets_to_disable=()):
+        """统一启动后台线程，并在启动前冻结按钮与状态。"""
+        for widget in widgets_to_disable:
+            widget.config(state="disabled")
+        if status_message:
+            self.status_var.set(status_message)
+
+        thread = threading.Thread(target=target, args=args)
+        thread.daemon = True
+        thread.start()
+        return thread
+
+    def _finish_background_task(self, widgets_to_enable=(), status_message=None,
+                                dialog_kind=None, dialog_title=None, dialog_message=None):
+        """统一后台任务完成时的按钮恢复、状态更新与消息提示。"""
+        for widget in widgets_to_enable:
+            widget.config(state="normal")
+        if status_message:
+            self.status_var.set(status_message)
+        if dialog_kind and dialog_message:
+            self._show_message(dialog_kind, dialog_title or "提示", dialog_message)
+
+    def _finish_background_task_async(self, widgets_to_enable=(), status_message=None,
+                                      dialog_kind=None, dialog_title=None, dialog_message=None):
+        """在线程中安全地执行统一收尾。"""
+        self._call_on_ui_thread(
+            self._finish_background_task,
+            widgets_to_enable,
+            status_message,
+            dialog_kind,
+            dialog_title,
+            dialog_message,
+        )
     
     # 统一的结果查看对话框
     def show_results_dialog(self, result_type):
@@ -1297,13 +1392,12 @@ class GameToolsUnified:
             return
         
         # 在新线程中执行检测
-        self.json_detect_button.config(state="disabled")
-        self.status_var.set("正在检测...")
-        
-        thread = threading.Thread(target=self._json_detection, 
-                                 args=(path,))
-        thread.daemon = True
-        thread.start()
+        self._start_background_task(
+            self._json_detection,
+            args=(path,),
+            status_message="正在检测...",
+            widgets_to_disable=(self.json_detect_button,),
+        )
     
     def _json_detection(self, path):
         """JSON错误检测（后台线程）"""
@@ -1314,29 +1408,37 @@ class GameToolsUnified:
             else:
                 report = self.json_detector.detect_errors(path)
             
-            self.root.after(0, self._update_json_results, report)
+            self._call_on_ui_thread(self._update_json_results, report)
         except Exception as e:
             error_msg = f"检测过程中发生错误: {str(e)}"
-            self.root.after(0, self._show_json_error, error_msg)
+            self._call_on_ui_thread(self._show_json_error, error_msg)
     
     def _update_json_results(self, report):
         """更新JSON错误检测结果"""
         self.clear_result('json_detector')
         self.append_result('json_detector', report)
         
-        self.json_detect_button.config(state="normal")
         self.json_save_button.config(state="normal")
-        self.status_var.set("检测完成")
-        messagebox.showinfo("完成", "JSON检测完成！请点击查看结果按钮查看详细报告")
+        self._finish_background_task(
+            widgets_to_enable=(self.json_detect_button,),
+            status_message="检测完成",
+            dialog_kind='info',
+            dialog_title="完成",
+            dialog_message="JSON检测完成！请点击查看结果按钮查看详细报告",
+        )
     
     def _show_json_error(self, error_msg):
         """显示JSON错误检测错误"""
         self.clear_result('json_detector')
         self.append_result('json_detector', error_msg)
         
-        self.json_detect_button.config(state="normal")
-        self.status_var.set("检测失败")
-        messagebox.showerror("错误", error_msg)
+        self._finish_background_task(
+            widgets_to_enable=(self.json_detect_button,),
+            status_message="检测失败",
+            dialog_kind='error',
+            dialog_title="错误",
+            dialog_message=error_msg,
+        )
     
     def clear_json_results(self):
         """清空JSON检测结果"""
@@ -1418,34 +1520,34 @@ class GameToolsUnified:
         # 构建完整的输出文件路径
         output_file = os.path.join(output_folder, output_filename)
         
+        group_column = self.excel_group_column_var.get().strip() or None
+        include_summary = self.excel_include_summary_var.get()
+        sheet_prefix = self.excel_sheet_prefix_var.get().strip()
+
         # 在新线程中执行整合
-        self.excel_process_button.config(state="disabled")
-        self.excel_preview_button.config(state="disabled")
-        self.status_var.set("正在处理Excel数据...")
-        
-        thread = threading.Thread(target=self._excel_consolidation_process, 
-                                 args=(input_file, output_file))
-        thread.daemon = True
-        thread.start()
+        self._start_background_task(
+            self._excel_consolidation_process,
+            args=(input_file, output_file, group_column, include_summary, sheet_prefix),
+            status_message="正在处理Excel数据...",
+            widgets_to_disable=(self.excel_process_button, self.excel_preview_button),
+        )
     
-    def _excel_consolidation_process(self, input_file, output_file):
+    def _excel_consolidation_process(self, input_file, output_file, group_column,
+                                     include_summary, sheet_prefix):
         """Excel数据整合处理（后台线程）"""
         try:
             # 清空结果
-            self.root.after(0, self.clear_excel_results)
+            self._call_on_ui_thread(self.clear_excel_results)
             
             # 显示开始信息
-            self.root.after(0, lambda: self.append_result('excel_processor', 
-                f"开始处理文件: {input_file}\n"))
-            self.root.after(0, lambda: self.append_result('excel_processor', 
-                f"输出文件: {output_file}\n"))
-            self.root.after(0, lambda: self.append_result('excel_processor', 
-                "-" * 50 + "\n"))
-            
-            # 获取选项
-            group_column = self.excel_group_column_var.get().strip() or None
-            include_summary = self.excel_include_summary_var.get()
-            sheet_prefix = self.excel_sheet_prefix_var.get().strip()
+            self._append_result_batch_async(
+                'excel_processor',
+                self._format_key_value_lines([
+                    ("开始处理文件", input_file),
+                    ("输出文件", output_file),
+                ]),
+                "-" * 50 + "\n",
+            )
             
             # 执行处理
             success = self.excel_processor.process_file(
@@ -1459,35 +1561,37 @@ class GameToolsUnified:
             
             # 显示结果
             if success:
-                self.root.after(0, self._show_excel_success_result)
+                self._call_on_ui_thread(self._show_excel_success_result)
             else:
-                self.root.after(0, self._show_excel_error_result, "处理失败")
+                self._call_on_ui_thread(self._show_excel_error_result, "处理失败")
             
         except Exception as e:
             error_msg = f"处理过程中发生错误: {str(e)}"
-            self.root.after(0, self._show_excel_error_result, error_msg)
+            self._call_on_ui_thread(self._show_excel_error_result, error_msg)
     
     def _show_excel_success_result(self):
         """显示Excel整合成功结果"""
         report = self.excel_processor.get_process_report()
         self.append_result('excel_processor', report)
         self.append_result('excel_processor', "\n\n✅ Excel数据处理完成！")
-        
-        self.excel_process_button.config(state="normal")
-        self.excel_preview_button.config(state="normal")
-        self.status_var.set("Excel处理完成")
-        
-        messagebox.showinfo("成功", "Excel数据处理完成！请点击查看结果按钮查看详细报告")
+        self._finish_background_task(
+            widgets_to_enable=(self.excel_process_button, self.excel_preview_button),
+            status_message="Excel处理完成",
+            dialog_kind='info',
+            dialog_title="成功",
+            dialog_message="Excel数据处理完成！请点击查看结果按钮查看详细报告",
+        )
     
     def _show_excel_error_result(self, error_msg):
         """显示Excel处理错误结果"""
         self.append_result('excel_processor', f"❌ {error_msg}\n")
-        
-        self.excel_process_button.config(state="normal")
-        self.excel_preview_button.config(state="normal")
-        self.status_var.set("Excel处理失败")
-        
-        messagebox.showerror("错误", error_msg)
+        self._finish_background_task(
+            widgets_to_enable=(self.excel_process_button, self.excel_preview_button),
+            status_message="Excel处理失败",
+            dialog_kind='error',
+            dialog_title="错误",
+            dialog_message=error_msg,
+        )
     
     def preview_excel_data(self):
         """预览Excel数据"""
@@ -1603,31 +1707,33 @@ class GameToolsUnified:
             return
         
         # 在新线程中执行翻译对应
-        self.cpt_process_button.config(state="disabled")
-        self.status_var.set("正在处理翻译对应...")
-        
-        thread = threading.Thread(target=self._cross_project_translation, 
-                                 args=(mapping_file, project_dir, output_file))
-        thread.daemon = True
-        thread.start()
+        self._start_background_task(
+            self._cross_project_translation,
+            args=(mapping_file, project_dir, output_file),
+            status_message="正在处理翻译对应...",
+            widgets_to_disable=(self.cpt_process_button,),
+        )
     
     def _cross_project_translation(self, mapping_file, project_dir, output_file):
         """跨项目翻译对应（后台线程）"""
+        succeeded = False
+        completion_message = "翻译对应处理失败，请查看结果详情"
+
         try:
             # 清空结果
-            self.root.after(0, self.clear_cpt_results)
+            self._call_on_ui_thread(self.clear_cpt_results)
             
             # 开始处理
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"开始处理翻译对应...\n"))
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"映射文件: {mapping_file}\n"))
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"项目目录: {project_dir}\n"))
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"输出文件: {output_file}\n"))
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"{'='*60}\n"))
+            self._append_result_batch_async(
+                'cross_project_translator',
+                "开始处理翻译对应...\n",
+                self._format_key_value_lines([
+                    ("映射文件", mapping_file),
+                    ("项目目录", project_dir),
+                    ("输出文件", output_file),
+                ]),
+                '=' * 60 + '\n',
+            )
             
             # 处理翻译映射
             results = self.cross_project_translator.process_translation_mapping(
@@ -1636,51 +1742,58 @@ class GameToolsUnified:
             if results:
                 # 显示处理报告
                 report = self.cross_project_translator.get_processing_report()
-                self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                    f"{report}\n"))
+                self._append_result_async('cross_project_translator', f"{report}\n")
                 
                 # 导出结果
                 if self.cross_project_translator.export_results(output_file):
-                    self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                        f"结果已导出到: {output_file}\n"))
+                    self._append_result_async('cross_project_translator', f"结果已导出到: {output_file}\n")
                     # 启用导出按钮
-                    self.root.after(0, lambda: self.cpt_export_button.config(state="normal"))
+                    self._configure_widget_async(self.cpt_export_button, state="normal")
+                    succeeded = True
+                    completion_message = "翻译对应完成！请点击查看结果按钮查看详细报告"
                 else:
-                    self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                        f"导出失败！\n"))
+                    self._append_result_async('cross_project_translator', "导出失败！\n")
+                    completion_message = "翻译对应结果导出失败，请查看结果详情"
                 
                 # 显示详细结果（前20条）
-                self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                    f"\n详细结果（前20条）:\n"))
-                self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                    f"{'='*60}\n"))
+                self._append_result_batch_async(
+                    'cross_project_translator',
+                    "\n详细结果（前20条）:\n",
+                    '=' * 60 + '\n',
+                )
                 
                 for i, result in enumerate(results[:20]):
                     status_icon = "✅" if result['status'] == 'success' else "❌"
-                    self.root.after(0, lambda r=result, icon=status_icon: 
-                        self.append_result('cross_project_translator', 
-                            f"{icon} 第{r['index']}行: {r['file_name']} -> {r['content'][:50]}...\n"))
+                    self._append_result_async(
+                        'cross_project_translator',
+                        f"{status_icon} 第{result['index']}行: {result['file_name']} -> {result['content'][:50]}...\n"
+                    )
                 
                 if len(results) > 20:
-                    self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                        f"... 还有 {len(results) - 20} 条结果，请查看导出的Excel文件\n"))
+                    self._append_result_async('cross_project_translator', f"... 还有 {len(results) - 20} 条结果，请查看导出的Excel文件\n")
                 
             else:
-                self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                    f"处理失败，没有生成结果\n"))
+                self._append_result_async('cross_project_translator', "处理失败，没有生成结果\n")
+                completion_message = "处理失败，没有生成结果"
             
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"\n处理完成！\n"))
+            self._append_result_async('cross_project_translator', "\n处理完成！\n")
             
         except Exception as e:
             error_msg = f"处理过程中发生错误: {str(e)}"
-            self.root.after(0, lambda: self.append_result('cross_project_translator', 
-                f"❌ {error_msg}\n"))
-        
-        # 恢复按钮状态
-        self.root.after(0, lambda: self.cpt_process_button.config(state="normal"))
-        self.root.after(0, lambda: self.status_var.set("翻译对应完成"))
-        self.root.after(0, lambda: messagebox.showinfo("完成", "翻译对应完成！请点击查看结果按钮查看详细报告"))
+            self._append_result_async('cross_project_translator', f"❌ {error_msg}\n")
+            completion_message = error_msg
+        finally:
+            self._call_on_ui_thread(self._finish_cross_project_translation, succeeded, completion_message)
+
+    def _finish_cross_project_translation(self, succeeded, completion_message):
+        """统一收敛跨项目翻译对应任务的完成态，避免失败时误报成功。"""
+        self._finish_background_task(
+            widgets_to_enable=(self.cpt_process_button,),
+            status_message="翻译对应完成" if succeeded else "翻译对应失败",
+            dialog_kind='info' if succeeded else 'error',
+            dialog_title="完成" if succeeded else "错误",
+            dialog_message=completion_message,
+        )
     
     def clear_cpt_results(self):
         """清空跨项目翻译对应结果"""
@@ -1770,41 +1883,48 @@ class GameToolsUnified:
             # 使用第一个有效目录作为输出目录
             output_dir = list(directories.values())[0]
             self.field_output_dir_var.set(output_dir)
+
+        output_format = self.field_output_format_var.get()
+        recursive = self.field_recursive_var.get()
         
         # 在新线程中执行提取
-        self.field_extract_button.config(state="disabled")
-        self.status_var.set("正在提取表字段...")
-        
-        thread = threading.Thread(target=self._field_extraction_thread, 
-                                 args=(directories, output_dir))
-        thread.daemon = True
-        thread.start()
+        self._start_background_task(
+            self._field_extraction_thread,
+            args=(directories, output_dir, output_format, recursive),
+            status_message="正在提取表字段...",
+            widgets_to_disable=(self.field_extract_button,),
+        )
     
-    def _field_extraction_thread(self, directories, output_dir):
+    def _field_extraction_thread(self, directories, output_dir, output_format, recursive):
         """字段提取线程 - 支持多语言"""
         try:
             # 清空结果存储
-            self.root.after(0, lambda: self.clear_result('field_extractor'))
-            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "开始提取多语言表字段信息...\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
+            self._clear_result_async('field_extractor')
+            self._append_result_batch_async(
+                'field_extractor',
+                self._format_banner_block("开始提取多语言表字段信息...", width=60),
+            )
             
             lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
             for lang, dir_path in directories.items():
-                self.root.after(0, lambda l=lang, d=dir_path: self.append_result(
-                    'field_extractor', f"{lang_names[l]}目录: {d}\n"))
+                self._append_result_async('field_extractor', f"{lang_names[lang]}目录: {dir_path}\n")
             
-            self.root.after(0, lambda: self.append_result('field_extractor', f"输出目录: {output_dir}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"输出格式: {self.field_output_format_var.get().upper()}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"递归扫描: {'是' if self.field_recursive_var.get() else '否'}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
+            self._append_result_batch_async(
+                'field_extractor',
+                self._format_key_value_lines([
+                    ("输出目录", output_dir),
+                    ("输出格式", output_format.upper()),
+                    ("递归扫描", '是' if recursive else '否'),
+                ]),
+                "\n",
+            )
             
             # 执行多语言提取
             all_stats = self.field_extractor.process_multi_language_directories(
                 directories=directories,
                 output_folder=output_dir,
-                output_format=self.field_output_format_var.get(),
-                recursive=self.field_recursive_var.get()
+                output_format=output_format,
+                recursive=recursive
             )
             
             # 保存输出文件路径
@@ -1818,52 +1938,60 @@ class GameToolsUnified:
             self.field_extraction_results = all_results
             
             # 显示统计信息
-            self.root.after(0, lambda: self.append_result('field_extractor', "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "多语言提取完成!\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', "=" * 60 + "\n"))
+            self._append_result_batch_async(
+                'field_extractor',
+                self._format_banner_block("多语言提取完成!", width=60, leading_newline=True),
+            )
             
             # 分语言显示统计
             for lang_code, lang_data in all_stats['languages'].items():
                 stats = lang_data.get('stats', {})
-                self.root.after(0, lambda n=lang_data['name'], s=stats: self.append_result(
-                    'field_extractor', 
-                    f"\n【{n}】文件数: {s.get('total_files', 0)}, "
-                    f"工作表: {s.get('total_sheets', 0)}, "
-                    f"字段数: {s.get('total_fields', 0)}\n"
-                ))
+                self._append_result_async(
+                    'field_extractor',
+                    f"\n【{lang_data['name']}】文件数: {stats.get('total_files', 0)}, 工作表: {stats.get('total_sheets', 0)}, 字段数: {stats.get('total_fields', 0)}\n"
+                )
             
-            self.root.after(0, lambda: self.append_result('field_extractor', f"\n总文件数: {all_stats['total_files']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"总工作表数: {all_stats['total_sheets']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"总字段数: {all_stats['total_fields']}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', f"\n输出文件:\n"))
-            for f in all_stats.get('output_files', []):
-                self.root.after(0, lambda file=f: self.append_result('field_extractor', f"  - {file}\n"))
-            
-            # 显示完成消息
-            self.root.after(0, lambda: self.status_var.set("字段提取完成"))
+            self._append_result_batch_async(
+                'field_extractor',
+                '\n',
+                self._format_key_value_lines([
+                    ("总文件数", all_stats['total_files']),
+                    ("总工作表数", all_stats['total_sheets']),
+                    ("总字段数", all_stats['total_fields']),
+                ]),
+                "\n输出文件:\n",
+                self._format_prefixed_lines(all_stats.get('output_files', [])),
+            )
             
             output_files_str = '\n'.join(all_stats.get('output_files', []))
-            self.root.after(0, lambda: messagebox.showinfo(
-                "完成",
-                f"多语言字段提取完成!\n\n"
-                f"处理语言数: {len(all_stats['languages'])}\n"
-                f"总文件数: {all_stats['total_files']}\n"
-                f"总工作表数: {all_stats['total_sheets']}\n"
-                f"总字段数: {all_stats['total_fields']}\n\n"
-                f"输出文件:\n{output_files_str}"
-            ))
+            self._finish_background_task_async(
+                widgets_to_enable=(self.field_extract_button,),
+                status_message="字段提取完成",
+                dialog_kind='info',
+                dialog_title="完成",
+                dialog_message=(
+                    f"多语言字段提取完成!\n\n"
+                    f"处理语言数: {len(all_stats['languages'])}\n"
+                    f"总文件数: {all_stats['total_files']}\n"
+                    f"总工作表数: {all_stats['total_sheets']}\n"
+                    f"总字段数: {all_stats['total_fields']}\n\n"
+                    f"输出文件:\n{output_files_str}"
+                ),
+            )
+            return
             
         except Exception as e:
             import traceback
             error_msg = traceback.format_exc()
-            self.root.after(0, lambda: self.append_result('field_extractor', f"\n错误: {str(e)}\n"))
-            self.root.after(0, lambda: self.append_result('field_extractor', error_msg + "\n"))
-            self.root.after(0, lambda: self.status_var.set("字段提取失败"))
-            self.root.after(0, lambda: messagebox.showerror("错误", f"处理失败:\n{str(e)}"))
-        
-        finally:
-            self.root.after(0, lambda: self.field_extract_button.config(state="normal"))
+            self._append_result_async('field_extractor', f"\n错误: {str(e)}\n")
+            self._append_result_async('field_extractor', error_msg + "\n")
+            self._finish_background_task_async(
+                widgets_to_enable=(self.field_extract_button,),
+                status_message="字段提取失败",
+                dialog_kind='error',
+                dialog_title="错误",
+                dialog_message=f"处理失败:\n{str(e)}",
+            )
     
     def _log_field_result(self, message):
         """记录字段提取结果"""
@@ -2122,71 +2250,65 @@ class GameToolsUnified:
         output_file = self.table_range_translator.generate_output_filename(output_dir)
         
         # 在新线程中执行提取
-        self.trt_process_button.config(state="disabled")
-        self.status_var.set("正在提取翻译内容...")
-        
-        thread = threading.Thread(target=self._table_range_translation_thread, 
-                                 args=(merged_json, lang_dirs, output_file))
-        thread.daemon = True
-        thread.start()
+        self._start_background_task(
+            self._table_range_translation_thread,
+            args=(merged_json, lang_dirs, output_file),
+            status_message="正在提取翻译内容...",
+            widgets_to_disable=(self.trt_process_button,),
+        )
     
     def _table_range_translation_thread(self, merged_json, lang_dirs, output_file):
         """多语言翻译提取线程 - 使用合并的JSON配置"""
         try:
             # 清空结果
-            self.root.after(0, self.clear_trt_results)
+            self._call_on_ui_thread(self.clear_trt_results)
             
             # 开始处理
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                "=" * 70 + "\n"))
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                "开始多语言翻译提取（合并JSON配置）...\n"))
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                "=" * 70 + "\n"))
+            self._append_result_batch_async(
+                'table_range_translator',
+                self._format_banner_block("开始多语言翻译提取（合并JSON配置）...", width=70),
+            )
             
             lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
             
             # 显示JSON配置
-            self.root.after(0, lambda jp=merged_json: 
-                self.append_result('table_range_translator', f"合并JSON: {jp}\n"))
+            self._append_result_async('table_range_translator', f"合并JSON: {merged_json}\n")
             
             # 显示各语言目录
             for lang, dir_path in lang_dirs.items():
-                self.root.after(0, lambda ln=lang_names.get(lang, lang), dp=dir_path: 
-                    self.append_result('table_range_translator', f"{ln}目录: {dp}\n"))
+                self._append_result_async('table_range_translator', f"{lang_names.get(lang, lang)}目录: {dir_path}\n")
             
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                f"输出文件: {output_file}\n"))
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                "\n"))
+            self._append_result_batch_async(
+                'table_range_translator',
+                self._format_key_value_lines([
+                    ("输出文件", output_file),
+                ]),
+                "\n",
+            )
             
             # 定义进度回调函数
             def progress_callback(msg):
                 """进度回调，将消息显示到界面"""
-                self.root.after(0, lambda m=msg: self.append_result('table_range_translator', m + "\n"))
+                self._append_result_async('table_range_translator', msg + "\n")
             
             # 使用新的合并JSON处理方法
             results = self.table_range_translator.process_with_merged_json(
                 merged_json, lang_dirs, progress_callback=progress_callback)
             
             if results:
-                self.root.after(0, lambda: self.append_result('table_range_translator', 
-                    f"✓ 成功提取 {len(results)} 条数据\n\n"))
+                self._append_result_async('table_range_translator', f"✓ 成功提取 {len(results)} 条数据\n\n")
                 
                 # 生成翻译CSV
-                self.root.after(0, lambda: self.append_result('table_range_translator', 
-                    "正在生成翻译CSV...\n"))
+                self._append_result_async('table_range_translator', "正在生成翻译CSV...\n")
                 
                 success = self.table_range_translator.generate_translation_csv(output_file)
                 
                 if success:
-                    self.root.after(0, lambda: self.append_result('table_range_translator', 
-                        f"✓ 翻译CSV已生成: {output_file}\n\n"))
+                    self._append_result_async('table_range_translator', f"✓ 翻译CSV已生成: {output_file}\n\n")
                     
                     # 显示处理报告
                     report = self.table_range_translator.get_processing_report()
-                    self.root.after(0, lambda: self.append_result('table_range_translator', 
-                        report + "\n"))
+                    self._append_result_async('table_range_translator', report + "\n")
                     
                     # 显示成功消息
                     stats = self.table_range_translator.processing_stats
@@ -2195,28 +2317,46 @@ class GameToolsUnified:
                           f"导出字段: {stats['exported_fields']} 个\n"
                           f"提取数据: {stats['total_rows']} 行\n\n"
                           f"翻译CSV已生成:\n{output_file}")
-                    self.root.after(0, lambda: messagebox.showinfo("完成", msg))
+                    self._finish_background_task_async(
+                        widgets_to_enable=(self.trt_process_button,),
+                        status_message="翻译提取完成",
+                        dialog_kind='info',
+                        dialog_title="完成",
+                        dialog_message=msg,
+                    )
+                    return
                 else:
-                    self.root.after(0, lambda: self.append_result('table_range_translator', 
-                        "✗ 生成翻译CSV失败\n"))
-                    self.root.after(0, lambda: messagebox.showerror("错误", "生成翻译CSV失败"))
+                    self._append_result_async('table_range_translator', "✗ 生成翻译CSV失败\n")
+                    self._finish_background_task_async(
+                        widgets_to_enable=(self.trt_process_button,),
+                        status_message="翻译提取失败",
+                        dialog_kind='error',
+                        dialog_title="错误",
+                        dialog_message="生成翻译CSV失败",
+                    )
+                    return
             else:
-                self.root.after(0, lambda: self.append_result('table_range_translator', 
-                    "✗ 没有提取到数据\n"))
-                self.root.after(0, lambda: messagebox.showwarning("警告", 
-                    "没有提取到数据，请检查JSON配置和Excel文件"))
+                self._append_result_async('table_range_translator', "✗ 没有提取到数据\n")
+                self._finish_background_task_async(
+                    widgets_to_enable=(self.trt_process_button,),
+                    status_message="未提取到数据",
+                    dialog_kind='warning',
+                    dialog_title="警告",
+                    dialog_message="没有提取到数据，请检查JSON配置和Excel文件",
+                )
+                return
         
         except Exception as e:
             details = str(e) or e.__class__.__name__
             error_msg = f"处理过程中发生错误: {details}"
-            self.root.after(0, lambda: self.append_result('table_range_translator', 
-                f"\n✗ {error_msg}\n"))
-            self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
-        
-        finally:
-            # 恢复按钮状态
-            self.root.after(0, lambda: self.trt_process_button.config(state="normal"))
-            self.root.after(0, lambda: self.status_var.set("就绪"))
+            self._append_result_async('table_range_translator', f"\n✗ {error_msg}\n")
+            self._finish_background_task_async(
+                widgets_to_enable=(self.trt_process_button,),
+                status_message="翻译提取失败",
+                dialog_kind='error',
+                dialog_title="错误",
+                dialog_message=error_msg,
+            )
     
     def clear_trt_results(self):
         """清空多语言翻译提取结果"""
@@ -2502,6 +2642,18 @@ class GameToolsUnified:
             messagebox.showerror("错误", "请选择目标语言")
             return
         
+        backup = self.batch_backup_var.get()
+
+        try:
+            field_row = int(self.batch_field_row_var.get().strip())
+        except ValueError:
+            field_row = 5
+
+        try:
+            data_start_row = int(self.batch_data_start_row_var.get().strip())
+        except ValueError:
+            data_start_row = 7
+
         # 确认操作
         confirm_msg = f"""确认开始批量修改？
 
@@ -2514,151 +2666,134 @@ Excel目录: {excel_dir}
 • 有Position列 → Position直接定位（如B7、E24）
 • 无Position列 → ID值作为行号（如ID=7→第7行）
 
-备份: {'是' if self.batch_backup_var.get() else '否'}
+备份: {'是' if backup else '否'}
 
 提示：建议先用少量数据测试"""
         
         if not messagebox.askyesno("确认", confirm_msg):
             return
-        
+
         # 开始处理
-        self.batch_process_button.config(state="disabled")
-        self.status_var.set("正在批量修改...")
-        
-        thread = threading.Thread(target=self._batch_modification_thread, 
-                                 args=(mapping_file, excel_dir, report_file, 
-                                       json_file, target_language))
-        thread.daemon = True
-        thread.start()
+        self._start_background_task(
+            self._batch_modification_thread,
+            args=(
+                mapping_file,
+                excel_dir,
+                report_file,
+                json_file,
+                target_language,
+                backup,
+                field_row,
+                data_start_row,
+            ),
+            status_message="正在批量修改...",
+            widgets_to_disable=(self.batch_process_button,),
+        )
     
     def _batch_modification_thread(self, mapping_file, excel_dir, report_file, 
-                                   json_file, target_language):
+                                   json_file, target_language, backup,
+                                   field_row, data_start_row):
         """批量修改处理线程"""
         try:
             # 清空结果
-            self.root.after(0, self.clear_batch_results)
+            self._call_on_ui_thread(self.clear_batch_results)
             
             # 初始化 batch_modifier（使用 xlwings 引擎）
-            self.batch_modifier = BatchExcelModifier()
+            modifier = self._replace_processor('batch_modifier', BatchExcelModifier)
             
             # 显示开始信息
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "=" * 70 + "\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "开始批量修改Excel文件...\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "=" * 70 + "\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"JSON配置: {json_file}\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"映射表: {mapping_file}\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"Excel目录: {excel_dir}\n"))
-            self.root.after(0, lambda tl=target_language: self.append_result('batch_modifier', 
-                f"目标语言列: {tl}\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"自动识别: 工作表名=文件名, ID列=ID, 字段列=Classification\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"备份: {'是' if self.batch_backup_var.get() else '否'}\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"处理引擎: xlwings (Excel原生引擎)\n"))
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "\n"))
+            self._append_result_batch_async(
+                'batch_modifier',
+                self._format_banner_block("开始批量修改Excel文件...", width=70),
+                self._format_key_value_lines([
+                    ("JSON配置", json_file),
+                    ("映射表", mapping_file),
+                    ("Excel目录", excel_dir),
+                    ("目标语言列", target_language),
+                    ("自动识别", "工作表名=文件名, ID列=ID, 字段列=Classification"),
+                    ("备份", '是' if backup else '否'),
+                    ("处理引擎", "xlwings (Excel原生引擎)"),
+                ]),
+                "\n",
+            )
             
             # 设置进度回调
             def progress_callback(msg, percentage=None):
-                self.root.after(0, lambda m=msg: self.append_result('batch_modifier', m + "\n"))
+                self._append_result_async('batch_modifier', msg + "\n")
             
-            self.batch_modifier.set_progress_callback(progress_callback)
+            modifier.set_progress_callback(progress_callback)
             
             # 加载JSON配置
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "正在加载JSON配置...\n"))
+            self._append_result_async('batch_modifier', "正在加载JSON配置...\n")
             
-            field_config = self.batch_modifier.load_json_config(json_file)
+            field_config = modifier.load_json_config(json_file)
             
             if not field_config:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    "✗ JSON配置加载失败或为空\n"))
-                self.root.after(0, lambda: messagebox.showerror("错误", "JSON配置加载失败"))
+                self._append_result_async('batch_modifier', "✗ JSON配置加载失败或为空\n")
+                self._finish_background_task_async(
+                    widgets_to_enable=(self.batch_process_button,),
+                    status_message="批量修改失败",
+                    dialog_kind='error',
+                    dialog_title="错误",
+                    dialog_message="JSON配置加载失败",
+                )
                 return
             
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"✓ 已加载 {len(field_config)//2} 个表的字段配置\n\n"))
+            self._append_result_async('batch_modifier', f"✓ 已加载 {len(field_config)//2} 个表的字段配置\n\n")
             
-            # 获取字段行和数据起始行配置
-            try:
-                field_row = int(self.batch_field_row_var.get().strip())
-            except ValueError:
-                field_row = 5
-            
-            try:
-                data_start_row = int(self.batch_data_start_row_var.get().strip())
-            except ValueError:
-                data_start_row = 7
-            
-            self.root.after(0, lambda fr=field_row, dsr=data_start_row: self.append_result('batch_modifier', 
-                f"字段行: {fr}, 数据起始行: {dsr} (小于此行号的将被跳过)\n\n"))
+            self._append_result_async('batch_modifier', f"字段行: {field_row}, 数据起始行: {data_start_row} (小于此行号的将被跳过)\n\n")
             
             # 使用手动指定语言列方式
-            stats = self.batch_modifier.process_batch_modification_by_language(
+            stats = modifier.process_batch_modification_by_language(
                 mapping_path=mapping_file,
                 excel_directory=excel_dir,
                 id_col="ID",
                 target_language=target_language,
                 field_col=None,  # 自动检测
-                backup=self.batch_backup_var.get(),
+                backup=backup,
                 field_row=field_row,
                 data_start_row=data_start_row
             )
             
             # 显示统计信息
-            summary = self.batch_modifier.get_stats_summary()
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                "\n" + summary + "\n"))
+            summary = modifier.get_stats_summary()
+            self._append_result_batch_async('batch_modifier', "\n", summary, "\n")
             
             # 显示跳过的表（不在JSON配置中）
             if stats.get('skipped_no_config', 0) > 0:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"\n⚠️ 跳过了 {stats['skipped_no_config']} 个工作表（表名不在JSON配置中）\n"))
+                self._append_result_async('batch_modifier', f"\n⚠️ 跳过了 {stats['skipped_no_config']} 个工作表（表名不在JSON配置中）\n")
             
             # 显示跳过的文件（文件不存在）
             if stats.get('skipped_no_file', 0) > 0:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"⚠️ 跳过了 {stats['skipped_no_file']} 个工作表（对应Excel文件不存在）\n"))
+                self._append_result_async('batch_modifier', f"⚠️ 跳过了 {stats['skipped_no_file']} 个工作表（对应Excel文件不存在）\n")
             
             # 显示字段不匹配的跳过数（CSV字段不在JSON配置中）
             if stats.get('skipped_field_mismatch', 0) > 0:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"⚠️ 跳过了 {stats['skipped_field_mismatch']} 行（CSV字段名不在JSON配置中）\n"))
+                self._append_result_async('batch_modifier', f"⚠️ 跳过了 {stats['skipped_field_mismatch']} 行（CSV字段名不在JSON配置中）\n")
             
             # 显示值相同跳过的数量
             if stats.get('skipped_same_value', 0) > 0:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"✓ 跳过了 {stats['skipped_same_value']} 处（原值与新值相同，无需修改）\n"))
+                self._append_result_async('batch_modifier', f"✓ 跳过了 {stats['skipped_same_value']} 处（原值与新值相同，无需修改）\n")
             
             # 生成报告
             if report_file:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    f"\n正在生成修改报告...\n"))
+                self._append_result_async('batch_modifier', "\n正在生成修改报告...\n")
                 
-                if self.batch_modifier.generate_modification_report(report_file):
-                    self.root.after(0, lambda: self.append_result('batch_modifier', 
-                        f"✓ 修改报告已生成: {report_file}\n"))
+                if modifier.generate_modification_report(report_file):
+                    self._append_result_async('batch_modifier', f"✓ 修改报告已生成: {report_file}\n")
                 else:
-                    self.root.after(0, lambda: self.append_result('batch_modifier', 
-                        "✗ 生成修改报告失败\n"))
+                    self._append_result_async('batch_modifier', "✗ 生成修改报告失败\n")
             
             # 显示错误日志
-            if self.batch_modifier.error_logs:
-                self.root.after(0, lambda: self.append_result('batch_modifier', 
-                    "\n错误日志:\n"))
-                for error in self.batch_modifier.error_logs[:20]:  # 最多显示20条
-                    self.root.after(0, lambda e=error: self.append_result('batch_modifier', 
-                        f"  ✗ {e}\n"))
-                if len(self.batch_modifier.error_logs) > 20:
-                    self.root.after(0, lambda: self.append_result('batch_modifier', 
-                        f"  ... 还有 {len(self.batch_modifier.error_logs) - 20} 条错误\n"))
+            if modifier.error_logs:
+                error_lines = [f"✗ {error}" for error in modifier.error_logs[:20]]
+                if len(modifier.error_logs) > 20:
+                    error_lines.append(f"... 还有 {len(modifier.error_logs) - 20} 条错误")
+                self._append_result_batch_async(
+                    'batch_modifier',
+                    "\n错误日志:\n",
+                    self._format_prefixed_lines(error_lines),
+                )
             
             # 显示成功消息
             msg = f"""批量修改完成！
@@ -2672,23 +2807,33 @@ Excel目录: {excel_dir}
 
 提示：如有错误请查看结果详情"""
             
-            self.root.after(0, lambda: messagebox.showinfo("完成", msg))
+            self._finish_background_task_async(
+                widgets_to_enable=(self.batch_process_button,),
+                status_message="批量修改完成",
+                dialog_kind='info',
+                dialog_title="完成",
+                dialog_message=msg,
+            )
+            return
             
         except Exception as e:
             error_msg = f"处理过程中发生错误: {str(e)}"
-            self.root.after(0, lambda: self.append_result('batch_modifier', 
-                f"\n✗ {error_msg}\n"))
-            self.root.after(0, lambda: messagebox.showerror("错误", error_msg))
+            self._append_result_async('batch_modifier', f"\n✗ {error_msg}\n")
+            self._finish_background_task_async(
+                widgets_to_enable=(self.batch_process_button,),
+                status_message="批量修改失败",
+                dialog_kind='error',
+                dialog_title="错误",
+                dialog_message=error_msg,
+            )
         
         finally:
-            if hasattr(self, 'batch_modifier') and self.batch_modifier is not None:
+            modifier = self._processors.get('batch_modifier')
+            if modifier is not None:
                 try:
-                    self.batch_modifier.close()
+                    modifier.close()
                 except Exception:
                     pass
-            # 恢复按钮状态
-            self.root.after(0, lambda: self.batch_process_button.config(state="normal"))
-            self.root.after(0, lambda: self.status_var.set("就绪"))
     
     def clear_batch_results(self):
         """清空批量改表结果"""

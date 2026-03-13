@@ -66,6 +66,11 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
             return md5(hash_input.encode()).hexdigest()[:16]
         except Exception:
             return md5(file_path.encode()).hexdigest()[:16]
+
+    def _build_query_cache_key(self, file_path: str, sheet_name: str, cell_ref: str) -> str:
+        """构建包含文件维度的查询缓存键，避免不同文件同坐标串值。"""
+        file_hash = self._get_file_hash(file_path)
+        return f"{self.query_cache_prefix}{file_hash}:{sheet_name}:{cell_ref}"
     
     def load_project_file(self, file_path: str) -> Dict[str, pd.DataFrame]:
         """
@@ -117,12 +122,13 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
             logger.error(f"加载项目文件失败 {file_path}: {e}")
             return {}
     
-    def find_content_by_reference(self, sheets_data: Dict[str, pd.DataFrame], 
+    def find_content_by_reference(self, file_path: str, sheets_data: Dict[str, pd.DataFrame], 
                                  sheet_name: str, cell_ref: str) -> Optional[str]:
         """
         根据工作表名和单元格引用查找内容（支持缓存）
         
         Args:
+            file_path: 当前项目文件路径
             sheets_data: 工作表数据字典
             sheet_name: 工作表名称
             cell_ref: 单元格引用（如A1, B5等）
@@ -137,7 +143,7 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
                 return None
             
             # 生成查询缓存键
-            query_key = f"{self.query_cache_prefix}{sheet_name}:{cell_ref}"
+            query_key = self._build_query_cache_key(file_path, sheet_name, cell_ref)
             
             # 尝试从缓存获取查询结果
             cached_result = self.cache_manager.get(query_key)
@@ -330,7 +336,7 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
                         cell_ref = cell_reference
                     
                     # 查找内容
-                    content = self.find_content_by_reference(sheets_data, sheet_name, cell_ref)
+                    content = self.find_content_by_reference(project_file_path, sheets_data, sheet_name, cell_ref)
                     
                     if content is not None:
                         found_count += 1
