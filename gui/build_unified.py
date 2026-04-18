@@ -190,6 +190,7 @@ def check_dependencies(parallel: bool = True):
         ("numpy", "numpy"),
         ("xlwings", "xlwings"),
         ("openpyxl", "openpyxl"),
+        ("tkinter", "tkinter"),
     ]
     
     def check_import(pkg_info):
@@ -226,6 +227,9 @@ def check_dependencies(parallel: bool = True):
 
     if missing:
         print(f"[ERROR] 缺少或无法导入依赖: {', '.join(missing)}")
+        if 'tkinter' in missing:
+            print("[SUGGESTION] 当前Python环境缺少 tkinter，无法构建GUI程序。")
+            print("[SUGGESTION] 请改用包含 tkinter 的完整 CPython 环境后重试。")
         print("[SUGGESTION] 请在当前Python环境中安装依赖后重试:")
         print(f"  {sys.executable} -m pip install -r requirements.txt")
         print("  或者:")

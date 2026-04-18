@@ -5,23 +5,23 @@ from tkinter import ttk
 
 
 UI_PALETTE = {
-    'app_bg': '#eef3f1',
-    'surface': '#f8fbfa',
-    'surface_alt': '#edf4f2',
-    'sidebar_bg': '#173a3a',
-    'sidebar_active': '#245151',
-    'sidebar_hover': '#1d4747',
-    'sidebar_text': '#f3fbf9',
-    'sidebar_muted': '#b9d1cd',
-    'accent': '#2f8f83',
-    'accent_active': '#256f66',
-    'accent_text': '#ffffff',
-    'text': '#1f2a2a',
-    'muted_text': '#5d7070',
-    'border': '#d6e2df',
-    'success': '#2d7d46',
-    'error': '#b44343',
-    'warning': '#9a6a1f',
+    'app_bg': '#f3ede4',
+    'surface': '#fbf7f1',
+    'surface_alt': '#efe2d2',
+    'sidebar_bg': '#1f2a31',
+    'sidebar_active': '#2b3943',
+    'sidebar_hover': '#354550',
+    'sidebar_text': '#f7efe5',
+    'sidebar_muted': '#c1b19f',
+    'accent': '#c65f33',
+    'accent_active': '#a84e29',
+    'accent_text': '#fff7ef',
+    'text': '#231f1b',
+    'muted_text': '#6d6257',
+    'border': '#dccdbd',
+    'success': '#3f7a52',
+    'error': '#b14a39',
+    'warning': '#a26d27',
 }
 
 
@@ -44,6 +44,7 @@ def apply_ui_theme(root):
         'TLabelframe',
         background=UI_PALETTE['surface'],
         bordercolor=UI_PALETTE['border'],
+        borderwidth=1,
         relief='solid',
         lightcolor=UI_PALETTE['border'],
         darkcolor=UI_PALETTE['border'],
@@ -52,12 +53,12 @@ def apply_ui_theme(root):
         'TLabelframe.Label',
         background=UI_PALETTE['surface'],
         foreground=UI_PALETTE['text'],
-        font=('Microsoft YaHei UI', 10, 'bold'),
+        font=('Bahnschrift', 11, 'bold'),
     )
 
     style.configure('TLabel', background=UI_PALETTE['surface'], foreground=UI_PALETTE['text'])
-    style.configure('Title.TLabel', font=('Microsoft YaHei UI', 15, 'bold'))
-    style.configure('Heading.TLabel', font=('Microsoft YaHei UI', 11, 'bold'))
+    style.configure('Title.TLabel', font=('Bahnschrift', 18, 'bold'))
+    style.configure('Heading.TLabel', font=('Bahnschrift', 11, 'bold'))
     style.configure('Info.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['muted_text'])
     style.configure('Success.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['success'])
     style.configure('Error.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['error'])
@@ -65,31 +66,38 @@ def apply_ui_theme(root):
         'HeaderTitle.TLabel',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['text'],
-        font=('Microsoft YaHei UI', 18, 'bold'),
+        font=('Bahnschrift', 24, 'bold'),
     )
     style.configure(
-        'HeaderSubtitle.TLabel',
+        'HeaderMeta.TLabel',
         background=UI_PALETTE['surface_alt'],
-        foreground=UI_PALETTE['muted_text'],
-        font=('Microsoft YaHei UI', 10),
+        foreground=UI_PALETTE['accent'],
+        font=('Bahnschrift', 10, 'bold'),
+    )
+    style.configure(
+        'HeaderTag.TLabel',
+        background=UI_PALETTE['accent'],
+        foreground=UI_PALETTE['accent_text'],
+        font=('Bahnschrift', 10, 'bold'),
+        padding=(10, 4),
     )
     style.configure(
         'Badge.TLabel',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['accent'],
-        font=('Segoe UI', 9, 'bold'),
+        font=('Bahnschrift', 9, 'bold'),
     )
     style.configure(
         'SidebarTitle.TLabel',
         background=UI_PALETTE['sidebar_bg'],
         foreground=UI_PALETTE['sidebar_text'],
-        font=('Microsoft YaHei UI', 16, 'bold'),
+        font=('Bahnschrift', 18, 'bold'),
     )
     style.configure(
         'SidebarMeta.TLabel',
         background=UI_PALETTE['sidebar_bg'],
         foreground=UI_PALETTE['sidebar_muted'],
-        font=('Microsoft YaHei UI', 9),
+        font=('Bahnschrift', 9, 'bold'),
     )
     style.configure(
         'SidebarFoot.TLabel',
@@ -108,8 +116,15 @@ def apply_ui_theme(root):
     style.configure(
         'TButton',
         font=('Microsoft YaHei UI', 9),
-        padding=(12, 7),
+        padding=(14, 8),
         borderwidth=0,
+        background=UI_PALETTE['surface_alt'],
+        foreground=UI_PALETTE['text'],
+        focusthickness=0,
+    )
+    style.map(
+        'TButton',
+        background=[('active', '#e7d6c2'), ('pressed', '#dfccb8')],
     )
     style.configure(
         'Accent.TButton',
@@ -128,28 +143,29 @@ def apply_ui_theme(root):
         'Subtle.TButton',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['text'],
+        padding=(12, 7),
     )
     style.map(
         'Subtle.TButton',
-        background=[('active', '#dce9e5'), ('pressed', '#dce9e5')],
+        background=[('active', '#e7d6c2'), ('pressed', '#dfccb8')],
     )
 
     style.configure(
         'TEntry',
-        fieldbackground='#ffffff',
+        fieldbackground='#fffdf9',
         foreground=UI_PALETTE['text'],
         bordercolor=UI_PALETTE['border'],
         lightcolor=UI_PALETTE['border'],
         darkcolor=UI_PALETTE['border'],
-        padding=6,
+        padding=8,
     )
     style.configure(
         'TCombobox',
-        fieldbackground='#ffffff',
+        fieldbackground='#fffdf9',
         foreground=UI_PALETTE['text'],
         bordercolor=UI_PALETTE['border'],
         arrowsize=14,
-        padding=5,
+        padding=7,
     )
     style.configure(
         'TCheckbutton',
