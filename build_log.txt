@@ -1,0 +1,1823 @@
+﻿
+[鐗堟湰鏇存柊] 宸茬鐢ㄨ嚜鍔ㄩ€掑鐗堟湰鍙?(--no-bump)
+============================================================
+gametools 缁熶竴鐗堟湰鏋勫缓鑴氭湰 (鎬ц兘浼樺寲鐗?
+============================================================
+鐗堟湰: v1.46.46
+鏋勫缓鏃ユ湡: 2026-04-18
+鏋勫缓鏃堕棿: 2026-04-18 17:47:36
+============================================================
+妫€鏌ヤ緷璧?..
+Python鐗堟湰: 3.12.7
+PyInstaller鐗堟湰: 6.19.0
+  鉁?numpy: v1.26.4
+  鉁?openpyxl: v3.1.5
+  鉁?pandas: v2.2.3
+  鉁?xlwings: v0.35.1
+渚濊禆妫€鏌ュ畬鎴?(鑰楁椂: 0.44绉?
+
+娓呯悊鏋勫缓鐩綍...
+鍒犻櫎鐩綍: dist
+鍒犻櫎鐩綍: build
+娓呯悊瀹屾垚 (鑰楁椂: 0.00绉?
+[OK] spec鏈彉鍖栵紝璺宠繃閲嶅啓
+
+寮€濮嬫瀯寤篹xe鏂囦欢...
+
+==================================================
+姝ｅ湪鎵ц: 鏋勫缓exe鏂囦欢
+鍛戒护: ['D:\\LiblibAI-workspace\\comfyui-deploy-win\\python_embeded\\python.exe', '-m', 'PyInstaller', '--noconfirm', '--log-level=WARN', 'gametools_unified.spec']
+==================================================
+47 INFO: PyInstaller: 6.19.0, contrib hooks: 2026.4
+47 INFO: Python: 3.12.7
+67 INFO: Platform: Windows-10-10.0.19044-SP0
+67 INFO: Python environment: D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded
+1657 WARNING: tkinter installation is broken. It will be excluded from the application
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\__main__.py", line 321, in <module>
+    run()
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\__main__.py", line 215, in run
+    run_build(pyi_config, spec_file, **vars(args))
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\__main__.py", line 70, in run_build
+    PyInstaller.building.build_main.main(pyi_config, spec_file, **kwargs)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\building\build_main.py", line 1275, in main
+    build(specfile, distpath, workpath, clean_build)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\building\build_main.py", line 1213, in build
+    exec(code, spec_namespace)
+  File "gametools_unified.spec", line 65, in <module>
+    a = Analysis(
+        ^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\building\build_main.py", line 584, in __init__
+    self.__postinit__()
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\building\datastruct.py", line 184, in __postinit__
+    self.assemble()
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\building\build_main.py", line 716, in assemble
+    program_scripts.append(self.graph.add_script(script))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 283, in add_script
+    self._top_script_node = super().add_script(pathname)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1194, in add_script
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2312, in _safe_import_hook
+    self.import_hook(
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1305, in import_hook
+    for target_submodule in self._import_importable_package_submodules(
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1554, in _import_importable_package_submodules
+    submodule = self._safe_import_module(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1279, in import_hook
+    submodule = self._safe_import_module(head, mname, submodule)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 539, in _safe_import_module
+    return super()._safe_import_module(module_basename, module_name, parent_package)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1826, in _safe_import_module
+    self._process_imports(n)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2654, in _process_imports
+    target_modules = self._safe_import_hook(*import_info, **kwargs)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 477, in _safe_import_hook
+    ret_modules = super()._safe_import_hook(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 2103, in _safe_import_hook
+    target_modules = self.import_hook(
+                     ^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1266, in import_hook
+    target_package, target_module_partname = self._find_head_package(
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1445, in _find_head_package
+    target_package = self._safe_import_module(
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\analysis.py", line 532, in _safe_import_module
+    hook_module.pre_safe_import_module(hook_api)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\hooks\pre_safe_import_module\hook-distutils.py", line 23, in pre_safe_import_module
+    api.add_alias_module(real_vendored_name, aliased_name)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\depend\imphookapi.py", line 161, in add_alias_module
+    self._module_graph.alias_module(real_module_name, alias_module_name)
+  File "D:\LiblibAI-workspace\comfyui-deploy-win\python_embeded\Lib\site-packages\PyInstaller\lib\modulegraph\modulegraph.py", line 1687, in alias_module
+    raise ValueError(
+ValueError: Target module "distutils" already imported as "ExcludedModule('distutils',)".
+[ERROR] 澶辫触!
+杩斿洖鐮? 1
+[ERROR] 鏋勫缓澶辫触

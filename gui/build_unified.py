@@ -352,7 +352,7 @@ excluded_modules = [
     'cryptography', 'bcrypt', 'passlib',
     'pygments', 'colorama', 'rich', 'click', 'typer',
     'setuptools', 'pkg_resources', 'pip', 'wheel', 'twine',
-    'lib2to3', 'distutils', 'ensurepip',
+    'lib2to3', 'ensurepip',
     # PyQt/PySide (我们用tkinter)
     'PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'wx', 'kivy',
     # 调试工具
