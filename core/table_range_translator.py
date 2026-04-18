@@ -876,35 +876,34 @@ class TableRangeTranslator:
             fields_with_examples = table_info.get('fields_with_examples', [])
             
             logger.info(f"开始提取表格: {table_name} - {sheet_name}")
-            
-            # 预先计算可导出字段数量用于统计
-            exportable_count = 0
-            for field_str in fields_with_examples:
-                _, field_type, _ = self.parse_field_with_type(field_str)
-                if self.is_exportable_field(field_type):
-                    exportable_count += 1
-            
-            if exportable_count == 0:
+
+            parsed_fields = [self.parse_field_with_type(field_str) for field_str in fields_with_examples]
+            exportable_fields = [field_info for field_info in parsed_fields if self.is_exportable_field(field_info[1])]
+
+            if not exportable_fields:
                 logger.info(f"表格 {table_name} 没有需要导出的字段，跳过")
                 return []
-            
-            logger.info(f"可导出字段: {exportable_count} 个")
-            self.processing_stats['exported_fields'] += exportable_count
+
+            logger.info(f"可导出字段: {len(exportable_fields)} 个")
+            self.processing_stats['exported_fields'] += len(exportable_fields)
             
             df, load_error = self._load_excel_sheet(excel_path, sheet_name)
             if load_error:
                 logger.warning(f"表格 {table_name} 读取失败，跳过: {load_error}")
                 return []
-            
+
+            non_exportable_count = len(parsed_fields) - len(exportable_fields)
+            if non_exportable_count > 0:
+                self.processing_stats['skipped_fields'] += non_exportable_count
+
             extracted_rows = []
-            
-            # 遍历每个需要导出的字段
-            for field_str in fields_with_examples:
-                field_name, field_type, col_letter_hint = self.parse_field_with_type(field_str)
-                
-                if not self.is_exportable_field(field_type):
-                    self.processing_stats['skipped_fields'] += 1
-                    continue
+
+            boundary_row = self._find_boundary_row(df)
+            end_row = boundary_row if boundary_row is not None else len(df)
+            localized_language_types = {"中文", "越南文", "泰文", "中越混合", "中泰混合", "越泰混合"}
+            resolved_fields = []
+
+            for field_name, field_type, col_letter_hint in exportable_fields:
 
                 # 优先使用列号定位
                 col_idx = None
@@ -926,11 +925,16 @@ class TableRangeTranslator:
                 if col_idx is None:
                     logger.warning(f"未找到字段: {field_name}")
                     continue
-                
-                # 查找边界行（包含'over'关键字的行）
-                boundary_row = self._find_boundary_row(df)
-                end_row = boundary_row if boundary_row is not None else len(df)
-                
+
+                resolved_fields.append((
+                    field_name,
+                    field_type,
+                    col_idx,
+                    self.column_index_to_letter(col_idx),
+                ))
+
+            # 遍历每个需要导出的字段
+            for field_name, field_type, col_idx, current_col_letter in resolved_fields:
                 # 从第7行开始提取数据（到边界行或表格末尾为止）
                 for row_idx in range(6, end_row):  # 从索引6开始（第7行）
                     cell_value = df.iloc[row_idx, col_idx]
@@ -943,14 +947,13 @@ class TableRangeTranslator:
                     lang_type = self.detect_language_type(cell_value)
                     
                     # 只提取包含中文、越南文、泰文的内容
-                    if lang_type not in ["中文", "越南文", "泰文", "中越混合", "中泰混合", "越泰混合"]:
+                    if lang_type not in localized_language_types:
                         continue
                     
                     # 提取A列的ID值
                     id_value = df.iloc[row_idx, 0] if len(df.columns) > 0 else ''
                     
                     # 生成Excel物理位置（如F8）
-                    current_col_letter = self.column_index_to_letter(col_idx)
                     excel_position = f"{current_col_letter}{row_idx + 1}"
                     
                     extracted_rows.append({

@@ -60,6 +60,22 @@ def create_merged_json(file_path: Path):
     file_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def create_json_config(file_path: Path):
+    """创建最小单语言 JSON 配置。"""
+    payload = {
+        "language": {"code": "zh", "name": "中文"},
+        "text_tables": [
+            {
+                "table_name": "items.xlsx",
+                "sheet_name": "Sheet1",
+                "fields_with_examples": ["desc,前端,C"],
+            }
+        ],
+        "no_text_tables": []
+    }
+    file_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def test_translator_state_resets_between_runs():
     """重复执行同一实例时，统计信息不应累加。"""
     print("=" * 60)
@@ -120,10 +136,41 @@ def test_translator_raises_on_fatal_error():
     return False
 
 
+def test_json_config_path_extracts_rows():
+    """旧版 JSON 配置路径应能正确提取单语言内容。"""
+    print("\n" + "=" * 60)
+    print("测试旧版JSON配置提取路径")
+    print("=" * 60)
+
+    translator = TableRangeTranslator()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        excel_dir = temp_path / "zh"
+        excel_dir.mkdir()
+
+        create_translation_excel(excel_dir / "items.xlsx", "中文内容")
+
+        json_path = temp_path / "config.json"
+        create_json_config(json_path)
+
+        results = translator.process_with_json_config(str(json_path), str(excel_dir))
+
+        assert len(results) == 1, f"旧版JSON提取结果异常: {len(results)}"
+        assert results[0]['field_name'] == 'desc', results[0]
+        assert results[0]['excel_position'] == 'C7', results[0]
+        assert results[0]['content'] == '中文内容', results[0]
+        assert translator.processing_stats['processed_tables'] == 1, translator.processing_stats
+
+    print("✅ 旧版JSON配置提取路径正常")
+    return True
+
+
 def main():
     results = []
     results.append(("状态重置", test_translator_state_resets_between_runs()))
     results.append(("错误上抛", test_translator_raises_on_fatal_error()))
+    results.append(("旧版JSON路径", test_json_config_path_extracts_rows()))
 
     print("\n" + "=" * 60)
     print("测试结果汇总")
