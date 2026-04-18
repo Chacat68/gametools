@@ -248,7 +248,7 @@ python test/test_multilang_json.py
    }
    ```
 
-2. **启动GUI**: 运行 `gametools_v1.39.5.exe`
+2. **启动GUI**: 运行最新的 `gametools_v*.exe` 或根目录下的 `启动策划工具.bat`
 
 3. **批量改表页签**:
    - 选择上述JSON文件

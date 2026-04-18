@@ -10,12 +10,29 @@
 import os
 import json
 from pathlib import Path
-from typing import List, Dict, Set, Tuple, Optional
-import pandas as pd
-import openpyxl
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+
+try:
+    import pandas as pd  # type: ignore
+except Exception:  # pragma: no cover
+    pd = None
+
+try:
+    import openpyxl  # type: ignore
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+except Exception:  # pragma: no cover
+    openpyxl = None
+    Workbook = None
+    Font = PatternFill = Alignment = Border = Side = None
+    get_column_letter = None
+
+if TYPE_CHECKING:
+    import pandas as pandas_type
+    DataFrameType = pandas_type.DataFrame
+else:
+    DataFrameType = Any
 import logging
 
 # 导入统一的常量和模式
@@ -86,8 +103,33 @@ class TableRangeTranslator:
             logger.error(message)
         self.error_logs.append(message)
         raise TableRangeTranslatorError(message) from exc
+
+    def _get_missing_dependencies(self, require_pandas: bool = False,
+                                  require_openpyxl: bool = False) -> List[str]:
+        """收集当前操作缺失的运行时依赖。"""
+        missing = []
+        if require_pandas and pd is None:
+            missing.append('pandas')
+        if require_openpyxl and openpyxl is None:
+            missing.append('openpyxl')
+        return missing
+
+    def _record_missing_dependency(self, action: str, require_pandas: bool = False,
+                                   require_openpyxl: bool = False) -> Optional[str]:
+        """记录缺失依赖错误，并返回错误消息。"""
+        missing = self._get_missing_dependencies(
+            require_pandas=require_pandas,
+            require_openpyxl=require_openpyxl,
+        )
+        if not missing:
+            return None
+
+        message = f"{action}失败: 缺少依赖 {', '.join(missing)}"
+        logger.error(message)
+        self.error_logs.append(message)
+        return message
     
-    def _check_row_boundary(self, df: pd.DataFrame, row_idx: int) -> bool:
+    def _check_row_boundary(self, df: DataFrameType, row_idx: int) -> bool:
         """
         检查某一行是否包含边界关键字（over）
         如果该行任意单元格包含边界关键字，则返回True表示到达边界
@@ -110,7 +152,7 @@ class TableRangeTranslator:
                     return True
         return False
     
-    def _find_boundary_row(self, df: pd.DataFrame, start_row: int = 6) -> Optional[int]:
+    def _find_boundary_row(self, df: DataFrameType, start_row: int = 6) -> Optional[int]:
         """
         在DataFrame中查找边界行（包含'over'关键字的行）
         
@@ -267,6 +309,12 @@ class TableRangeTranslator:
                 progress_callback(msg)
         
         self.reset_runtime_state()
+        dependency_error = self._record_missing_dependency(
+            "处理多语言翻译提取",
+            require_pandas=True,
+        )
+        if dependency_error:
+            self._raise_processing_error(dependency_error)
 
         try:
             lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
@@ -683,7 +731,7 @@ class TableRangeTranslator:
                 return prefix
         return value_str
 
-    def _build_id_to_row_index(self, df: pd.DataFrame, boundary_row: Optional[int] = None) -> Dict[str, int]:
+    def _build_id_to_row_index(self, df: DataFrameType, boundary_row: Optional[int] = None) -> Dict[str, int]:
         """为一个语言版本的表构建 ID -> 行索引 映射（数据区从第7行开始，索引6）。
         
         Args:
@@ -711,7 +759,7 @@ class TableRangeTranslator:
 
         return id_to_row
     
-    def find_column_index_by_name(self, df: pd.DataFrame, field_name: str) -> Optional[int]:
+    def find_column_index_by_name(self, df: DataFrameType, field_name: str) -> Optional[int]:
         """
         在DataFrame的第5行（索引4）中查找字段名对应的列索引
         
@@ -927,6 +975,13 @@ class TableRangeTranslator:
             if not self.translation_results:
                 logger.warning("没有数据可导出")
                 return False
+
+            dependency_error = self._record_missing_dependency(
+                "生成翻译总表",
+                require_openpyxl=True,
+            )
+            if dependency_error:
+                return False
             
             logger.info(f"开始生成翻译总表: {output_path}")
             
@@ -1036,6 +1091,12 @@ class TableRangeTranslator:
                 progress_callback(msg)
         
         self.reset_runtime_state()
+        dependency_error = self._record_missing_dependency(
+            "处理多语言翻译提取",
+            require_pandas=True,
+        )
+        if dependency_error:
+            self._raise_processing_error(dependency_error)
 
         try:
             lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
@@ -1290,6 +1351,12 @@ class TableRangeTranslator:
                 progress_callback(msg)
         
         self.reset_runtime_state()
+        dependency_error = self._record_missing_dependency(
+            "处理多语言翻译提取",
+            require_pandas=True,
+        )
+        if dependency_error:
+            self._raise_processing_error(dependency_error)
 
         try:
             # 加载JSON配置
@@ -1495,6 +1562,13 @@ class TableRangeTranslator:
             if not self.translation_results:
                 logger.warning("没有数据可导出")
                 return False
+
+            dependency_error = self._record_missing_dependency(
+                "生成翻译总表",
+                require_openpyxl=True,
+            )
+            if dependency_error:
+                return False
             
             logger.info(f"开始生成翻译总表: {output_path}")
             
@@ -1597,6 +1671,13 @@ class TableRangeTranslator:
         try:
             if not self.translation_results:
                 logger.warning("没有数据可导出")
+                return False
+
+            dependency_error = self._record_missing_dependency(
+                "生成翻译CSV",
+                require_pandas=True,
+            )
+            if dependency_error:
                 return False
             
             logger.info(f"开始生成翻译CSV: {output_path}")

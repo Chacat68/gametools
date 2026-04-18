@@ -1,6 +1,6 @@
 # GameTools 文档目录
 
-> 游戏工具集 (v1.43.1) - 集成策划本地化、Excel处理、翻译提取等功能
+> 游戏工具集文档导航，当前程序版本请以 [../version.py](../version.py) 和 GUI 显示为准。
 
 ## 📚 文档导航
 
@@ -27,7 +27,7 @@
 ### 📋 其他资源
 
 - **[ERROR_LOGGING_FEATURE.md](ERROR_LOGGING_FEATURE.md)** - 错误日志和诊断功能
-- **[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)** - 最新构建报告
+- **[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)** - 仓库内保留的构建报告样例
 - **[VERSION_HISTORY_ARCHIVE.md](VERSION_HISTORY_ARCHIVE.md)** - 版本历史归档
 
 ---
@@ -105,7 +105,7 @@ python gui/gametools_unified.py
 
 ## 📝 版本信息
 
-当前版本：**v1.43.1** (2026-01-12)
+当前版本：请以 [../version.py](../version.py) 和 GUI 显示为准
 
 最新特性：
 - ⚡ GUI启动性能优化 4-6倍
@@ -113,7 +113,7 @@ python gui/gametools_unified.py
 - 🛡️ 增强错误处理和诊断
 - 📈 实时进度跟踪和ETA显示
 
-详见：[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)
+如需查看随仓库保留的构建记录，可参考：[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)
 
 ---
 
@@ -143,6 +143,6 @@ python gui/gametools_unified.py
 ---
 
 ## 📞 更新日期
-- 文档最后更新：2026-01-12
-- 对应程序版本：v1.43.1
+- 文档最后更新：2026-04-18
+- 对应程序版本：请以 [../version.py](../version.py) 为准
 

@@ -7,10 +7,21 @@
 
 import os
 import re
-import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import logging
+from zipfile import BadZipFile
+
+try:
+    import pandas as pd  # type: ignore
+except Exception:  # pragma: no cover
+    pd = None
+
+if TYPE_CHECKING:
+    import pandas as pandas_type
+    DataFrameType = pandas_type.DataFrame
+else:
+    DataFrameType = Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +39,24 @@ class CrossProjectTranslator:
         """清理单次运行之外的内存缓存，避免 GUI 长时间保留大量 DataFrame。"""
         self.project_files.clear()
         self.translation_results = []
+
+    def _require_pandas(self, action: str) -> bool:
+        """在真正需要 DataFrame 能力前检查 pandas 依赖。"""
+        if pd is None:
+            logger.error(f"{action}失败: 缺少依赖 pandas")
+            return False
+        return True
+
+    def _is_empty_cell(self, value: Any) -> bool:
+        """统一处理单元格空值判断，兼容缺少 pandas 的环境。"""
+        if value is None:
+            return True
+        if pd is None:
+            return False
+        try:
+            return bool(pd.isna(value))
+        except Exception:
+            return False
     
     def parse_cell_reference(self, cell_ref: str) -> Tuple[int, int]:
         """
@@ -39,28 +68,24 @@ class CrossProjectTranslator:
         Returns:
             (row, col): 行号和列号的元组
         """
-        try:
-            # 使用正则表达式解析单元格引用
-            match = re.match(r'^([A-Z]+)(\d+)$', cell_ref.upper())
-            if not match:
-                raise ValueError(f"无效的单元格引用格式: {cell_ref}")
-            
-            col_str, row_str = match.groups()
-            
-            # 将列字母转换为数字
-            col_num = 0
-            for char in col_str:
-                col_num = col_num * 26 + (ord(char) - ord('A') + 1)
-            
-            row_num = int(row_str)
-            
-            return row_num, col_num
-            
-        except Exception as e:
-            logger.error(f"解析单元格引用失败 {cell_ref}: {e}")
+        if not isinstance(cell_ref, str) or not cell_ref.strip():
+            logger.error("解析单元格引用失败: 空引用")
             return None, None
+
+        match = re.match(r'^([A-Z]+)(\d+)$', cell_ref.strip().upper())
+        if not match:
+            logger.error(f"解析单元格引用失败，无效格式: {cell_ref}")
+            return None, None
+
+        col_str, row_str = match.groups()
+
+        col_num = 0
+        for char in col_str:
+            col_num = col_num * 26 + (ord(char) - ord('A') + 1)
+
+        return int(row_str), col_num
     
-    def load_project_file(self, file_path: str) -> Dict[str, pd.DataFrame]:
+    def load_project_file(self, file_path: str) -> Dict[str, DataFrameType]:
         """
         加载项目文件并缓存
         
@@ -70,37 +95,38 @@ class CrossProjectTranslator:
         Returns:
             字典，键为工作表名，值为DataFrame
         """
+        if file_path in self.project_files:
+            return self.project_files[file_path]
+
+        if not self._require_pandas("加载项目文件"):
+            return {}
+
+        if not os.path.exists(file_path):
+            logger.error(f"文件不存在: {file_path}")
+            return {}
+
+        sheets_data = {}
+
         try:
-            if file_path in self.project_files:
-                return self.project_files[file_path]
-            
-            if not os.path.exists(file_path):
-                logger.error(f"文件不存在: {file_path}")
-                return {}
-            
             # 读取Excel文件的所有工作表。使用 header=None 保留物理行号，
             # 使 C2 这类坐标与 Excel 中看到的位置一致。
-            sheets_data = {}
-
             with pd.ExcelFile(file_path) as excel_file:
                 for sheet_name in excel_file.sheet_names:
                     try:
                         df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
                         sheets_data[sheet_name] = df
                         logger.info(f"成功加载工作表: {sheet_name} ({len(df)} 行)")
-                    except Exception as e:
-                        logger.error(f"加载工作表失败 {sheet_name}: {e}")
+                    except (ValueError, OSError, BadZipFile) as e:
+                        logger.error(f"加载工作表失败 {file_path}!{sheet_name}: {e}")
                         continue
-            
-            # 缓存文件数据
-            self.project_files[file_path] = sheets_data
-            return sheets_data
-            
-        except Exception as e:
+        except (ImportError, OSError, ValueError, BadZipFile) as e:
             logger.error(f"加载项目文件失败 {file_path}: {e}")
             return {}
+
+        self.project_files[file_path] = sheets_data
+        return sheets_data
     
-    def find_content_by_reference(self, sheets_data: Dict[str, pd.DataFrame], 
+    def find_content_by_reference(self, sheets_data: Dict[str, DataFrameType], 
                                  sheet_name: str, cell_ref: str) -> Optional[str]:
         """
         根据工作表名和单元格引用查找内容
@@ -113,40 +139,28 @@ class CrossProjectTranslator:
         Returns:
             找到的内容，如果未找到返回None
         """
-        try:
-            # 检查工作表是否存在
-            if sheet_name not in sheets_data:
-                logger.warning(f"工作表不存在: {sheet_name}")
-                return None
-            
-            df = sheets_data[sheet_name]
-            
-            # 解析单元格引用
-            row_num, col_num = self.parse_cell_reference(cell_ref)
-            if row_num is None or col_num is None:
-                return None
-            
-            # 转换为pandas索引（从0开始）
-            row_idx = row_num - 1
-            col_idx = col_num - 1
-            
-            # 检查索引是否在范围内
-            if row_idx < 0 or row_idx >= len(df) or col_idx < 0 or col_idx >= len(df.columns):
-                logger.warning(f"单元格引用超出范围: {sheet_name}!{cell_ref}")
-                return None
-            
-            # 获取内容
-            content = df.iloc[row_idx, col_idx]
-            
-            # 处理NaN值
-            if pd.isna(content):
-                return ""
-            
-            return str(content)
-            
-        except Exception as e:
-            logger.error(f"查找内容失败 {sheet_name}!{cell_ref}: {e}")
+        if sheet_name not in sheets_data:
+            logger.warning(f"工作表不存在: {sheet_name}")
             return None
+
+        df = sheets_data[sheet_name]
+
+        row_num, col_num = self.parse_cell_reference(cell_ref)
+        if row_num is None or col_num is None:
+            return None
+
+        row_idx = row_num - 1
+        col_idx = col_num - 1
+
+        if row_idx < 0 or row_idx >= len(df) or col_idx < 0 or col_idx >= len(df.columns):
+            logger.warning(f"单元格引用超出范围: {sheet_name}!{cell_ref}")
+            return None
+
+        content = df.iloc[row_idx, col_idx]
+        if self._is_empty_cell(content):
+            return ""
+
+        return str(content)
     
     def process_translation_mapping(self, mapping_file: str, project_directory: str) -> List[Dict]:
         """
@@ -159,129 +173,135 @@ class CrossProjectTranslator:
         Returns:
             处理结果列表
         """
-        try:
-            logger.info(f"开始处理翻译映射文件: {mapping_file}")
-            logger.info(f"项目目录: {project_directory}")
+        logger.info(f"开始处理翻译映射文件: {mapping_file}")
+        logger.info(f"项目目录: {project_directory}")
 
-            # 每次新任务开始前释放上一次运行保留的 DataFrame 引用。
-            self.clear_runtime_cache()
-            
-            # 读取映射文件
+        if not os.path.exists(mapping_file):
+            logger.error(f"映射文件不存在: {mapping_file}")
+            return []
+
+        if not os.path.isdir(project_directory):
+            logger.error(f"项目目录不存在: {project_directory}")
+            return []
+
+        if not self._require_pandas("处理翻译映射文件"):
+            return []
+
+        # 每次新任务开始前释放上一次运行保留的 DataFrame 引用。
+        self.clear_runtime_cache()
+
+        try:
             mapping_df = pd.read_excel(mapping_file)
-            
-            # 检查必要的列（支持多种列名格式）
-            file_name_column = None
-            position_column = None
-            
-            # 尝试找到文件名列
-            for col in ['文件名列', '文件名', 'Name']:
-                if col in mapping_df.columns:
-                    file_name_column = col
-                    break
-            
-            # 尝试找到位置列
-            for col in ['位置列', '位置', 'Description']:
-                if col in mapping_df.columns:
-                    position_column = col
-                    break
-            
-            if not file_name_column or not position_column:
-                logger.error(f"映射文件缺少必要的列。支持的列名格式：")
-                logger.error(f"文件名列: ['文件名列', '文件名', 'Name']")
-                logger.error(f"位置列: ['位置列', '位置', 'Description']")
-                logger.error(f"当前文件的列名: {list(mapping_df.columns)}")
-                return []
-            
-            results = []
-            processed_count = 0
-            found_count = 0
-            
-            # 遍历映射文件的每一行
-            for index, row in mapping_df.iterrows():
-                try:
-                    # 获取文件名和位置
-                    file_name = str(row[file_name_column]).strip() if pd.notna(row[file_name_column]) else ""
-                    cell_reference = str(row[position_column]).strip() if pd.notna(row[position_column]) else ""
-                    
-                    if not file_name or not cell_reference:
-                        logger.warning(f"第{index+1}行数据不完整，跳过")
-                        continue
-                    
-                    processed_count += 1
-                    
-                    # 构建项目文件路径
-                    project_file_path = os.path.join(project_directory, file_name)
-                    
-                    # 如果直接路径不存在，尝试查找文件
-                    if not os.path.exists(project_file_path):
-                        project_file_path = self.find_project_file(project_directory, file_name)
-                    
-                    if not project_file_path:
-                        logger.warning(f"未找到项目文件: {file_name}")
-                        results.append({
-                            'index': index + 1,
-                            'file_name': file_name,
-                            'cell_reference': cell_reference,
-                            'content': "文件未找到",
-                            'status': 'error',
-                            'error_message': f"未找到文件: {file_name}"
-                        })
-                        continue
-                    
-                    # 加载项目文件
-                    sheets_data = self.load_project_file(project_file_path)
-                    
-                    # 解析表内位置（格式：工作表名!单元格引用 或 直接单元格引用）
-                    if '!' in cell_reference:
-                        sheet_name, cell_ref = cell_reference.split('!', 1)
-                        sheet_name = sheet_name.strip()
-                        cell_ref = cell_ref.strip()
-                    else:
-                        # 如果没有指定工作表，使用第一个工作表
-                        sheet_name = list(sheets_data.keys())[0] if sheets_data else ""
-                        cell_ref = cell_reference
-                    
-                    # 查找内容
-                    content = self.find_content_by_reference(sheets_data, sheet_name, cell_ref)
-                    
-                    if content is not None:
-                        found_count += 1
-                        status = 'success'
-                        error_message = ""
-                    else:
-                        status = 'error'
-                        error_message = f"未找到内容: {sheet_name}!{cell_ref}"
-                    
+        except (ImportError, OSError, ValueError, BadZipFile) as e:
+            logger.error(f"读取映射文件失败 {mapping_file}: {e}")
+            return []
+
+        file_name_column = None
+        position_column = None
+
+        for col in ['文件名列', '文件名', 'Name']:
+            if col in mapping_df.columns:
+                file_name_column = col
+                break
+
+        for col in ['位置列', '位置', 'Description']:
+            if col in mapping_df.columns:
+                position_column = col
+                break
+
+        if not file_name_column or not position_column:
+            logger.error("映射文件缺少必要的列")
+            logger.error("文件名列: ['文件名列', '文件名', 'Name']")
+            logger.error("位置列: ['位置列', '位置', 'Description']")
+            logger.error(f"当前文件的列名: {list(mapping_df.columns)}")
+            return []
+
+        results = []
+        processed_count = 0
+        found_count = 0
+
+        for index, row in mapping_df.iterrows():
+            file_name = ""
+            cell_reference = ""
+
+            try:
+                file_name = str(row[file_name_column]).strip() if pd.notna(row[file_name_column]) else ""
+                cell_reference = str(row[position_column]).strip() if pd.notna(row[position_column]) else ""
+
+                if not file_name or not cell_reference:
+                    logger.warning(f"第{index+1}行数据不完整，跳过")
+                    continue
+
+                processed_count += 1
+                project_file_path = os.path.join(project_directory, file_name)
+
+                if not os.path.exists(project_file_path):
+                    project_file_path = self.find_project_file(project_directory, file_name)
+
+                if not project_file_path:
+                    logger.warning(f"未找到项目文件: {file_name}")
                     results.append({
                         'index': index + 1,
                         'file_name': file_name,
                         'cell_reference': cell_reference,
-                        'sheet_name': sheet_name,
-                        'cell_ref': cell_ref,
-                        'content': content if content is not None else "",
-                        'status': status,
-                        'error_message': error_message,
-                        'project_file': project_file_path
-                    })
-                    
-                except Exception as e:
-                    logger.error(f"处理第{index+1}行时出错: {e}")
-                    results.append({
-                        'index': index + 1,
-                        'file_name': str(row[file_name_column]) if pd.notna(row[file_name_column]) else "",
-                        'cell_reference': str(row[position_column]) if pd.notna(row[position_column]) else "",
-                        'content': "",
+                        'content': "文件未找到",
                         'status': 'error',
-                        'error_message': str(e)
+                        'error_message': f"未找到文件: {file_name}"
                     })
-            
-            logger.info(f"处理完成: 总行数 {len(mapping_df)}, 处理行数 {processed_count}, 成功找到 {found_count}")
-            self.translation_results = results
-            return results
-            
-        except Exception as e:
-            logger.error(f"处理翻译映射文件失败: {e}")
-            return []
+                    continue
+
+                sheets_data = self.load_project_file(project_file_path)
+
+                if '!' in cell_reference:
+                    sheet_name, cell_ref = cell_reference.split('!', 1)
+                    sheet_name = sheet_name.strip()
+                    cell_ref = cell_ref.strip()
+                else:
+                    sheet_name = list(sheets_data.keys())[0] if sheets_data else ""
+                    cell_ref = cell_reference
+
+                content = self.find_content_by_reference(sheets_data, sheet_name, cell_ref)
+
+                if content is not None:
+                    found_count += 1
+                    status = 'success'
+                    error_message = ""
+                else:
+                    status = 'error'
+                    error_message = f"未找到内容: {sheet_name}!{cell_ref}"
+
+                results.append({
+                    'index': index + 1,
+                    'file_name': file_name,
+                    'cell_reference': cell_reference,
+                    'sheet_name': sheet_name,
+                    'cell_ref': cell_ref,
+                    'content': content if content is not None else "",
+                    'status': status,
+                    'error_message': error_message,
+                    'project_file': project_file_path
+                })
+
+            except Exception as e:
+                logger.exception(
+                    "处理第%d行时出错 (file=%s, ref=%s): %s",
+                    index + 1,
+                    file_name or "<empty>",
+                    cell_reference or "<empty>",
+                    e,
+                )
+                results.append({
+                    'index': index + 1,
+                    'file_name': file_name,
+                    'cell_reference': cell_reference,
+                    'content': "",
+                    'status': 'error',
+                    'error_message': str(e)
+                })
+
+        logger.info(f"处理完成: 总行数 {len(mapping_df)}, 处理行数 {processed_count}, 成功找到 {found_count}")
+        self.translation_results = results
+        return results
     
     def find_project_file(self, project_directory: str, table_name: str) -> Optional[str]:
         """
@@ -295,30 +315,27 @@ class CrossProjectTranslator:
             找到的文件路径，如果未找到返回None
         """
         try:
-            # 首先尝试直接匹配
             possible_names = [
                 f"{table_name}.xlsx",
                 f"{table_name}.xls",
                 f"{table_name}.XLSX",
                 f"{table_name}.XLS"
             ]
-            
+
             for name in possible_names:
                 file_path = os.path.join(project_directory, name)
                 if os.path.exists(file_path):
                     return file_path
-            
-            # 如果直接匹配失败，搜索包含该名称的文件
+
             for root, dirs, files in os.walk(project_directory):
                 for file in files:
                     if file.lower().startswith(table_name.lower()) and file.lower().endswith(('.xlsx', '.xls')):
                         return os.path.join(root, file)
-            
-            return None
-            
-        except Exception as e:
+        except OSError as e:
             logger.error(f"查找项目文件失败 {table_name}: {e}")
             return None
+
+        return None
     
     def export_results(self, output_path: str) -> bool:
         """
@@ -333,6 +350,9 @@ class CrossProjectTranslator:
         try:
             if not self.translation_results:
                 logger.warning("没有结果可导出")
+                return False
+
+            if not self._require_pandas("导出翻译对应结果"):
                 return False
             
             # 创建结果DataFrame
