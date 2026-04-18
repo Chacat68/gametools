@@ -231,28 +231,11 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
                 return None
             
             self.cache_misses += 1
-            
-            # 首先尝试直接匹配
-            possible_names = [
-                f"{table_name}.xlsx",
-                f"{table_name}.xls",
-                f"{table_name}.XLSX",
-                f"{table_name}.XLS"
-            ]
-            
-            for name in possible_names:
-                file_path = os.path.join(project_directory, name)
-                if os.path.exists(file_path):
-                    self.cache_manager.set(search_key, file_path)
-                    return file_path
-            
-            # 如果直接匹配失败，搜索包含该名称的文件
-            for root, dirs, files in os.walk(project_directory):
-                for file in files:
-                    if file.lower().startswith(table_name.lower()) and file.lower().endswith(('.xlsx', '.xls')):
-                        result_path = os.path.join(root, file)
-                        self.cache_manager.set(search_key, result_path)
-                        return result_path
+
+            result_path = super().find_project_file(project_directory, table_name)
+            if result_path:
+                self.cache_manager.set(search_key, result_path)
+                return result_path
             
             # 缓存未找到的结果
             self.cache_manager.set(search_key, "NOT_FOUND")

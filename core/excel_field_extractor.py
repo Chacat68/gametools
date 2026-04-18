@@ -221,16 +221,14 @@ class ExcelFieldExtractor:
             for sheet_name in wb.sheetnames:
                 try:
                     sheet = wb[sheet_name]
+                    data_start_row = 7  # 第7行开始是数据
+                    boundary_row = self._find_boundary_row(sheet, data_start_row)
 
                     def scan_text_columns_in_range(start_col: int, end_col: int) -> Tuple[Set[int], Dict[int, int], int]:
                         """在指定列范围内扫描数据行，返回文本列集合与统计信息。"""
                         text_column_counts: Dict[int, int] = {}
                         total_data_rows = 0
 
-                        data_start_row = 7  # 第7行开始是数据
-                        # 查找边界行（包含'over'关键字的行）
-                        boundary_row = self._find_boundary_row(sheet, data_start_row)
-                        
                         if boundary_row > data_start_row:
                             total_data_rows = boundary_row - data_start_row
                             for row in sheet.iter_rows(
@@ -317,9 +315,6 @@ class ExcelFieldExtractor:
                             # - 若该列包含本地化字符，则保留，避免过滤真实的 name 列。
                             if field_name and field_name.strip().lower() in self.excluded_field_names:
                                 has_localized = False
-                                data_start_row = 7
-                                # 查找边界行
-                                boundary_row = self._find_boundary_row(sheet, data_start_row)
                                 if boundary_row > data_start_row:
                                     # 仅抽样检查，避免整列扫描带来的性能成本
                                     checks = 0

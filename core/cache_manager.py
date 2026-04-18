@@ -9,6 +9,7 @@ import os
 import json
 import pickle
 import hashlib
+import heapq
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
@@ -46,6 +47,8 @@ class CacheEntry:
     access_count: int = 0  # 访问次数
     last_accessed: float = field(default_factory=time.time)  # 最后访问时间
     ttl: Optional[float] = None  # 生存时间（秒）
+    size_bytes: int = 0  # 值的估算大小（字节）
+    heap_ticket: int = 0  # 当前堆记录编号（仅内存缓存使用）
     
     def is_expired(self) -> bool:
         """检查缓存是否过期"""
@@ -60,8 +63,17 @@ class CacheEntry:
             'timestamp': self.timestamp,
             'access_count': self.access_count,
             'last_accessed': self.last_accessed,
-            'ttl': self.ttl
+            'ttl': self.ttl,
+            'size_bytes': self.size_bytes,
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], value: Any = None) -> 'CacheEntry':
+        """从持久化字典恢复缓存条目，兼容旧格式。"""
+        entry_data = dict(data)
+        if 'value' in entry_data:
+            value = entry_data.pop('value')
+        return cls(value=value, **entry_data)
 
 
 class MemoryCache:
@@ -82,6 +94,10 @@ class MemoryCache:
         self.max_memory_bytes = max_memory_mb * 1024 * 1024
         self.current_memory_bytes = 0
         self.cache: Dict[str, CacheEntry] = {}
+        self._eviction_heap: List[Tuple[float, int, str]] = []
+        self._next_heap_ticket = 0
+        self._heap_compaction_min_size = 64
+        self._heap_compaction_ratio = 4
         self._lock = RLock()
         self.hit_count = 0  # 命中次数
         self.miss_count = 0  # 未命中次数
@@ -106,7 +122,7 @@ class MemoryCache:
             
             # 检查过期
             if entry.is_expired():
-                expired_size = self._estimate_size(entry.value)
+                expired_size = self._get_entry_size(entry)
                 del self.cache[key]
                 self.current_memory_bytes -= expired_size
                 self.miss_count += 1
@@ -116,6 +132,7 @@ class MemoryCache:
             # 更新访问信息
             entry.access_count += 1
             entry.last_accessed = time.time()
+            self._push_eviction_candidate(entry)
             self.hit_count += 1
             
             logger.debug(f"缓存命中: {key} (访问次数: {entry.access_count})")
@@ -145,7 +162,7 @@ class MemoryCache:
             # 这样替换现有 key 时也会参与淘汰判断，避免内存统计失真。
             if key in self.cache:
                 old_entry = self.cache.pop(key)
-                old_size = self._estimate_size(old_entry.value)
+                old_size = self._get_entry_size(old_entry)
                 self.current_memory_bytes = max(0, self.current_memory_bytes - old_size)
             
             # 当内存不足或条目数过多时进行淘汰
@@ -154,8 +171,9 @@ class MemoryCache:
                 if not self._evict_lru():
                     break  # 无法继续淘汰
             
-            entry = CacheEntry(key=key, value=value, ttl=ttl)
+            entry = CacheEntry(key=key, value=value, ttl=ttl, size_bytes=value_size)
             self.cache[key] = entry
+            self._push_eviction_candidate(entry)
             self.current_memory_bytes += value_size
             logger.debug(f"缓存已设置: {key} (大小: {value_size / 1024:.2f}KB)")
     
@@ -171,7 +189,7 @@ class MemoryCache:
         """
         with self._lock:
             if key in self.cache:
-                value_size = self._estimate_size(self.cache[key].value)
+                value_size = self._get_entry_size(self.cache[key])
                 del self.cache[key]
                 self.current_memory_bytes -= value_size
                 logger.debug(f"缓存已删除: {key}")
@@ -182,6 +200,8 @@ class MemoryCache:
         """清空所有缓存"""
         with self._lock:
             self.cache.clear()
+            self._eviction_heap.clear()
+            self._next_heap_ticket = 0
             self.current_memory_bytes = 0
             logger.info("缓存已清空")
     
@@ -194,27 +214,70 @@ class MemoryCache:
         """
         if not self.cache:
             return False
-        
-        # 使用更智能的评分系统：考虑访问频率、最后访问时间和数据大小
-        current_time = time.time()
-        
-        def calculate_score(key: str) -> float:
-            entry = self.cache[key]
-            time_factor = current_time - entry.last_accessed  # 时间越久分数越高
-            access_factor = 1.0 / (entry.access_count + 1)  # 访问越少分数越高
-            # 综合评分（时间因素权重更高）
-            return time_factor * 0.7 + access_factor * 0.3
-        
-        # 找到评分最高（最应该被淘汰）的条目
-        lru_key = max(self.cache.keys(), key=calculate_score)
-        
-        value_size = self._estimate_size(self.cache[lru_key].value)
-        del self.cache[lru_key]
-        self.current_memory_bytes -= value_size
-        self.eviction_count += 1
-        
-        logger.debug(f"LRU淘汰: {lru_key} (释放: {value_size / 1024:.2f}KB)")
-        return True
+
+        rebuilt_heap = False
+        while True:
+            while self._eviction_heap:
+                _, heap_ticket, lru_key = heapq.heappop(self._eviction_heap)
+                entry = self.cache.get(lru_key)
+
+                # 堆中的旧记录会在这里被惰性丢弃。
+                if entry is None or entry.heap_ticket != heap_ticket:
+                    continue
+
+                value_size = self._get_entry_size(entry)
+                del self.cache[lru_key]
+                self.current_memory_bytes -= value_size
+                self.eviction_count += 1
+
+                logger.debug(f"LRU淘汰: {lru_key} (释放: {value_size / 1024:.2f}KB)")
+                return True
+
+            if rebuilt_heap or not self.cache:
+                return False
+
+            self._rebuild_eviction_heap()
+            rebuilt_heap = True
+
+    def _calculate_eviction_order_key(self, entry: CacheEntry) -> float:
+        """计算堆排序键，数值越小越应优先淘汰。"""
+        return entry.last_accessed * 0.7 - 0.3 / (entry.access_count + 1)
+
+    def _push_eviction_candidate(self, entry: CacheEntry) -> None:
+        """将条目的当前访问状态压入淘汰堆。"""
+        self._next_heap_ticket += 1
+        entry.heap_ticket = self._next_heap_ticket
+        eviction_key = self._calculate_eviction_order_key(entry)
+        heapq.heappush(self._eviction_heap, (eviction_key, entry.heap_ticket, entry.key))
+        self._maybe_compact_eviction_heap()
+
+    def _maybe_compact_eviction_heap(self) -> None:
+        """在堆中失效记录膨胀过多时重建，限制热点键访问带来的堆增长。"""
+        cache_size = len(self.cache)
+        if cache_size == 0:
+            self._eviction_heap.clear()
+            return
+
+        max_heap_size = max(
+            self._heap_compaction_min_size,
+            cache_size * self._heap_compaction_ratio,
+        )
+        if len(self._eviction_heap) > max_heap_size:
+            self._rebuild_eviction_heap()
+
+    def _rebuild_eviction_heap(self) -> None:
+        """基于当前缓存状态重建淘汰堆。"""
+        self._eviction_heap.clear()
+        for entry in self.cache.values():
+            self._push_eviction_candidate(entry)
+
+    def _get_entry_size(self, entry: CacheEntry) -> int:
+        """获取缓存条目大小，优先复用条目上的估算结果。"""
+        if entry.size_bytes > 0:
+            return entry.size_bytes
+
+        entry.size_bytes = self._estimate_size(entry.value)
+        return entry.size_bytes
     
     def _estimate_size(self, obj: Any) -> int:
         """
@@ -273,7 +336,7 @@ class MemoryCache:
         with self._lock:
             expired_keys = [k for k, v in self.cache.items() if v.is_expired()]
             for key in expired_keys:
-                value_size = self._estimate_size(self.cache[key].value)
+                value_size = self._get_entry_size(self.cache[key])
                 del self.cache[key]
                 self.current_memory_bytes -= value_size
             
@@ -324,7 +387,8 @@ class FileCache:
                 with open(cache_path, 'rb') as f:
                     entry_data = pickle.load(f)
                 
-                entry = CacheEntry(**entry_data['entry'])
+                cached_value = entry_data.get('value')
+                entry = CacheEntry.from_dict(entry_data['entry'], value=cached_value)
                 
                 # 检查过期
                 if entry.is_expired():
@@ -333,7 +397,7 @@ class FileCache:
                     return None
                 
                 logger.debug(f"文件缓存命中: {key}")
-                return entry_data['value']
+                return cached_value
             
             except Exception as e:
                 logger.error(f"读取文件缓存失败 {key}: {e}")
@@ -358,7 +422,7 @@ class FileCache:
             try:
                 entry = CacheEntry(key=key, value=value, ttl=ttl)
                 cache_data = {
-                    'entry': asdict(entry),
+                    'entry': entry.to_dict(),
                     'value': value
                 }
                 
@@ -409,7 +473,7 @@ class FileCache:
                         with open(cache_file, 'rb') as f:
                             cache_data = pickle.load(f)
                         
-                        entry = CacheEntry(**cache_data['entry'])
+                        entry = CacheEntry.from_dict(cache_data['entry'], value=cache_data.get('value'))
                         if entry.is_expired():
                             cache_file.unlink()
                             count += 1

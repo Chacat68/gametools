@@ -18,6 +18,11 @@ def test_field_and_language_helpers():
 
     assert translator.parse_field_with_type("desc,前端,C") == ("desc", "前端", "C")
     assert translator.parse_field_with_type("desc,后端") == ("desc", "后端", None)
+    assert translator.detect_language_type("中文内容") == "中文"
+    assert translator.detect_language_type("中文内容") == "中文"
+    assert translator._language_type_cache.get("中文内容") == "中文"
+    translator.reset_runtime_state()
+    assert translator._language_type_cache == {}
 
     config = {"language": {"code": "vn", "name": "越南语"}}
     assert translator.get_json_language(config) == "vn"

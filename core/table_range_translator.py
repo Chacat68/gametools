@@ -78,6 +78,9 @@ class TableRangeTranslator:
         }
         
         self.error_logs = []
+        self._field_index_cache: Dict[int, Tuple[Tuple[int, int], Dict[str, int]]] = {}
+        self._language_type_cache: Dict[str, str] = {}
+        self._language_type_cache_max_size = 4096
         
         # 边界检测关键字（检测到此关键字后停止导出）
         self.boundary_keyword = 'over'
@@ -95,6 +98,8 @@ class TableRangeTranslator:
             'total_rows': 0
         }
         self.error_logs = []
+        self._field_index_cache = {}
+        self._language_type_cache = {}
 
     def _raise_processing_error(self, message: str, exc: Exception = None):
         """统一记录并抛出处理错误，避免上层把失败误判为空结果。"""
@@ -704,6 +709,9 @@ class TableRangeTranslator:
             return "空"
         
         text_str = str(text).strip()
+        cached_language_type = self._language_type_cache.get(text_str)
+        if cached_language_type is not None:
+            return cached_language_type
         
         # 使用统一的语言检测函数
         has_chinese = contains_chinese(text_str)
@@ -712,19 +720,24 @@ class TableRangeTranslator:
         
         # 判断语言类型
         if has_chinese and has_vietnamese:
-            return "中越混合"
+            language_type = "中越混合"
         elif has_chinese and has_thai:
-            return "中泰混合"
+            language_type = "中泰混合"
         elif has_vietnamese and has_thai:
-            return "越泰混合"
+            language_type = "越泰混合"
         elif has_chinese:
-            return "中文"
+            language_type = "中文"
         elif has_vietnamese:
-            return "越南文"
+            language_type = "越南文"
         elif has_thai:
-            return "泰文"
+            language_type = "泰文"
         else:
-            return "其他"
+            language_type = "其他"
+
+        if len(self._language_type_cache) >= self._language_type_cache_max_size:
+            self._language_type_cache.clear()
+        self._language_type_cache[text_str] = language_type
+        return language_type
     
     def column_index_to_letter(self, col_idx: int) -> str:
         """
@@ -825,15 +838,26 @@ class TableRangeTranslator:
         """
         if len(df) < 5:
             return None
-        
-        # 第5行是字段名行（索引为4）
-        field_row = df.iloc[4]
-        
-        for col_idx, cell_value in enumerate(field_row):
-            if pd.notna(cell_value) and str(cell_value).strip() == field_name:
-                return col_idx
-        
-        return None
+
+        cache_key = id(df)
+        df_shape = (len(df), len(df.columns))
+        cached_entry = self._field_index_cache.get(cache_key)
+
+        if cached_entry is None or cached_entry[0] != df_shape:
+            # 第5行是字段名行（索引为4）
+            field_row = df.iloc[4]
+            field_index_map: Dict[str, int] = {}
+
+            for col_idx, cell_value in enumerate(field_row):
+                if pd.notna(cell_value):
+                    normalized_name = str(cell_value).strip()
+                    if normalized_name and normalized_name not in field_index_map:
+                        field_index_map[normalized_name] = col_idx
+
+            cached_entry = (df_shape, field_index_map)
+            self._field_index_cache[cache_key] = cached_entry
+
+        return cached_entry[1].get(field_name)
     
     def extract_table_data(self, excel_path: str, table_info: Dict) -> List[Dict]:
         """

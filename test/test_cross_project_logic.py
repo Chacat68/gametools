@@ -39,6 +39,16 @@ def test_find_project_file():
         assert translator.find_project_file(str(root), "quest") == str(fuzzy_file)
         assert translator.find_project_file(str(root), "missing") is None
 
+        # 重复查询应命中运行期缓存，结果保持一致
+        assert translator.find_project_file(str(root), "dialog") == str(direct_file)
+        assert translator.find_project_file(str(root), "quest") == str(fuzzy_file)
+
+        # 清理运行态缓存后，新加入的文件应可被重新索引并找到
+        late_file = nested_dir / "newquest_dialog.xlsx"
+        late_file.touch()
+        translator.clear_runtime_cache()
+        assert translator.find_project_file(str(root), "newquest_dialog") == str(late_file)
+
     return True
 
 

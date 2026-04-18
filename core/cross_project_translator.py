@@ -33,12 +33,43 @@ class CrossProjectTranslator:
         """初始化翻译对应工具"""
         self.supported_formats = ['.xlsx', '.xls']
         self.project_files = {}  # 存储项目文件缓存
+        self.project_file_indexes = {}  # 存储目录级文件索引
+        self.project_file_search_cache = {}  # 存储单次运行内的搜索结果缓存
         self.translation_results = []
 
     def clear_runtime_cache(self):
         """清理单次运行之外的内存缓存，避免 GUI 长时间保留大量 DataFrame。"""
         self.project_files.clear()
+        self.project_file_indexes.clear()
+        self.project_file_search_cache.clear()
         self.translation_results = []
+
+    def _get_project_file_index(self, project_directory: str) -> Dict[str, Any]:
+        """构建并缓存目录中的 Excel 文件索引，避免重复遍历目录树。"""
+        normalized_dir = os.path.abspath(project_directory)
+        cached_index = self.project_file_indexes.get(normalized_dir)
+        if cached_index is not None:
+            return cached_index
+
+        exact_matches: Dict[str, str] = {}
+        fuzzy_candidates: List[Tuple[str, str]] = []
+
+        for root, dirs, files in os.walk(project_directory):
+            for file_name in files:
+                lower_name = file_name.lower()
+                if not lower_name.endswith(('.xlsx', '.xls')):
+                    continue
+
+                file_path = os.path.join(root, file_name)
+                exact_matches.setdefault(lower_name, file_path)
+                fuzzy_candidates.append((lower_name, file_path))
+
+        index = {
+            'exact_matches': exact_matches,
+            'fuzzy_candidates': fuzzy_candidates,
+        }
+        self.project_file_indexes[normalized_dir] = index
+        return index
 
     def _require_pandas(self, action: str) -> bool:
         """在真正需要 DataFrame 能力前检查 pandas 依赖。"""
@@ -315,6 +346,10 @@ class CrossProjectTranslator:
             找到的文件路径，如果未找到返回None
         """
         try:
+            search_key = (os.path.abspath(project_directory), table_name.lower())
+            if search_key in self.project_file_search_cache:
+                return self.project_file_search_cache[search_key]
+
             possible_names = [
                 f"{table_name}.xlsx",
                 f"{table_name}.xls",
@@ -325,16 +360,27 @@ class CrossProjectTranslator:
             for name in possible_names:
                 file_path = os.path.join(project_directory, name)
                 if os.path.exists(file_path):
+                    self.project_file_search_cache[search_key] = file_path
                     return file_path
 
-            for root, dirs, files in os.walk(project_directory):
-                for file in files:
-                    if file.lower().startswith(table_name.lower()) and file.lower().endswith(('.xlsx', '.xls')):
-                        return os.path.join(root, file)
+            file_index = self._get_project_file_index(project_directory)
+
+            for name in possible_names:
+                indexed_path = file_index['exact_matches'].get(name.lower())
+                if indexed_path:
+                    self.project_file_search_cache[search_key] = indexed_path
+                    return indexed_path
+
+            table_name_lower = table_name.lower()
+            for lower_file_name, file_path in file_index['fuzzy_candidates']:
+                if lower_file_name.startswith(table_name_lower):
+                    self.project_file_search_cache[search_key] = file_path
+                    return file_path
         except OSError as e:
             logger.error(f"查找项目文件失败 {table_name}: {e}")
             return None
 
+        self.project_file_search_cache[search_key] = None
         return None
     
     def export_results(self, output_path: str) -> bool:

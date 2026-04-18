@@ -18,6 +18,7 @@ import os
 import time
 import shutil
 import argparse
+import pickle
 from pathlib import Path
 
 # 添加模块路径
@@ -54,6 +55,10 @@ def test_basic_cache():
         file_cache.set("test_file_key", {"file_data": "test"})
         result = file_cache.get("test_file_key")
         assert result == {"file_data": "test"}, "文件缓存数据不匹配"
+        cache_path = file_cache._get_cache_path("test_file_key")
+        with open(cache_path, 'rb') as f:
+            raw_cache = pickle.load(f)
+        assert 'value' not in raw_cache['entry'], "文件缓存元数据不应重复序列化 value"
         print(f"    ✅ 文件缓存正常工作")
         
         # 清理测试文件
@@ -75,6 +80,30 @@ def test_basic_cache():
         print(f"    ✅ LRU淘汰机制正常")
         results['LRU淘汰'] = True
 
+        print("\n[4.1] 测试访问后淘汰顺序更新...")
+        hot_cache = MemoryCache(max_size=2, default_ttl=3600)
+        hot_cache.set("cold_key", "cold")
+        hot_cache.set("hot_key", "hot")
+        assert hot_cache.get("cold_key") == "cold", "cold_key 应能被读取"
+        hot_cache.set("new_key", "new")
+        assert hot_cache.get("cold_key") == "cold", "被访问后的 cold_key 不应被淘汰"
+        assert hot_cache.get("hot_key") is None, "未被访问的 hot_key 应优先被淘汰"
+        print("    ✅ 访问后淘汰顺序更新正常")
+        results['访问后淘汰'] = True
+
+        print("\n[4.2] 测试淘汰堆定期压缩...")
+        compact_cache = MemoryCache(max_size=4, default_ttl=3600)
+        compact_cache.set("hot_key", "hot_value")
+        for _ in range(200):
+            assert compact_cache.get("hot_key") == "hot_value", "热点键在压缩过程中应保持可读"
+        max_heap_size = max(
+            compact_cache._heap_compaction_min_size,
+            len(compact_cache.cache) * compact_cache._heap_compaction_ratio,
+        )
+        assert len(compact_cache._eviction_heap) <= max_heap_size, "淘汰堆应在阈值内完成压缩"
+        print("    ✅ 淘汰堆定期压缩正常")
+        results['堆压缩'] = True
+
         print("\n[5] 测试替换现有键时的容量控制...")
         replace_cache = MemoryCache(max_size=3, default_ttl=3600, max_memory_mb=0.00025)
         replace_cache.set("same_key", "a" * 80)
@@ -85,6 +114,17 @@ def test_basic_cache():
         assert replace_cache.current_memory_bytes <= replace_cache.max_memory_bytes, "替换现有键后缓存内存不应超过上限"
         print(f"    ✅ 替换现有键时容量控制正常")
         results['替换容量控制'] = True
+
+        print("\n[6] 测试缓存条目大小复用...")
+        sized_cache = MemoryCache(max_size=10, default_ttl=3600)
+        sized_payload = {"rows": ["x" * 32 for _ in range(16)]}
+        sized_cache.set("payload", sized_payload)
+        entry = sized_cache.cache.get("payload")
+        assert entry is not None and entry.size_bytes > 0, "缓存条目应保存估算大小"
+        sized_cache.delete("payload")
+        assert sized_cache.current_memory_bytes == 0, "删除缓存后内存统计应归零"
+        print("    ✅ 缓存条目大小复用正常")
+        results['大小复用'] = True
         
     except Exception as e:
         print(f"    ❌ 测试失败: {e}")
