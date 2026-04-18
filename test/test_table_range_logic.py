@@ -58,6 +58,72 @@ def test_json_loading_and_output_name():
     return True
 
 
+def test_excel_loading_helper_normalizes_errors():
+    translator = TableRangeTranslator()
+    original_pd = table_range_module.pd
+
+    class FakeFrame:
+        def __len__(self):
+            return 8
+
+    class FakePandas:
+        @staticmethod
+        def read_excel(excel_path, sheet_name=None, header=None):
+            if sheet_name == "MissingSheet":
+                raise ValueError("Worksheet named 'MissingSheet' not found")
+            return FakeFrame()
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        base = Path(temp_dir)
+        excel_path = base / "items.xlsx"
+        excel_path.write_text("placeholder", encoding="utf-8")
+
+        table_range_module.pd = FakePandas()
+        try:
+            missing_df, missing_error = translator._load_excel_sheet(str(base / "none.xlsx"), "Sheet1")
+            bad_sheet_df, bad_sheet_error = translator._load_excel_sheet(str(excel_path), "MissingSheet")
+            ok_df, ok_error = translator._load_excel_sheet(str(excel_path), "Sheet1")
+
+            assert missing_df is None
+            assert missing_error == "文件不存在"
+            assert bad_sheet_df is None
+            assert "工作表读取失败" in bad_sheet_error
+            assert ok_df is not None
+            assert ok_error is None
+            assert translator.column_letter_to_index("AA") == 26
+            try:
+                translator.column_letter_to_index("A1")
+            except ValueError:
+                return True
+        finally:
+            table_range_module.pd = original_pd
+
+    return False
+
+
+def test_invalid_merged_json_raises_fatal_error():
+    translator = TableRangeTranslator()
+    original_pd = table_range_module.pd
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        base = Path(temp_dir)
+        json_path = base / "bad.json"
+        json_path.write_text("{bad json", encoding="utf-8")
+
+        table_range_module.pd = object()
+        try:
+            try:
+                translator.process_with_merged_json(str(json_path), {"zh": str(base)})
+            except TableRangeTranslatorError as exc:
+                assert "加载合并JSON配置失败" in str(exc)
+                assert translator.error_logs, "坏 JSON 应记录错误日志"
+                return True
+        finally:
+            table_range_module.pd = original_pd
+
+    return False
+
+
 def test_dependency_degradation_for_processing():
     translator = TableRangeTranslator()
     original_pd = table_range_module.pd
@@ -92,6 +158,8 @@ def main():
     tests = [
         ("字段与语言辅助函数", test_field_and_language_helpers),
         ("JSON加载与输出命名", test_json_loading_and_output_name),
+        ("Excel读取归一化", test_excel_loading_helper_normalizes_errors),
+        ("坏JSON致命错误", test_invalid_merged_json_raises_fatal_error),
         ("依赖降级", test_dependency_degradation_for_processing),
     ]
 

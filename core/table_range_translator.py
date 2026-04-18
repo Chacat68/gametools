@@ -11,6 +11,7 @@ import os
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
+from zipfile import BadZipFile
 
 try:
     import pandas as pd  # type: ignore
@@ -128,6 +129,56 @@ class TableRangeTranslator:
         logger.error(message)
         self.error_logs.append(message)
         return message
+
+    def _load_excel_sheet(self, excel_path: str, sheet_name: str,
+                          minimum_rows: int = 7) -> Tuple[Optional[DataFrameType], Optional[str]]:
+        """统一读取 Excel 工作表，并返回标准化错误信息。"""
+        dependency_error = self._record_missing_dependency(
+            "读取Excel工作表",
+            require_pandas=True,
+        )
+        if dependency_error:
+            return None, dependency_error
+
+        if not os.path.exists(excel_path):
+            return None, "文件不存在"
+
+        try:
+            df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
+        except FileNotFoundError:
+            return None, "文件不存在"
+        except ValueError as exc:
+            return None, f"工作表读取失败 - {exc}"
+        except (BadZipFile, OSError, ImportError) as exc:
+            return None, f"文件读取失败 - {exc}"
+
+        if len(df) < minimum_rows:
+            return None, "数据行不足"
+
+        return df, None
+
+    def _load_table_data_by_language(self, table_name: str, sheet_name: str,
+                                     lang_dirs: Dict[str, str], lang_names: Dict[str, str],
+                                     log_progress, allowed_langs: Optional[Set[str]] = None) -> Dict[str, DataFrameType]:
+        """读取一个表在多个语言目录下的 Excel 数据。"""
+        table_data_by_lang: Dict[str, DataFrameType] = {}
+
+        for lang, lang_dir in lang_dirs.items():
+            if allowed_langs is not None and lang not in allowed_langs:
+                continue
+
+            excel_path = os.path.join(lang_dir, table_name)
+            lang_name = lang_names.get(lang, lang)
+            df, error_message = self._load_excel_sheet(excel_path, sheet_name)
+
+            if error_message:
+                log_progress(f"      ✗ {lang_name}: {error_message}")
+                continue
+
+            table_data_by_lang[lang] = df
+            log_progress(f"      ✓ {lang_name}: {len(df) - 6} 行数据")
+
+        return table_data_by_lang
     
     def _check_row_boundary(self, df: DataFrameType, row_idx: int) -> bool:
         """
@@ -202,8 +253,14 @@ class TableRangeTranslator:
             
             return config
         
-        except Exception as e:
-            logger.error(f"加载JSON配置失败: {e}")
+        except FileNotFoundError:
+            logger.error(f"JSON配置文件不存在: {json_path}")
+            return {}
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON配置格式错误: {json_path} - {e}")
+            return {}
+        except OSError as e:
+            logger.error(f"读取JSON配置失败: {json_path} - {e}")
             return {}
     
     def get_json_language(self, config: Dict) -> Optional[str]:
@@ -284,8 +341,14 @@ class TableRangeTranslator:
             
             return config
         
-        except Exception as e:
-            logger.error(f"加载合并JSON配置失败: {e}")
+        except FileNotFoundError:
+            logger.error(f"合并JSON配置文件不存在: {json_path}")
+            return {}
+        except json.JSONDecodeError as e:
+            logger.error(f"合并JSON配置格式错误: {json_path} - {e}")
+            return {}
+        except OSError as e:
+            logger.error(f"读取合并JSON配置失败: {json_path} - {e}")
             return {}
     
     def process_with_merged_json(self, json_path: str, lang_dirs: Dict[str, str],
@@ -431,28 +494,14 @@ class TableRangeTranslator:
                 
                 # 从各语言目录读取Excel数据
                 log_progress("   📁 读取语言版本文件:")
-                table_data_by_lang = {}
-                for lang, lang_dir in lang_dirs.items():
-                    if lang not in lang_configs:
-                        continue
-                    
-                    excel_path = os.path.join(lang_dir, table_name)
-                    lang_name = lang_names.get(lang, lang)
-                    
-                    if not os.path.exists(excel_path):
-                        log_progress(f"      ✗ {lang_name}: 文件不存在")
-                        continue
-                    
-                    try:
-                        df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
-                        if len(df) < 7:
-                            log_progress(f"      ✗ {lang_name}: 数据行不足")
-                            continue
-                        table_data_by_lang[lang] = df
-                        log_progress(f"      ✓ {lang_name}: {len(df)-6} 行数据")
-                    except Exception as e:
-                        log_progress(f"      ✗ {lang_name}: 读取失败 - {e}")
-                        continue
+                table_data_by_lang = self._load_table_data_by_language(
+                    table_name=table_name,
+                    sheet_name=sheet_name,
+                    lang_dirs=lang_dirs,
+                    lang_names=lang_names,
+                    log_progress=log_progress,
+                    allowed_langs=set(lang_configs.keys()),
+                )
                 
                 if not table_data_by_lang:
                     log_progress(f"   ⚠️ 所有语言版本都不可用，跳过")
@@ -489,7 +538,7 @@ class TableRangeTranslator:
                                             log_progress(f"      ⚠️ {lang_names.get(lang)}: 列{col_letter}字段名不匹配 (期望:{field_name}, 实际:{actual_field})")
                                             # 回退到按名称查找
                                             col_idx = self.find_column_index_by_name(df, field_name)
-                            except Exception:
+                            except ValueError:
                                 col_idx = None
                         
                         # 如果列字母定位失败，回退到按名称查找
@@ -707,8 +756,12 @@ class TableRangeTranslator:
         Returns:
             int: 列索引（从0开始）
         """
+        normalized = str(col_letter).strip().upper()
+        if not normalized or not normalized.isalpha():
+            raise ValueError(f"无效的Excel列字母: {col_letter}")
+
         result = 0
-        for char in col_letter.upper():
+        for char in normalized:
             result = result * 26 + (ord(char) - ord('A') + 1)
         return result - 1
 
@@ -723,7 +776,7 @@ class TableRangeTranslator:
         try:
             if isinstance(value, (int, float)) and float(value).is_integer():
                 return str(int(value))
-        except Exception:
+        except (TypeError, ValueError):
             pass
         if value_str.endswith('.0'):
             prefix = value_str[:-2]
@@ -814,12 +867,9 @@ class TableRangeTranslator:
             logger.info(f"可导出字段: {exportable_count} 个")
             self.processing_stats['exported_fields'] += exportable_count
             
-            # 读取Excel文件
-            df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
-            
-            # 从第7行开始提取数据（索引6）
-            if len(df) < 7:
-                logger.warning(f"表格 {table_name} 数据行不足，跳过")
+            df, load_error = self._load_excel_sheet(excel_path, sheet_name)
+            if load_error:
+                logger.warning(f"表格 {table_name} 读取失败，跳过: {load_error}")
                 return []
             
             extracted_rows = []
@@ -841,7 +891,7 @@ class TableRangeTranslator:
                         if col_idx >= len(df.columns):
                             logger.warning(f"字段 {field_name} 的列号 {col_letter_hint} 超出范围，尝试按名称查找")
                             col_idx = None
-                    except Exception:
+                    except ValueError:
                         logger.warning(f"字段 {field_name} 的列号 {col_letter_hint} 解析失败，尝试按名称查找")
                         col_idx = None
                 
@@ -913,6 +963,12 @@ class TableRangeTranslator:
             List[Dict]: 所有提取的数据
         """
         self.reset_runtime_state()
+        dependency_error = self._record_missing_dependency(
+            "处理多语言翻译提取",
+            require_pandas=True,
+        )
+        if dependency_error:
+            self._raise_processing_error(dependency_error)
 
         try:
             # 加载JSON配置
@@ -1193,26 +1249,13 @@ class TableRangeTranslator:
                 # 从各语言目录读取数据
                 log_progress("   ")
                 log_progress("   📁 读取语言版本文件:")
-                table_data_by_lang = {}
-                for lang, lang_dir in lang_dirs.items():
-                    excel_path = os.path.join(lang_dir, table_name)
-                    lang_name = lang_names.get(lang, lang)
-                    
-                    if not os.path.exists(excel_path):
-                        log_progress(f"      ✗ {lang_name}: 文件不存在")
-                        continue
-                    
-                    # 读取Excel
-                    try:
-                        df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
-                        if len(df) < 7:
-                            log_progress(f"      ✗ {lang_name}: 数据行不足")
-                            continue
-                        table_data_by_lang[lang] = df
-                        log_progress(f"      ✓ {lang_name}: {len(df)-6} 行数据")
-                    except Exception as e:
-                        log_progress(f"      ✗ {lang_name}: 读取失败 - {e}")
-                        continue
+                table_data_by_lang = self._load_table_data_by_language(
+                    table_name=table_name,
+                    sheet_name=sheet_name,
+                    lang_dirs=lang_dirs,
+                    lang_names=lang_names,
+                    log_progress=log_progress,
+                )
                 
                 if not table_data_by_lang:
                     log_progress(f"   ⚠️  所有语言版本都不可用，跳过")
@@ -1412,26 +1455,13 @@ class TableRangeTranslator:
                 # 从各语言目录读取数据
                 log_progress("   ")
                 log_progress("   📁 读取语言版本文件:")
-                table_data_by_lang = {}
-                for lang, lang_dir in lang_dirs.items():
-                    excel_path = os.path.join(lang_dir, table_name)
-                    lang_name = lang_names.get(lang, lang)
-                    
-                    if not os.path.exists(excel_path):
-                        log_progress(f"      ✗ {lang_name}: 文件不存在")
-                        continue
-                    
-                    # 读取Excel
-                    try:
-                        df = pd.read_excel(excel_path, sheet_name=sheet_name, header=None)
-                        if len(df) < 7:
-                            log_progress(f"      ✗ {lang_name}: 数据行不足")
-                            continue
-                        table_data_by_lang[lang] = df
-                        log_progress(f"      ✓ {lang_name}: {len(df)-6} 行数据")
-                    except Exception as e:
-                        log_progress(f"      ✗ {lang_name}: 读取失败 - {e}")
-                        continue
+                table_data_by_lang = self._load_table_data_by_language(
+                    table_name=table_name,
+                    sheet_name=sheet_name,
+                    lang_dirs=lang_dirs,
+                    lang_names=lang_names,
+                    log_progress=log_progress,
+                )
                 
                 if not table_data_by_lang:
                     log_progress(f"   ⚠️  所有语言版本都不可用，跳过")
