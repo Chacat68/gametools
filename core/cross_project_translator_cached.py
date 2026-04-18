@@ -15,7 +15,8 @@ import time
 from hashlib import md5
 
 from .cross_project_translator import CrossProjectTranslator
-from .cache_manager import CacheManager, get_cache_manager
+from .cache_manager import CacheManager
+from .config_manager import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,9 @@ logger = logging.getLogger(__name__)
 class CrossProjectTranslatorWithCache(CrossProjectTranslator):
     """增强版跨项目翻译对应工具 - 支持缓存（继承自CrossProjectTranslator）"""
     
-    def __init__(self, cache_dir: str = ".cache", enable_file_cache: bool = True,
-                 memory_cache_size: int = 1000, cache_ttl: Optional[float] = 86400):
+    def __init__(self, cache_dir: str = ".cache", enable_file_cache: Optional[bool] = None,
+                 memory_cache_size: Optional[int] = None, cache_ttl: Optional[float] = None,
+                 max_memory_mb: Optional[float] = None, enabled: Optional[bool] = None):
         """
         初始化增强版翻译对应工具
         
@@ -33,16 +35,32 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
             enable_file_cache: 是否启用文件缓存
             memory_cache_size: 内存缓存最大条目数
             cache_ttl: 缓存过期时间（秒），默认24小时
+            max_memory_mb: 内存缓存最大使用量（MB）
+            enabled: 是否启用缓存
         """
         # 调用父类初始化
         super().__init__()
+
+        cache_config = get_config().cache
+        if enabled is None:
+            enabled = cache_config.enabled
+        if enable_file_cache is None:
+            enable_file_cache = enabled
+        if memory_cache_size is None:
+            memory_cache_size = cache_config.max_size
+        if cache_ttl is None:
+            cache_ttl = cache_config.default_ttl
+        if max_memory_mb is None:
+            max_memory_mb = cache_config.max_memory_mb
         
         # 初始化缓存管理器
         self.cache_manager = CacheManager(
             memory_size=memory_cache_size,
             cache_dir=cache_dir,
             default_ttl=cache_ttl,
-            use_file_cache=enable_file_cache
+            use_file_cache=enable_file_cache,
+            max_memory_mb=max_memory_mb,
+            enabled=enabled,
         )
         
         # 缓存键前缀

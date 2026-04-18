@@ -74,6 +74,17 @@ def test_basic_cache():
         assert small_cache.get("key_4") == "value_4", "key_4 应该存在"
         print(f"    ✅ LRU淘汰机制正常")
         results['LRU淘汰'] = True
+
+        print("\n[5] 测试替换现有键时的容量控制...")
+        replace_cache = MemoryCache(max_size=3, default_ttl=3600, max_memory_mb=0.00025)
+        replace_cache.set("same_key", "a" * 80)
+        replace_cache.set("other_key", "b" * 80)
+        replace_cache.set("same_key", "c" * 160)
+
+        assert replace_cache.get("same_key") == "c" * 160, "same_key 应该被新值覆盖"
+        assert replace_cache.current_memory_bytes <= replace_cache.max_memory_bytes, "替换现有键后缓存内存不应超过上限"
+        print(f"    ✅ 替换现有键时容量控制正常")
+        results['替换容量控制'] = True
         
     except Exception as e:
         print(f"    ❌ 测试失败: {e}")
@@ -121,8 +132,8 @@ def test_cache_performance():
         print("\n[3] 缓存统计...")
         stats = cache.get_stats()
         print(f"    当前条目: {stats.get('size', 'N/A')}")
-        print(f"    命中次数: {stats.get('hits', 'N/A')}")
-        print(f"    未命中: {stats.get('misses', 'N/A')}")
+        print(f"    命中次数: {stats.get('hit_count', 'N/A')}")
+        print(f"    未命中: {stats.get('miss_count', 'N/A')}")
         
         print("\n✅ 性能测试完成")
         return True

@@ -7,13 +7,55 @@
 
 import json
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Optional
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, fields
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+LEGACY_VISIBLE_PAGES_TO_TABS = {
+    'cross_project': 'cross_project_translator',
+    'json_detector': 'json_detector',
+    'excel_processor': 'excel_data_processor',
+    'field_extractor': 'field_extractor',
+    'table_range': 'table_range_translator',
+    'batch_modifier': 'batch_modifier',
+}
+
+
+def _get_app_version() -> str:
+    """获取应用版本，避免在多个模块中硬编码版本号。"""
+    try:
+        from version import get_version
+        return get_version()
+    except Exception:
+        return "unknown"
+
+
+def _filter_section_data(section_cls, section_data: Any) -> Dict[str, Any]:
+    """过滤掉配置节中的未知字段，兼容旧版本或扩展字段。"""
+    if not isinstance(section_data, dict):
+        return {}
+
+    valid_keys = {item.name for item in fields(section_cls)}
+    return {key: value for key, value in section_data.items() if key in valid_keys}
+
+
+def _deep_merge_dict(base: Any, updates: Any) -> Any:
+    """递归合并字典，保留未知字段。"""
+    if not isinstance(base, dict) or not isinstance(updates, dict):
+        return deepcopy(updates)
+
+    merged = deepcopy(base)
+    for key, value in updates.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_dict(merged[key], value)
+        else:
+            merged[key] = deepcopy(value)
+    return merged
 
 
 @dataclass
@@ -86,7 +128,7 @@ class TabVisibilityConfig:
 @dataclass
 class GameToolsConfig:
     """GameTools 主配置"""
-    version: str = "1.23.0"
+    version: str = field(default_factory=_get_app_version)
     last_updated: str = field(default_factory=lambda: datetime.now().isoformat())
     
     scan: ScanConfig = field(default_factory=ScanConfig)
@@ -104,7 +146,7 @@ class ConfigManager:
     _instance = None
     _initialized = False
     
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -118,8 +160,69 @@ class ConfigManager:
         """
         if not self._initialized:
             self.config_file = Path(config_file)
+            self._raw_config_data: Dict[str, Any] = {}
             self.config = self._load_config()
             self._initialized = True
+
+    def _build_config_from_data(self, data: Dict[str, Any]) -> GameToolsConfig:
+        """从原始 JSON 数据构建配置对象，并忽略未知字段。"""
+        if not isinstance(data, dict):
+            data = {}
+
+        return GameToolsConfig(
+            version=data.get('version') or _get_app_version(),
+            last_updated=data.get('last_updated') or datetime.now().isoformat(),
+            scan=ScanConfig(**_filter_section_data(ScanConfig, data.get('scan', {}))),
+            cache=CacheConfig(**_filter_section_data(CacheConfig, data.get('cache', {}))),
+            log=LogConfig(**_filter_section_data(LogConfig, data.get('log', {}))),
+            ui=UIConfig(**_filter_section_data(UIConfig, data.get('ui', {}))),
+            path=PathConfig(**_filter_section_data(PathConfig, data.get('path', {}))),
+            detection=DetectionConfig(**_filter_section_data(DetectionConfig, data.get('detection', {}))),
+            tabs=TabVisibilityConfig(**_filter_section_data(TabVisibilityConfig, data.get('tabs', {}))),
+        )
+
+    def _migrate_config_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """迁移旧版配置结构到当前 schema，同时保留原始未知字段。"""
+        migrated = deepcopy(data) if isinstance(data, dict) else {}
+        applied_migrations = []
+
+        current_version = _get_app_version()
+        if current_version != "unknown" and migrated.get('version') != current_version:
+            migrated['version'] = current_version
+            applied_migrations.append('version')
+
+        visible_pages = migrated.get('visible_pages')
+        current_tabs = _filter_section_data(TabVisibilityConfig, migrated.get('tabs', {}))
+        normalized_tabs = asdict(TabVisibilityConfig())
+        normalized_tabs.update(current_tabs)
+
+        if isinstance(visible_pages, dict):
+            for legacy_key, current_key in LEGACY_VISIBLE_PAGES_TO_TABS.items():
+                if current_key not in current_tabs and legacy_key in visible_pages:
+                    normalized_tabs[current_key] = bool(visible_pages[legacy_key])
+                    applied_migrations.append(f'visible_pages.{legacy_key}->{current_key}')
+
+        migrated['tabs'] = normalized_tabs
+
+        if applied_migrations:
+            logger.info("配置迁移已应用: %s", ", ".join(dict.fromkeys(applied_migrations)))
+
+        return migrated
+
+    def _serialize_config(self) -> Dict[str, Any]:
+        """序列化配置，同时保留当前 schema 外的原始字段。"""
+        known_config = {
+            'version': self.config.version,
+            'last_updated': self.config.last_updated,
+            'scan': asdict(self.config.scan),
+            'cache': asdict(self.config.cache),
+            'log': asdict(self.config.log),
+            'ui': asdict(self.config.ui),
+            'path': asdict(self.config.path),
+            'detection': asdict(self.config.detection),
+            'tabs': asdict(self.config.tabs),
+        }
+        return _deep_merge_dict(self._raw_config_data, known_config)
     
     def _load_config(self) -> GameToolsConfig:
         """
@@ -132,28 +235,20 @@ class ConfigManager:
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                
-                # 重建配置对象
-                config = GameToolsConfig(
-                    version=data.get('version', '1.23.0'),
-                    last_updated=data.get('last_updated', datetime.now().isoformat()),
-                    scan=ScanConfig(**data.get('scan', {})),
-                    cache=CacheConfig(**data.get('cache', {})),
-                    log=LogConfig(**data.get('log', {})),
-                    ui=UIConfig(**data.get('ui', {})),
-                    path=PathConfig(**data.get('path', {})),
-                    detection=DetectionConfig(**data.get('detection', {})),
-                    tabs=TabVisibilityConfig(**data.get('tabs', {}))
-                )
+                migrated_data = self._migrate_config_data(data)
+                self._raw_config_data = deepcopy(migrated_data)
+                config = self._build_config_from_data(migrated_data)
                 
                 logger.info(f"配置已加载: {self.config_file}")
                 return config
                 
             except Exception as e:
                 logger.warning(f"加载配置失败，使用默认配置: {e}")
+                self._raw_config_data = {}
                 return GameToolsConfig()
         else:
             logger.info("配置文件不存在，使用默认配置")
+            self._raw_config_data = {}
             return GameToolsConfig()
     
     def save_config(self) -> bool:
@@ -166,19 +261,7 @@ class ConfigManager:
         try:
             # 更新最后修改时间
             self.config.last_updated = datetime.now().isoformat()
-            
-            # 转换为字典
-            config_dict = {
-                'version': self.config.version,
-                'last_updated': self.config.last_updated,
-                'scan': asdict(self.config.scan),
-                'cache': asdict(self.config.cache),
-                'log': asdict(self.config.log),
-                'ui': asdict(self.config.ui),
-                'path': asdict(self.config.path),
-                'detection': asdict(self.config.detection),
-                'tabs': asdict(self.config.tabs)
-            }
+            config_dict = self._serialize_config()
             
             # 确保目录存在
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -186,6 +269,8 @@ class ConfigManager:
             # 保存配置
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(config_dict, f, indent=2, ensure_ascii=False)
+
+            self._raw_config_data = deepcopy(config_dict)
             
             logger.info(f"配置已保存: {self.config_file}")
             return True
@@ -262,6 +347,7 @@ class ConfigManager:
         """
         try:
             self.config = GameToolsConfig()
+            self._raw_config_data = {}
             self.save_config()
             logger.info("配置已重置为默认值")
             return True
@@ -281,18 +367,7 @@ class ConfigManager:
         """
         try:
             export_file = Path(export_path)
-            
-            config_dict = {
-                'version': self.config.version,
-                'last_updated': self.config.last_updated,
-                'scan': asdict(self.config.scan),
-                'cache': asdict(self.config.cache),
-                'log': asdict(self.config.log),
-                'ui': asdict(self.config.ui),
-                'path': asdict(self.config.path),
-                'detection': asdict(self.config.detection),
-                'tabs': asdict(self.config.tabs)
-            }
+            config_dict = self._serialize_config()
             
             with open(export_file, 'w', encoding='utf-8') as f:
                 json.dump(config_dict, f, indent=2, ensure_ascii=False)
@@ -323,19 +398,9 @@ class ConfigManager:
             
             with open(import_file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
-            # 重建配置对象
-            self.config = GameToolsConfig(
-                version=data.get('version', '1.23.0'),
-                last_updated=data.get('last_updated', datetime.now().isoformat()),
-                scan=ScanConfig(**data.get('scan', {})),
-                cache=CacheConfig(**data.get('cache', {})),
-                log=LogConfig(**data.get('log', {})),
-                ui=UIConfig(**data.get('ui', {})),
-                path=PathConfig(**data.get('path', {})),
-                detection=DetectionConfig(**data.get('detection', {})),
-                tabs=TabVisibilityConfig(**data.get('tabs', {}))
-            )
+            migrated_data = self._migrate_config_data(data)
+            self._raw_config_data = deepcopy(migrated_data)
+            self.config = self._build_config_from_data(migrated_data)
             
             # 保存导入的配置
             self.save_config()

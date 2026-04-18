@@ -141,14 +141,16 @@ class MemoryCache:
                 logger.warning(f"缓存值过大，拒绝缓存: {key} ({value_size / 1024 / 1024:.2f}MB)")
                 return
             
-            # 如果要替换现有key，先减去旧值的大小
+            # 先移除旧条目，再按新插入路径统一进行容量控制。
+            # 这样替换现有 key 时也会参与淘汰判断，避免内存统计失真。
             if key in self.cache:
-                old_size = self._estimate_size(self.cache[key].value)
-                self.current_memory_bytes -= old_size
+                old_entry = self.cache.pop(key)
+                old_size = self._estimate_size(old_entry.value)
+                self.current_memory_bytes = max(0, self.current_memory_bytes - old_size)
             
             # 当内存不足或条目数过多时进行淘汰
             while (self.current_memory_bytes + value_size > self.max_memory_bytes or 
-                   len(self.cache) >= self.max_size) and key not in self.cache:
+                   len(self.cache) >= self.max_size):
                 if not self._evict_lru():
                     break  # 无法继续淘汰
             
@@ -427,7 +429,8 @@ class CacheManager:
     """统一的缓存管理器 - 整合内存和文件缓存"""
     
     def __init__(self, memory_size: int = 1000, cache_dir: str = ".cache", 
-                 default_ttl: Optional[float] = None, use_file_cache: bool = True):
+                 default_ttl: Optional[float] = None, use_file_cache: bool = True,
+                 max_memory_mb: float = 500.0, enabled: bool = True):
         """
         初始化缓存管理器
         
@@ -436,10 +439,17 @@ class CacheManager:
             cache_dir: 文件缓存目录
             default_ttl: 默认过期时间（秒）
             use_file_cache: 是否启用文件缓存
+            max_memory_mb: 内存缓存最大使用量（MB）
+            enabled: 是否启用缓存
         """
-        self.memory_cache = MemoryCache(max_size=memory_size, default_ttl=default_ttl)
-        self.file_cache = FileCache(cache_dir=cache_dir, default_ttl=default_ttl) if use_file_cache else None
-        self.use_file_cache = use_file_cache
+        self.memory_cache = MemoryCache(
+            max_size=memory_size,
+            default_ttl=default_ttl,
+            max_memory_mb=max_memory_mb,
+        )
+        self.enabled = enabled
+        self.use_file_cache = enabled and use_file_cache
+        self.file_cache = FileCache(cache_dir=cache_dir, default_ttl=default_ttl) if self.use_file_cache else None
         self.default_ttl = default_ttl
     
     def get(self, key: str, level: str = 'all') -> Optional[Any]:
@@ -453,6 +463,9 @@ class CacheManager:
         Returns:
             缓存值或None
         """
+        if not self.enabled:
+            return None
+
         # 优先从内存缓存获取
         if level in ('memory', 'all'):
             value = self.memory_cache.get(key)
@@ -482,6 +495,9 @@ class CacheManager:
             ttl: 生存时间（秒）
             level: 缓存级别 ('memory', 'file', 'all')
         """
+        if not self.enabled:
+            return
+
         if level in ('memory', 'all'):
             self.memory_cache.set(key, value, ttl)
         
@@ -503,6 +519,7 @@ class CacheManager:
     def get_stats(self) -> Dict[str, Any]:
         """获取缓存统计信息"""
         stats = {
+            'enabled': self.enabled,
             'memory': self.memory_cache.get_stats(),
             'use_file_cache': self.use_file_cache
         }
@@ -536,7 +553,9 @@ _global_cache_manager: Optional[CacheManager] = None
 
 def get_cache_manager(memory_size: int = 1000, cache_dir: str = ".cache",
                      default_ttl: Optional[float] = None,
-                     use_file_cache: bool = True) -> CacheManager:
+                     use_file_cache: bool = True,
+                     max_memory_mb: float = 500.0,
+                     enabled: bool = True) -> CacheManager:
     """获取或创建全局缓存管理器"""
     global _global_cache_manager
     
@@ -545,7 +564,9 @@ def get_cache_manager(memory_size: int = 1000, cache_dir: str = ".cache",
             memory_size=memory_size,
             cache_dir=cache_dir,
             default_ttl=default_ttl,
-            use_file_cache=use_file_cache
+            use_file_cache=use_file_cache,
+            max_memory_mb=max_memory_mb,
+            enabled=enabled,
         )
     
     return _global_cache_manager
