@@ -2,7 +2,7 @@
   "file_hashes": {
     "gui\\base_detector_gui.py": "98de486f7238811f95c1c4d311c9ba16",
     "gui\\build_unified.py": "db00d23ae68541000c973534a33506aa",
-    "gui\\gametools_unified.py": "0afd083acbff18fd4449604266a3be36",
+    "gui\\gametools_unified.py": "b0c3072d05b3a0555ba73bf622004679",
     "gui\\gui_utils.py": "72257258b484883391075493a7204eb6",
     "gui\\hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
     "gui\\import_helper.py": "63f6faf92e8941fca7079f8d4488c257",
@@ -35,6 +35,6 @@
     "config_export.json": "9b54d06d75ee3977aa6175448b6ebfb1",
     "version.py": "d22cae8408e3e15c3029118176b1bdc1"
   },
-  "last_build_time": "2026-04-18T19:25:12.305010",
-  "build_duration": 32.14122486114502
+  "last_build_time": "2026-04-18T19:42:40.269615",
+  "build_duration": 32.139602184295654
 }

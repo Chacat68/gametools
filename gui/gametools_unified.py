@@ -256,14 +256,38 @@ class GameToolsUnified:
     def _update_nav_scrollregion(self, _event=None):
         """同步导航滚动区域。"""
         self.nav_canvas.configure(scrollregion=self.nav_canvas.bbox('all'))
+        self._refresh_nav_scrollbar()
+
+    def _refresh_nav_scrollbar(self):
+        """仅在导航内容超出可视区域时显示滚动条。"""
+        if not hasattr(self, 'nav_scrollbar'):
+            return
+
+        bbox = self.nav_canvas.bbox('all')
+        content_height = bbox[3] - bbox[1] if bbox else 0
+        canvas_height = self.nav_canvas.winfo_height()
+        should_scroll = canvas_height > 1 and content_height > canvas_height + 2
+
+        if should_scroll:
+            if not self.nav_scrollbar.winfo_ismapped():
+                self.nav_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        else:
+            self.nav_canvas.yview_moveto(0)
+            if self.nav_scrollbar.winfo_ismapped():
+                self.nav_scrollbar.grid_remove()
+            self._unbind_nav_mousewheel()
+
+        self.nav_scroll_enabled = should_scroll
 
     def _update_nav_canvas_width(self, event):
         """让导航内容宽度跟随侧栏宽度变化。"""
         self.nav_canvas.itemconfigure(self.nav_canvas_window, width=event.width)
+        self._refresh_nav_scrollbar()
 
     def _bind_nav_mousewheel(self, _event=None):
         """鼠标进入导航区域后启用滚轮滚动。"""
-        self.nav_canvas.bind_all('<MouseWheel>', self._on_nav_mousewheel)
+        if self.nav_scroll_enabled:
+            self.nav_canvas.bind_all('<MouseWheel>', self._on_nav_mousewheel)
 
     def _unbind_nav_mousewheel(self, _event=None):
         """鼠标离开导航区域后取消滚轮绑定，避免影响其他区域。"""
@@ -271,7 +295,7 @@ class GameToolsUnified:
 
     def _on_nav_mousewheel(self, event):
         """处理 Windows 下的鼠标滚轮滚动。"""
-        if event.delta:
+        if self.nav_scroll_enabled and event.delta:
             self.nav_canvas.yview_scroll(int(-event.delta / 120), 'units')
 
     def _update_navigation_state(self, active_key):
@@ -354,6 +378,8 @@ class GameToolsUnified:
         nav_container.columnconfigure(0, weight=1)
         nav_container.rowconfigure(0, weight=1)
 
+        self.nav_scroll_enabled = False
+
         self.nav_canvas = tk.Canvas(
             nav_container,
             bg=self.palette['sidebar_bg'],
@@ -363,9 +389,8 @@ class GameToolsUnified:
         )
         self.nav_canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
 
-        nav_scrollbar = ttk.Scrollbar(nav_container, orient='vertical', command=self.nav_canvas.yview)
-        nav_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        self.nav_canvas.configure(yscrollcommand=nav_scrollbar.set)
+        self.nav_scrollbar = ttk.Scrollbar(nav_container, orient='vertical', command=self.nav_canvas.yview)
+        self.nav_canvas.configure(yscrollcommand=self.nav_scrollbar.set)
 
         self.nav_items_frame = tk.Frame(self.nav_canvas, bg=self.palette['sidebar_bg'])
         self.nav_canvas_window = self.nav_canvas.create_window((0, 0), window=self.nav_items_frame, anchor='nw')
@@ -375,6 +400,7 @@ class GameToolsUnified:
         self.nav_canvas.bind('<Leave>', self._unbind_nav_mousewheel)
         self.nav_items_frame.bind('<Enter>', self._bind_nav_mousewheel)
         self.nav_items_frame.bind('<Leave>', self._unbind_nav_mousewheel)
+        self.root.after_idle(self._refresh_nav_scrollbar)
 
         sidebar_footer = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
         sidebar_footer.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=18, pady=(4, 18))
