@@ -5,23 +5,27 @@ from tkinter import ttk
 
 
 UI_PALETTE = {
-    'app_bg': '#f3ede4',
-    'surface': '#fbf7f1',
-    'surface_alt': '#efe2d2',
-    'sidebar_bg': '#1f2a31',
-    'sidebar_active': '#2b3943',
-    'sidebar_hover': '#354550',
-    'sidebar_text': '#f7efe5',
-    'sidebar_muted': '#c1b19f',
-    'accent': '#c65f33',
-    'accent_active': '#a84e29',
-    'accent_text': '#fff7ef',
-    'text': '#231f1b',
-    'muted_text': '#6d6257',
-    'border': '#dccdbd',
-    'success': '#3f7a52',
-    'error': '#b14a39',
-    'warning': '#a26d27',
+    'app_bg': '#f5efe7',
+    'surface': '#fffaf4',
+    'surface_alt': '#e4ede8',
+    'sidebar_bg': '#20343b',
+    'sidebar_active': '#2d4952',
+    'sidebar_hover': '#3a5963',
+    'sidebar_text': '#f7f4ee',
+    'sidebar_muted': '#b7c5bf',
+    'accent': '#c86c40',
+    'accent_active': '#ab582f',
+    'accent_text': '#fff9f4',
+    'text': '#1f2422',
+    'muted_text': '#64706c',
+    'border': '#d4ddd7',
+    'success': '#3f7b5d',
+    'error': '#b44f3f',
+    'warning': '#a97b2b',
+    'info': '#2c7088',
+    'button_hover': '#d7e2dd',
+    'button_pressed': '#cad8d1',
+    'input_bg': '#fffdfa',
 }
 
 
@@ -60,6 +64,12 @@ def apply_ui_theme(root):
     style.configure('Title.TLabel', font=('Bahnschrift', 18, 'bold'))
     style.configure('Heading.TLabel', font=('Bahnschrift', 11, 'bold'))
     style.configure('Info.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['muted_text'])
+    style.configure(
+        'AccentInfo.TLabel',
+        background=UI_PALETTE['surface'],
+        foreground=UI_PALETTE['info'],
+        font=('Bahnschrift', 9, 'bold'),
+    )
     style.configure('Success.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['success'])
     style.configure('Error.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['error'])
     style.configure(
@@ -124,7 +134,7 @@ def apply_ui_theme(root):
     )
     style.map(
         'TButton',
-        background=[('active', '#e7d6c2'), ('pressed', '#dfccb8')],
+        background=[('active', UI_PALETTE['button_hover']), ('pressed', UI_PALETTE['button_pressed'])],
     )
     style.configure(
         'Accent.TButton',
@@ -147,12 +157,12 @@ def apply_ui_theme(root):
     )
     style.map(
         'Subtle.TButton',
-        background=[('active', '#e7d6c2'), ('pressed', '#dfccb8')],
+        background=[('active', UI_PALETTE['button_hover']), ('pressed', UI_PALETTE['button_pressed'])],
     )
 
     style.configure(
         'TEntry',
-        fieldbackground='#fffdf9',
+        fieldbackground=UI_PALETTE['input_bg'],
         foreground=UI_PALETTE['text'],
         bordercolor=UI_PALETTE['border'],
         lightcolor=UI_PALETTE['border'],
@@ -161,7 +171,7 @@ def apply_ui_theme(root):
     )
     style.configure(
         'TCombobox',
-        fieldbackground='#fffdf9',
+        fieldbackground=UI_PALETTE['input_bg'],
         foreground=UI_PALETTE['text'],
         bordercolor=UI_PALETTE['border'],
         arrowsize=14,

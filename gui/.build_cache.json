@@ -1,14 +1,14 @@
 {
   "file_hashes": {
     "gui\\base_detector_gui.py": "98de486f7238811f95c1c4d311c9ba16",
-    "gui\\build_unified.py": "db00d23ae68541000c973534a33506aa",
-    "gui\\gametools_unified.py": "b0c3072d05b3a0555ba73bf622004679",
+    "gui\\build_unified.py": "300260848548bb84332639338391835b",
+    "gui\\gametools_unified.py": "bf5daa1e2e935b425fbfffc0c9dda3df",
     "gui\\gui_utils.py": "72257258b484883391075493a7204eb6",
     "gui\\hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
     "gui\\import_helper.py": "63f6faf92e8941fca7079f8d4488c257",
     "gui\\pyi_rth_numpy_fix.py": "adc81e20ab624a0701d030428492d647",
     "gui\\run_unified.py": "a76306ff1067628fa6abcf82d3a4582d",
-    "gui\\ui_theme.py": "0e0feb5bc9ed8846e9200e90e47f1668",
+    "gui\\ui_theme.py": "8e7b6db177b601d09d74c6297f49ba70",
     "core\\batch_excel_modifier.py": "c94698d33beadc2c8b6c8aa764656b77",
     "core\\cache_manager.py": "3b412ced17e9081d41645d5a222dfd69",
     "core\\config_manager.py": "cfd0829fb72aa2dd1008195d3df1e828",
@@ -33,8 +33,8 @@
     "tools\\gui_startup_profiler.py": "bd2cbdfaf45ba8fbd7582908f7109df6",
     "config.json": "0616042e56342cd1d67bdacbb3e35add",
     "config_export.json": "9b54d06d75ee3977aa6175448b6ebfb1",
-    "version.py": "d22cae8408e3e15c3029118176b1bdc1"
+    "version.py": "43d054a2d4db24c5f87e378c38160d72"
   },
-  "last_build_time": "2026-04-18T19:42:40.269615",
-  "build_duration": 32.139602184295654
+  "last_build_time": "2026-04-18T20:33:55.210749",
+  "build_duration": 32.229450702667236
 }

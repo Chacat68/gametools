@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import time
+import importlib
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -26,6 +27,7 @@ from typing import Optional
 
 # 添加父目录到路径以导入版本信息
 sys.path.append(str(Path(__file__).parent.parent))
+import version as version_module
 from version import get_version, get_build_date, get_author, get_description, increment_version
 
 # 最近一次成功生成到项目根目录 dist/ 的exe路径（用于打印准确产物名）
@@ -33,6 +35,19 @@ LAST_BUILT_EXE: Optional[Path] = None
 
 # 构建缓存文件路径
 BUILD_CACHE_FILE = Path(__file__).parent / ".build_cache.json"
+
+
+def snapshot_version_file() -> str:
+    """读取 version.py 当前内容，便于构建失败时回滚。"""
+    version_file = Path(__file__).resolve().parent.parent / "version.py"
+    return version_file.read_text(encoding='utf-8')
+
+
+def restore_version_file(content: str):
+    """恢复 version.py 内容，并刷新当前进程中的版本模块。"""
+    version_file = Path(__file__).resolve().parent.parent / "version.py"
+    version_file.write_text(content, encoding='utf-8')
+    importlib.reload(version_module)
 
 
 def get_file_hash(filepath: Path) -> str:
@@ -699,90 +714,103 @@ def main():
     script_dir = Path(__file__).resolve().parent
     os.chdir(script_dir)
 
+    version_snapshot: Optional[str] = None
+    version_bumped = False
+    build_succeeded = False
+
     # 自动递增版本号（可通过 --no-bump 关闭，避免排错时污染版本）
     if args.no_bump:
         new_version = get_version()
         print("\n[版本更新] 已禁用自动递增版本号 (--no-bump)")
     else:
+        version_snapshot = snapshot_version_file()
         print("\n[版本更新] 自动递增版本号...")
         new_version = increment_version("patch")
+        version_bumped = True
 
-    total_start_time = time.time()
-    
-    print("=" * 60)
-    print("gametools 统一版本构建脚本 (性能优化版)")
-    print("=" * 60)
-    print(f"版本: v{new_version}")
-    print(f"构建日期: {get_build_date()}")
-    print(f"构建时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # 快速模式
-    if args.fast:
-        args.no_upx = True
-        args.optimize = 0
-        print("[MODE] 快速构建模式")
-    
-    print("=" * 60)
-    
-    # 检查当前目录
-    if not os.path.exists("gametools_unified.py"):
-        print("[ERROR] 未找到 gametools_unified.py（预期在 gui/ 目录）")
-        return False
-    
-    # 检查依赖
-    if not check_dependencies():
-        print("[ERROR] 依赖检查失败")
-        return False
-    
-    # 清理构建目录
-    clean_build_dir = bool(args.clean)
-    clean_dist_dir = bool(args.clean)
-    clean_build(
-        clean_build_dir=clean_build_dir,
-        clean_dist_dir=clean_dist_dir,
-        clean_pyc=bool(args.clean_pyc),
-        smart_clean=not args.clean,  # 非全量清理时使用智能清理
-    )
+    try:
+        total_start_time = time.time()
+        
+        print("=" * 60)
+        print("gametools 统一版本构建脚本 (性能优化版)")
+        print("=" * 60)
+        print(f"版本: v{new_version}")
+        print(f"构建日期: {get_build_date()}")
+        print(f"构建时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        
+        # 快速模式
+        if args.fast:
+            args.no_upx = True
+            args.optimize = 0
+            print("[MODE] 快速构建模式")
+        
+        print("=" * 60)
+        
+        # 检查当前目录
+        if not os.path.exists("gametools_unified.py"):
+            print("[ERROR] 未找到 gametools_unified.py（预期在 gui/ 目录）")
+            return False
+        
+        # 检查依赖
+        if not check_dependencies():
+            print("[ERROR] 依赖检查失败")
+            return False
+        
+        # 清理构建目录
+        clean_build_dir = bool(args.clean)
+        clean_dist_dir = bool(args.clean)
+        clean_build(
+            clean_build_dir=clean_build_dir,
+            clean_dist_dir=clean_dist_dir,
+            clean_pyc=bool(args.clean_pyc),
+            smart_clean=not args.clean,  # 非全量清理时使用智能清理
+        )
 
-    # 创建/更新spec文件
-    create_spec_file(
-        console=bool(args.with_console), 
-        upx=not bool(args.no_upx),
-        optimize=args.optimize,
-    )
-    
-    # 构建exe
-    if not build_exe(skip_if_unchanged=args.skip_unchanged):
-        print("[ERROR] 构建失败")
-        return False
-    
-    total_elapsed = time.time() - total_start_time
-    
-    print("\n" + "=" * 60)
-    print("[SUCCESS] 构建完成!")
-    print("=" * 60)
-    print(f"总耗时: {total_elapsed:.1f}秒")
-    
-    version = get_version()
-    print("\n生成的文件:")
-    if LAST_BUILT_EXE is not None:
-        file_size = LAST_BUILT_EXE.stat().st_size / 1024 / 1024
-        print(f"- {LAST_BUILT_EXE} ({file_size:.1f} MB)")
-    else:
-        print(f"- dist/gametools_v{version}.exe (主程序)")
-    
-    print("\n使用方法:")
-    if LAST_BUILT_EXE is not None:
-        print(f"  直接运行 {LAST_BUILT_EXE}")
-    else:
-        print(f"  直接运行 dist/gametools_v{version}.exe")
-    
-    print("\n构建选项提示:")
-    print("  --fast          快速构建（开发测试用）")
-    print("  --skip-unchanged 增量构建（CI/CD推荐）")
-    print("  --clean         全量清理构建（发布时使用）")
-    
-    return True
+        # 创建/更新spec文件
+        create_spec_file(
+            console=bool(args.with_console), 
+            upx=not bool(args.no_upx),
+            optimize=args.optimize,
+        )
+        
+        # 构建exe
+        if not build_exe(skip_if_unchanged=args.skip_unchanged):
+            print("[ERROR] 构建失败")
+            return False
+        
+        total_elapsed = time.time() - total_start_time
+        
+        print("\n" + "=" * 60)
+        print("[SUCCESS] 构建完成!")
+        print("=" * 60)
+        print(f"总耗时: {total_elapsed:.1f}秒")
+        
+        version = get_version()
+        print("\n生成的文件:")
+        if LAST_BUILT_EXE is not None:
+            file_size = LAST_BUILT_EXE.stat().st_size / 1024 / 1024
+            print(f"- {LAST_BUILT_EXE} ({file_size:.1f} MB)")
+        else:
+            print(f"- dist/gametools_v{version}.exe (主程序)")
+        
+        print("\n使用方法:")
+        if LAST_BUILT_EXE is not None:
+            print(f"  直接运行 {LAST_BUILT_EXE}")
+        else:
+            print(f"  直接运行 dist/gametools_v{version}.exe")
+        
+        print("\n构建选项提示:")
+        print("  --fast          快速构建（开发测试用）")
+        print("  --skip-unchanged 增量构建（CI/CD推荐）")
+        print("  --clean         全量清理构建（发布时使用）")
+
+        build_succeeded = True
+        return True
+    finally:
+        if version_bumped and not build_succeeded and version_snapshot is not None:
+            print("\n[版本更新] 构建未完成，正在回滚版本号...")
+            restore_version_file(version_snapshot)
+            print(f"[版本更新] 已恢复到 v{get_version()}")
 
 
 if __name__ == "__main__":

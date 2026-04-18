@@ -44,13 +44,13 @@ from version import get_version, format_version_string, get_build_date
 
 
 TAB_VISUALS = {
-    'cross_project_translator': {'tag': 'CP', 'tone': '#8b5a40'},
-    'json_detector': {'tag': 'JS', 'tone': '#546f5f'},
-    'excel_data_processor': {'tag': 'XL', 'tone': '#506d87'},
-    'field_extractor': {'tag': 'FD', 'tone': '#7b6d3d'},
-    'table_range_translator': {'tag': 'ML', 'tone': '#8a6444'},
-    'batch_modifier': {'tag': 'BM', 'tone': '#7a4e4e'},
-    'about': {'tag': 'OV', 'tone': '#57656f'},
+    'cross_project_translator': {'tag': 'CP', 'tone': '#c27a52'},
+    'json_detector': {'tag': 'JS', 'tone': '#5e8778'},
+    'excel_data_processor': {'tag': 'XL', 'tone': '#5f7f98'},
+    'field_extractor': {'tag': 'FD', 'tone': '#a48749'},
+    'table_range_translator': {'tag': 'ML', 'tone': '#8e7258'},
+    'batch_modifier': {'tag': 'BM', 'tone': '#86606c'},
+    'about': {'tag': 'OV', 'tone': '#647b85'},
 }
 
 
@@ -813,7 +813,7 @@ class GameToolsUnified:
         self.trt_merged_json_browse_button.grid(row=0, column=2, pady=(0, 8))
         
         # JSON语言检测结果显示
-        self.trt_json_lang_label = ttk.Label(json_frame, text="", foreground='blue')
+        self.trt_json_lang_label = ttk.Label(json_frame, text="", style='AccentInfo.TLabel')
         self.trt_json_lang_label.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(0, 8))
         
         # 目录选择区域
@@ -943,7 +943,7 @@ class GameToolsUnified:
         self.batch_refresh_lang_button.grid(row=1, column=5, padx=(5, 0), pady=(0, 8))
         
         # JSON语言标记显示（放在JSON配置同一行右侧）
-        self.batch_json_lang_label = ttk.Label(file_frame, text="", foreground='blue')
+        self.batch_json_lang_label = ttk.Label(file_frame, text="", style='AccentInfo.TLabel')
         self.batch_json_lang_label.grid(row=0, column=3, columnspan=3, padx=(20, 0), pady=(0, 8), sticky=tk.W)
         
         # 映射表工作表选择（隐藏，保留变量兼容性）
@@ -2075,9 +2075,11 @@ class GameToolsUnified:
         ttk.Button(button_frame, text="关闭", command=log_window.destroy).pack(side=tk.RIGHT, padx=5)
         
         # 统计信息
-        stats_label = ttk.Label(button_frame, 
-                               text=f"总计: {len(errors)} 个错误, {len(warnings)} 个警告",
-                               foreground='#7f8c8d')
+        stats_label = ttk.Label(
+            button_frame,
+            text=f"总计: {len(errors)} 个错误, {len(warnings)} 个警告",
+            style='Info.TLabel',
+        )
         stats_label.pack(side=tk.LEFT, padx=20)
     
     def copy_field_json_result(self):
