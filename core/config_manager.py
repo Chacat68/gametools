@@ -91,10 +91,18 @@ class LogConfig:
 class UIConfig:
     """界面配置"""
     theme: str = "default"  # default, dark
-    window_width: int = 1200
-    window_height: int = 900
+    window_width: int = 1260
+    window_height: int = 820
+    window_x: int = -1
+    window_y: int = -1
     font_size: int = 10
     auto_save_position: bool = True
+    sidebar_collapsed: bool = False
+    sidebar_width: int = 240
+    last_active_tab: str = "about"
+    recent_tasks: list = field(default_factory=list)
+    saved_form_state: Dict[str, Any] = field(default_factory=dict)
+    recent_paths: Dict[str, str] = field(default_factory=dict)
     
 
 @dataclass

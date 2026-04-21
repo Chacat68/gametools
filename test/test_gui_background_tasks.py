@@ -184,12 +184,64 @@ def test_result_format_helpers():
         root.destroy()
 
 
+def test_task_tracking_updates_recent_history():
+    """任务摘要应写入任务卡和最近任务列表。"""
+    root, app = _create_app()
+    original_save = unified_module.config_manager.save_config
+    original_recent_tasks = list(app.ui_config.recent_tasks)
+
+    try:
+        unified_module.config_manager.save_config = lambda: True
+        app.ui_config.recent_tasks = []
+
+        app._begin_task_tracking(
+            'json_detector',
+            '正在扫描 JSON 文件...',
+            {'json_detector.path': r'F:\demo\data.json'},
+        )
+        app._complete_task_tracking(
+            'json_detector',
+            'success',
+            'JSON 检测完成',
+            [('报告行数', 12)],
+            '详细报告可在结果窗口中查看。',
+        )
+
+        panel = app.task_panels['json_detector']
+        if panel['status_var'].get() != '已完成':
+            print(f"❌ 任务卡状态不正确: {panel['status_var'].get()}")
+            return False
+
+        summary_text = panel['summary_var'].get()
+        if 'JSON 检测完成' not in summary_text or '报告行数: 12' not in summary_text:
+            print(f"❌ 任务卡摘要不正确: {summary_text}")
+            return False
+
+        history = app.ui_config.recent_tasks
+        if len(history) != 1:
+            print(f"❌ 最近任务数量不正确: {history}")
+            return False
+
+        entry = history[0]
+        if entry.get('key') != 'json_detector' or entry.get('inputs', {}).get('json_detector.path') != r'F:\demo\data.json':
+            print(f"❌ 最近任务内容不正确: {entry}")
+            return False
+
+        print("✅ 任务跟踪与最近任务正常")
+        return True
+    finally:
+        app.ui_config.recent_tasks = original_recent_tasks
+        unified_module.config_manager.save_config = original_save
+        root.destroy()
+
+
 def main():
     tests = [
         ("字段提取参数冻结", test_field_extraction_snapshots_arguments),
         ("处理器替换", test_replace_processor_refreshes_batch_modifier),
         ("统一收尾逻辑", test_finish_background_task_updates_status_and_message),
         ("结果格式化 helper", test_result_format_helpers),
+        ("任务跟踪与最近任务", test_task_tracking_updates_recent_history),
     ]
 
     print("=" * 60)

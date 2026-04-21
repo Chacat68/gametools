@@ -11,6 +11,8 @@ import threading
 import os
 import sys
 import json
+from datetime import datetime
+import importlib.util
 from pathlib import Path
 import subprocess
 import logging
@@ -50,7 +52,27 @@ TAB_VISUALS = {
     'field_extractor': {'tag': 'FD', 'tone': '#a48749'},
     'table_range_translator': {'tag': 'ML', 'tone': '#8e7258'},
     'batch_modifier': {'tag': 'BM', 'tone': '#86606c'},
-    'about': {'tag': 'OV', 'tone': '#647b85'},
+    'about': {'tag': 'HM', 'tone': '#647b85'},
+}
+
+TASK_RESULT_KEYS = {
+    'cross_project_translator': 'cross_project_translator',
+    'json_detector': 'json_detector',
+    'excel_data_processor': 'excel_processor',
+    'field_extractor': 'field_extractor',
+    'table_range_translator': 'table_range_translator',
+    'batch_modifier': 'batch_modifier',
+}
+
+RESULT_TASK_KEYS = {value: key for key, value in TASK_RESULT_KEYS.items()}
+
+TASK_TITLES = {
+    'cross_project_translator': '跨项目翻译',
+    'json_detector': 'JSON检测',
+    'excel_data_processor': '数据处理',
+    'field_extractor': '字段导出',
+    'table_range_translator': '多语言提取',
+    'batch_modifier': '批量改表',
 }
 
 
@@ -60,8 +82,30 @@ class GameToolsUnified:
     def __init__(self, root):
         self.root = root
         self.root.title(f"gametools v{get_version()}")
-        self.root.geometry("1260x820")
-        self.root.minsize(1040, 700)
+
+        self.ui_config = config_manager.config.ui
+        self._processors = {}
+        self.is_scanning = False
+        self.task_panels = {}
+        self.task_state = {}
+        self.inline_messages = {}
+        self.dashboard_frames = {}
+        self._validation_watchers_ready = False
+        self._is_restoring_state = False
+        self._sidebar_hidden = False
+        self._last_saved_form_state = None
+        self.results_storage = {
+            'cross_project_translator': '',
+            'json_detector': '',
+            'excel_processor': '',
+            'field_extractor': '',
+            'table_range_translator': '',
+            'batch_modifier': ''
+        }
+        self.field_extraction_results = None
+
+        self._apply_saved_window_geometry()
+        self.root.minsize(980, 680)
         
         # 设置窗口图标
         try:
@@ -74,25 +118,17 @@ class GameToolsUnified:
         
         # 创建界面
         self.create_widgets()
-        
-        # 懒加载：处理器实例缓存（首次使用时才初始化，避免启动卡顿）
-        self._processors = {}
-        
-        # 扫描状态
-        self.is_scanning = False
-        
-        # 结果存储字典
-        self.results_storage = {
-            'cross_project_translator': '',
-            'json_detector': '',
-            'excel_processor': '',
-            'field_extractor': '',
-            'table_range_translator': '',
-            'batch_modifier': ''
-        }
-        
-        # 字段提取结果数据
-        self.field_extraction_results = None
+
+        self._restore_form_state()
+        self._initialize_validation_watchers()
+        self._refresh_all_inline_messages()
+        self._apply_sidebar_state(self.ui_config.sidebar_collapsed)
+
+        saved_tab = self.ui_config.last_active_tab
+        if saved_tab in self.tab_lookup:
+            self.select_tab(saved_tab)
+
+        self._refresh_dashboard()
     
     # ==================== 懒加载处理器属性 ====================
     def _get_processor(self, name, factory):
@@ -136,6 +172,741 @@ class GameToolsUnified:
     def setup_styles(self):
         """设置界面样式"""
         self.palette, self.style = apply_ui_theme(self.root)
+
+    def _apply_saved_window_geometry(self):
+        """按配置恢复窗口大小和位置。"""
+        width = max(int(getattr(self.ui_config, 'window_width', 1260) or 1260), 980)
+        height = max(int(getattr(self.ui_config, 'window_height', 820) or 820), 680)
+        geometry = f"{width}x{height}"
+
+        if (
+            getattr(self.ui_config, 'auto_save_position', True)
+            and getattr(self.ui_config, 'window_x', -1) >= 0
+            and getattr(self.ui_config, 'window_y', -1) >= 0
+        ):
+            geometry += f"+{self.ui_config.window_x}+{self.ui_config.window_y}"
+
+        self.root.geometry(geometry)
+
+    def shutdown(self):
+        """在关闭窗口前持久化界面状态。"""
+        self._save_ui_preferences()
+
+    def _save_ui_preferences(self):
+        """保存窗口状态、当前页签和表单输入。"""
+        try:
+            self.root.update_idletasks()
+            self.ui_config.window_width = max(self.root.winfo_width(), 980)
+            self.ui_config.window_height = max(self.root.winfo_height(), 680)
+
+            if getattr(self.ui_config, 'auto_save_position', True):
+                self.ui_config.window_x = max(self.root.winfo_x(), 0)
+                self.ui_config.window_y = max(self.root.winfo_y(), 0)
+
+            self.ui_config.last_active_tab = self._get_current_tab_key()
+            self.ui_config.sidebar_collapsed = self._sidebar_hidden
+            self.ui_config.saved_form_state = self._collect_form_state()
+            self.ui_config.recent_paths = {
+                key: value
+                for key, value in self.ui_config.saved_form_state.items()
+                if isinstance(value, str) and (':' in value or '/' in value or '\\' in value)
+            }
+            config_manager.save_config()
+        except Exception:
+            logging.exception("保存界面状态失败")
+
+    def _get_current_tab_key(self):
+        """获取当前选中的页面 key。"""
+        selected = self.notebook.select() if hasattr(self, 'notebook') else ''
+        for meta in getattr(self, 'tab_registry', []):
+            if str(meta['frame']) == selected:
+                return meta['key']
+        return 'about'
+
+    def _get_form_state_vars(self):
+        """收集需要持久化的输入变量。"""
+        mappings = [
+            ('json_detector.path', 'json_path_var'),
+            ('excel.input', 'excel_input_var'),
+            ('excel.output_folder', 'excel_output_folder_var'),
+            ('excel.output_filename', 'excel_output_filename_var'),
+            ('excel.group_column', 'excel_group_column_var'),
+            ('excel.sheet_prefix', 'excel_sheet_prefix_var'),
+            ('excel.include_summary', 'excel_include_summary_var'),
+            ('cross.mapping', 'cpt_mapping_file_var'),
+            ('cross.project_dir', 'cpt_project_dir_var'),
+            ('cross.output_file', 'cpt_output_file_var'),
+            ('field.zh_dir', 'field_zh_dir_var'),
+            ('field.vn_dir', 'field_vn_dir_var'),
+            ('field.th_dir', 'field_th_dir_var'),
+            ('field.output_dir', 'field_output_dir_var'),
+            ('field.recursive', 'field_recursive_var'),
+            ('field.output_format', 'field_output_format_var'),
+            ('field.zh_enabled', 'field_zh_check_var'),
+            ('field.vn_enabled', 'field_vn_check_var'),
+            ('field.th_enabled', 'field_th_check_var'),
+            ('trt.merged_json', 'trt_merged_json_var'),
+            ('trt.zh_dir', 'trt_zh_dir_var'),
+            ('trt.vn_dir', 'trt_vn_dir_var'),
+            ('trt.th_dir', 'trt_th_dir_var'),
+            ('trt.output_dir', 'trt_output_dir_var'),
+            ('batch.json', 'batch_json_var'),
+            ('batch.mapping', 'batch_mapping_var'),
+            ('batch.excel_dir', 'batch_excel_dir_var'),
+            ('batch.report', 'batch_report_var'),
+            ('batch.language', 'batch_language_var'),
+            ('batch.backup', 'batch_backup_var'),
+            ('batch.field_row', 'batch_field_row_var'),
+            ('batch.data_start_row', 'batch_data_start_row_var'),
+        ]
+
+        variables = {}
+        for key, attr_name in mappings:
+            if hasattr(self, attr_name):
+                variables[key] = getattr(self, attr_name)
+        return variables
+
+    def _collect_form_state(self):
+        """导出当前表单状态。"""
+        state = {}
+        for key, variable in self._get_form_state_vars().items():
+            try:
+                state[key] = variable.get()
+            except Exception:
+                continue
+        return state
+
+    def _apply_named_values(self, values):
+        """按持久化 key 回填表单值。"""
+        if not values:
+            return
+
+        variables = self._get_form_state_vars()
+        self._is_restoring_state = True
+        try:
+            for key, value in values.items():
+                variable = variables.get(key)
+                if variable is None:
+                    continue
+                try:
+                    variable.set(value)
+                except Exception:
+                    continue
+        finally:
+            self._is_restoring_state = False
+
+        merged_json = getattr(self, 'trt_merged_json_var', None)
+        if merged_json and merged_json.get().strip() and os.path.exists(merged_json.get().strip()):
+            self._detect_merged_json_languages(merged_json.get().strip())
+
+        batch_json = getattr(self, 'batch_json_var', None)
+        if batch_json and batch_json.get().strip() and os.path.exists(batch_json.get().strip()):
+            self._update_batch_json_language_label(batch_json.get().strip())
+
+    def _restore_form_state(self):
+        """恢复上次关闭前的表单输入。"""
+        saved_state = getattr(self.ui_config, 'saved_form_state', {}) or {}
+        if saved_state:
+            self._apply_named_values(saved_state)
+
+        merged_json = getattr(self, 'trt_merged_json_var', None)
+        if merged_json and merged_json.get().strip() and os.path.exists(merged_json.get().strip()):
+            self._detect_merged_json_languages(merged_json.get().strip())
+
+        batch_json = getattr(self, 'batch_json_var', None)
+        if batch_json and batch_json.get().strip() and os.path.exists(batch_json.get().strip()):
+            self._update_batch_json_language_label(batch_json.get().strip())
+
+    def _toggle_sidebar(self):
+        """折叠或展开左侧导航。"""
+        self._apply_sidebar_state(not self._sidebar_hidden)
+
+    def _apply_sidebar_state(self, collapsed):
+        """应用导航折叠状态。"""
+        if not hasattr(self, 'sidebar_frame'):
+            return
+
+        self._sidebar_hidden = bool(collapsed)
+        if self._sidebar_hidden:
+            self.sidebar_frame.grid_remove()
+        else:
+            self.sidebar_frame.grid()
+
+        if hasattr(self, 'sidebar_toggle_button'):
+            self.sidebar_toggle_button.config(text="显示导航" if self._sidebar_hidden else "收起导航")
+
+    def _create_inline_message(self, parent, row, columnspan=3):
+        """在输入区域底部创建就地提示标签。"""
+        label = tk.Label(
+            parent,
+            text='',
+            anchor='w',
+            justify='left',
+            wraplength=620,
+            bg=self.palette['surface'],
+            fg=self.palette['muted_text'],
+            font=('Microsoft YaHei UI', 9),
+        )
+        label.grid(row=row, column=0, columnspan=columnspan, sticky=(tk.W, tk.E), pady=(8, 0))
+        return label
+
+    def _set_inline_message(self, key, text='', tone='muted'):
+        """更新页面就地校验提示。"""
+        label = self.inline_messages.get(key)
+        if not label:
+            return
+
+        color_map = {
+            'muted': self.palette['muted_text'],
+            'info': self.palette['info'],
+            'success': self.palette['success'],
+            'warning': self.palette['warning'],
+            'error': self.palette['error'],
+        }
+        label.config(text=text, fg=color_map.get(tone, self.palette['muted_text']))
+
+    def _create_task_panel(self, parent, task_key):
+        """创建统一的任务状态卡片。"""
+        card = tk.Frame(
+            parent,
+            bg=self.palette['surface'],
+            highlightthickness=1,
+            highlightbackground=self.palette['border'],
+            padx=12,
+            pady=12,
+        )
+        card.pack(fill=tk.X, pady=(14, 0))
+
+        header = tk.Frame(card, bg=self.palette['surface'])
+        header.pack(fill=tk.X)
+
+        tk.Label(
+            header,
+            text='任务状态',
+            bg=self.palette['surface'],
+            fg=self.palette['text'],
+            font=('Bahnschrift', 10, 'bold'),
+        ).pack(side=tk.LEFT)
+
+        status_var = tk.StringVar(value='尚未开始')
+        status_label = tk.Label(
+            header,
+            textvariable=status_var,
+            bg=self.palette['surface'],
+            fg=self.palette['muted_text'],
+            font=('Bahnschrift', 10, 'bold'),
+        )
+        status_label.pack(side=tk.RIGHT)
+
+        progress_var = tk.DoubleVar(value=0)
+        ttk.Progressbar(card, maximum=100, variable=progress_var).pack(fill=tk.X, pady=(10, 8))
+
+        message_var = tk.StringVar(value='执行后会在这里显示过程进度')
+        tk.Label(
+            card,
+            textvariable=message_var,
+            bg=self.palette['surface'],
+            fg=self.palette['muted_text'],
+            justify='left',
+            anchor='w',
+            wraplength=250,
+            font=('Microsoft YaHei UI', 9),
+        ).pack(fill=tk.X)
+
+        summary_var = tk.StringVar(value='最近结果摘要会显示在这里')
+        tk.Label(
+            card,
+            textvariable=summary_var,
+            bg=self.palette['surface'],
+            fg=self.palette['text'],
+            justify='left',
+            anchor='w',
+            wraplength=250,
+            font=('Microsoft YaHei UI', 9),
+        ).pack(fill=tk.X, pady=(10, 10))
+
+        button_row = ttk.Frame(card)
+        button_row.pack(fill=tk.X)
+        ttk.Button(
+            button_row,
+            text='查看详情',
+            style='Quiet.TButton',
+            command=lambda key=task_key: self.show_results_dialog(TASK_RESULT_KEYS[key]),
+        ).pack(side=tk.LEFT)
+
+        self.task_panels[task_key] = {
+            'card': card,
+            'status_var': status_var,
+            'status_label': status_label,
+            'progress_var': progress_var,
+            'message_var': message_var,
+            'summary_var': summary_var,
+        }
+
+    def _build_summary_text(self, headline, metrics=None, detail=None):
+        """构建任务摘要文本。"""
+        lines = [headline]
+        for label, value in (metrics or [])[:4]:
+            lines.append(f"{label}: {value}")
+        if detail:
+            lines.append(detail)
+        return '\n'.join(line for line in lines if line)
+
+    def _set_task_panel_state(self, task_key, status_text, message=None, progress=None,
+                              summary=None, tone='muted'):
+        """刷新任务卡片内容。"""
+        panel = self.task_panels.get(task_key)
+        if not panel:
+            return
+
+        color_map = {
+            'muted': self.palette['muted_text'],
+            'info': self.palette['info'],
+            'success': self.palette['success'],
+            'warning': self.palette['warning'],
+            'error': self.palette['error'],
+        }
+        panel['status_var'].set(status_text)
+        panel['status_label'].config(fg=color_map.get(tone, self.palette['muted_text']))
+        if message is not None:
+            panel['message_var'].set(message)
+        if progress is not None:
+            panel['progress_var'].set(max(0, min(100, float(progress))))
+        if summary is not None:
+            panel['summary_var'].set(summary)
+
+    def _begin_task_tracking(self, task_key, message, inputs=None):
+        """记录任务开始状态。"""
+        self.task_state[task_key] = {
+            'status': 'running',
+            'started_at': datetime.now().isoformat(timespec='seconds'),
+            'inputs': dict(inputs or {}),
+            'headline': '',
+            'metrics': [],
+            'detail': '',
+        }
+        self._set_task_panel_state(
+            task_key,
+            '进行中',
+            message=message,
+            progress=8,
+            summary='等待处理结果...',
+            tone='info',
+        )
+
+    def _update_task_progress(self, task_key, message, progress=None):
+        """刷新任务执行中的过程信息。"""
+        panel = self.task_panels.get(task_key)
+        current_progress = panel['progress_var'].get() if panel else 0
+        if progress is None:
+            progress = min(current_progress + 6, 92)
+
+        self._set_task_panel_state(
+            task_key,
+            '进行中',
+            message=message,
+            progress=progress,
+            tone='info',
+        )
+
+    def _complete_task_tracking(self, task_key, status, headline, metrics=None, detail=None):
+        """记录任务完成态，并写入最近任务列表。"""
+        state = self.task_state.setdefault(task_key, {})
+        state.update({
+            'status': status,
+            'headline': headline,
+            'metrics': metrics or [],
+            'detail': detail or '',
+            'finished_at': datetime.now().isoformat(timespec='seconds'),
+        })
+
+        display_status = {
+            'success': '已完成',
+            'warning': '需注意',
+            'error': '失败',
+            'info': '已更新',
+        }.get(status, status)
+
+        summary_text = self._build_summary_text(headline, metrics, detail)
+        self._set_task_panel_state(
+            task_key,
+            display_status,
+            message=detail or headline,
+            progress=100,
+            summary=summary_text,
+            tone=status,
+        )
+        self._record_recent_task(task_key, status, headline, metrics, detail, state.get('inputs', {}))
+
+    def _record_recent_task(self, task_key, status, headline, metrics=None, detail=None, inputs=None):
+        """记录最近执行任务，供首页快速进入。"""
+        entry = {
+            'key': task_key,
+            'title': TASK_TITLES.get(task_key, task_key),
+            'status': status,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'headline': headline,
+            'detail': detail or '',
+            'metrics': [
+                {'label': label, 'value': str(value)}
+                for label, value in (metrics or [])
+            ],
+            'inputs': dict(inputs or {}),
+        }
+
+        history = [
+            item for item in getattr(self.ui_config, 'recent_tasks', [])
+            if not (
+                item.get('key') == task_key
+                and item.get('headline') == headline
+            )
+        ]
+        history.insert(0, entry)
+        self.ui_config.recent_tasks = history[:8]
+        config_manager.save_config()
+        self._refresh_dashboard()
+
+    def _open_recent_task(self, entry):
+        """从首页快速恢复最近一次任务输入。"""
+        if not entry:
+            return
+
+        self._apply_named_values(entry.get('inputs', {}))
+        task_key = entry.get('key')
+        if task_key in self.tab_lookup:
+            self.select_tab(task_key)
+        self._refresh_all_inline_messages()
+
+    def _collect_diagnostics_text(self):
+        """收集打包版诊断信息摘要。"""
+        log_dir = Path('logs')
+        latest_log = None
+        latest_error = '最近没有错误日志'
+
+        if log_dir.exists():
+            logs = sorted(log_dir.glob('*.log'), key=lambda item: item.stat().st_mtime, reverse=True)
+            latest_log = logs[0] if logs else None
+
+        if latest_log:
+            try:
+                with open(latest_log, 'r', encoding='utf-8') as file_obj:
+                    tail_lines = file_obj.readlines()[-200:]
+                for line in reversed(tail_lines):
+                    if any(level in line for level in ('ERROR', 'CRITICAL', 'WARNING')):
+                        latest_error = line.strip()
+                        break
+            except Exception:
+                latest_error = '最近日志存在，但读取失败'
+
+        engine_lines = []
+        for module_name in ('xlwings', 'openpyxl', 'pandas'):
+            engine_lines.append(f"{module_name}: {'可用' if importlib.util.find_spec(module_name) else '缺失'}")
+
+        recent_task = (getattr(self.ui_config, 'recent_tasks', []) or [{}])[0]
+        recent_task_text = recent_task.get('title', '暂无') if isinstance(recent_task, dict) else '暂无'
+
+        lines = [
+            f"版本: {format_version_string()}",
+            f"构建日期: {get_build_date()}",
+            f"Python: {sys.executable}",
+            f"工作目录: {Path.cwd()}",
+            f"配置文件: {config_manager.config_file.resolve()}",
+            f"日志目录: {log_dir.resolve()}",
+            f"最近任务: {recent_task_text}",
+            f"最新日志: {latest_log.resolve() if latest_log else '暂无'}",
+            f"最近错误: {latest_error}",
+            "引擎状态: " + ' | '.join(engine_lines),
+        ]
+        return '\n'.join(lines)
+
+    def _copy_diagnostics_to_clipboard(self):
+        """复制诊断信息到剪贴板。"""
+        diagnostics = self._collect_diagnostics_text()
+        self.root.clipboard_clear()
+        self.root.clipboard_append(diagnostics)
+        self.root.update()
+        messagebox.showinfo('成功', '诊断信息已复制到剪贴板')
+
+    def _refresh_dashboard(self):
+        """刷新首页中的最近任务和诊断区域。"""
+        if hasattr(self, 'dashboard_recent_count_var'):
+            self.dashboard_recent_count_var.set(str(len(getattr(self.ui_config, 'recent_tasks', []) or [])))
+
+        recent_frame = self.dashboard_frames.get('recent_tasks')
+        if recent_frame:
+            for child in recent_frame.winfo_children():
+                child.destroy()
+
+            recent_tasks = getattr(self.ui_config, 'recent_tasks', []) or []
+            if not recent_tasks:
+                ttk.Label(
+                    recent_frame,
+                    text='最近还没有执行记录，先从左侧模块里运行一次任务。',
+                    style='Info.TLabel',
+                ).pack(anchor=tk.W)
+            else:
+                for entry in recent_tasks[:5]:
+                    row = tk.Frame(recent_frame, bg=self.palette['surface'])
+                    row.pack(fill=tk.X, pady=(0, 8))
+
+                    summary = entry.get('headline', '')
+                    detail = entry.get('detail', '')
+                    meta_text = f"{entry.get('timestamp', '')} · {entry.get('title', '')}"
+                    tk.Label(
+                        row,
+                        text=meta_text,
+                        bg=self.palette['surface'],
+                        fg=self.palette['muted_text'],
+                        font=('Microsoft YaHei UI', 9),
+                    ).pack(anchor=tk.W)
+                    tk.Label(
+                        row,
+                        text=summary or '最近任务',
+                        bg=self.palette['surface'],
+                        fg=self.palette['text'],
+                        font=('Bahnschrift', 10, 'bold'),
+                    ).pack(anchor=tk.W)
+                    if detail:
+                        tk.Label(
+                            row,
+                            text=detail,
+                            bg=self.palette['surface'],
+                            fg=self.palette['muted_text'],
+                            wraplength=700,
+                            justify='left',
+                            font=('Microsoft YaHei UI', 9),
+                        ).pack(anchor=tk.W, pady=(2, 0))
+
+                    ttk.Button(
+                        row,
+                        text='打开任务',
+                        style='Quiet.TButton',
+                        command=lambda item=entry: self._open_recent_task(item),
+                    ).pack(anchor=tk.W, pady=(6, 0))
+
+        diagnostics_label = self.dashboard_frames.get('diagnostics_label')
+        if diagnostics_label:
+            diagnostics_label.config(text=self._collect_diagnostics_text())
+
+    def _watch_vars(self, callback, *variables):
+        """给变量绑定校验刷新回调。"""
+        def handler(*_args):
+            if self._is_restoring_state:
+                return
+            try:
+                if self.root.winfo_exists():
+                    callback()
+            except tk.TclError:
+                return
+
+        for variable in variables:
+            variable.trace_add('write', handler)
+
+    def _initialize_validation_watchers(self):
+        """初始化所有输入区的就地校验监听。"""
+        if self._validation_watchers_ready:
+            return
+
+        self._watch_vars(self._refresh_json_validation, self.json_path_var)
+        self._watch_vars(
+            self._refresh_excel_validation,
+            self.excel_input_var,
+            self.excel_output_folder_var,
+            self.excel_output_filename_var,
+        )
+        self._watch_vars(
+            self._refresh_cpt_validation,
+            self.cpt_mapping_file_var,
+            self.cpt_project_dir_var,
+            self.cpt_output_file_var,
+        )
+        self._watch_vars(
+            self._refresh_field_validation,
+            self.field_zh_dir_var,
+            self.field_vn_dir_var,
+            self.field_th_dir_var,
+            self.field_output_dir_var,
+            self.field_zh_check_var,
+            self.field_vn_check_var,
+            self.field_th_check_var,
+        )
+        self._watch_vars(
+            self._refresh_trt_validation,
+            self.trt_merged_json_var,
+            self.trt_zh_dir_var,
+            self.trt_vn_dir_var,
+            self.trt_th_dir_var,
+            self.trt_output_dir_var,
+        )
+        self._watch_vars(
+            self._refresh_batch_validation,
+            self.batch_json_var,
+            self.batch_mapping_var,
+            self.batch_excel_dir_var,
+            self.batch_report_var,
+            self.batch_language_var,
+            self.batch_field_row_var,
+            self.batch_data_start_row_var,
+        )
+        self._validation_watchers_ready = True
+
+    def _refresh_all_inline_messages(self):
+        """刷新所有页面的当前输入提示。"""
+        self._refresh_json_validation()
+        self._refresh_excel_validation()
+        self._refresh_cpt_validation()
+        self._refresh_field_validation()
+        self._refresh_trt_validation()
+        self._refresh_batch_validation()
+
+    def _validate_json_inputs(self, strict=False):
+        path = self.json_path_var.get().strip()
+        if not path:
+            return False, '请选择单个 JSON 文件或目录后再开始检测。', 'error' if strict else 'warning'
+        if not os.path.exists(path):
+            return False, '当前路径不存在，请重新选择。', 'error'
+        target = '目录' if os.path.isdir(path) else '单个文件'
+        return True, f'将检测 {target}: {path}', 'success'
+
+    def _validate_excel_inputs(self, strict=False):
+        input_file = self.excel_input_var.get().strip()
+        output_folder = self.excel_output_folder_var.get().strip()
+        output_filename = self.excel_output_filename_var.get().strip()
+
+        if not input_file:
+            return False, '请选择要整合的源 Excel 文件。', 'error' if strict else 'warning'
+        if not os.path.exists(input_file):
+            return False, '源文件不存在，请检查路径。', 'error'
+        if not output_folder:
+            return False, '请选择输出目录。', 'error' if strict else 'warning'
+        if not os.path.exists(output_folder):
+            return False, '输出目录不存在，请重新选择。', 'error'
+        if not output_filename:
+            return False, '请输入输出文件名。', 'error' if strict else 'warning'
+        output_file = os.path.join(output_folder, output_filename)
+        return True, f'结果将输出到: {output_file}', 'success'
+
+    def _validate_cpt_inputs(self, strict=False):
+        mapping_file = self.cpt_mapping_file_var.get().strip()
+        project_dir = self.cpt_project_dir_var.get().strip()
+        output_file = self.cpt_output_file_var.get().strip()
+
+        if not mapping_file:
+            return False, '请选择映射文件。', 'error' if strict else 'warning'
+        if not os.path.exists(mapping_file):
+            return False, '映射文件不存在，请重新选择。', 'error'
+        if not project_dir:
+            return False, '请选择项目目录。', 'error' if strict else 'warning'
+        if not os.path.exists(project_dir):
+            return False, '项目目录不存在，请重新选择。', 'error'
+        if not output_file:
+            return False, '请填写输出文件路径。', 'error' if strict else 'warning'
+        return True, f'将基于映射表输出到: {output_file}', 'success'
+
+    def _validate_field_inputs(self, strict=False):
+        selections = [
+            ('中文', self.field_zh_check_var.get(), self.field_zh_dir_var.get().strip()),
+            ('越南语', self.field_vn_check_var.get(), self.field_vn_dir_var.get().strip()),
+            ('泰语', self.field_th_check_var.get(), self.field_th_dir_var.get().strip()),
+        ]
+        active = [(label, path) for label, enabled, path in selections if enabled]
+
+        if not active:
+            return False, '至少勾选一个语言并填写目录。', 'error' if strict else 'warning'
+
+        for label, path in active:
+            if not path:
+                return False, f'{label}已勾选，但目录还未填写。', 'error' if strict else 'warning'
+            if not os.path.exists(path):
+                return False, f'{label}目录不存在，请重新选择。', 'error'
+
+        output_dir = self.field_output_dir_var.get().strip()
+        if output_dir and not os.path.exists(output_dir):
+            return False, '输出目录不存在，请重新选择。', 'error'
+        if not output_dir:
+            return True, '未填写输出目录时，将自动使用首个有效语言目录。', 'info'
+        return True, f'已选择 {len(active)} 个语言目录，结果输出到: {output_dir}', 'success'
+
+    def _validate_trt_inputs(self, strict=False):
+        merged_json = self.trt_merged_json_var.get().strip()
+        if not merged_json:
+            return False, '请选择合并 JSON 配置文件。', 'error' if strict else 'warning'
+        if not os.path.exists(merged_json):
+            return False, 'JSON 配置文件不存在，请重新选择。', 'error'
+
+        lang_dirs = [
+            ('中文', self.trt_zh_dir_var.get().strip()),
+            ('越南语', self.trt_vn_dir_var.get().strip()),
+            ('泰语', self.trt_th_dir_var.get().strip()),
+        ]
+        valid_dirs = [(label, path) for label, path in lang_dirs if path]
+        if not valid_dirs:
+            return False, '请至少填写一个语言目录。', 'error' if strict else 'warning'
+
+        for label, path in valid_dirs:
+            if not os.path.exists(path):
+                return False, f'{label}目录不存在，请重新选择。', 'error'
+
+        output_dir = self.trt_output_dir_var.get().strip()
+        if output_dir and not os.path.exists(output_dir):
+            return False, '输出目录不存在，请重新选择。', 'error'
+        if not output_dir:
+            return True, '未填写输出目录时，将自动使用首个语言目录。', 'info'
+        return True, f'将从 {len(valid_dirs)} 个语言目录提取并输出到: {output_dir}', 'success'
+
+    def _validate_batch_inputs(self, strict=False):
+        json_file = self.batch_json_var.get().strip()
+        mapping_file = self.batch_mapping_var.get().strip()
+        excel_dir = self.batch_excel_dir_var.get().strip()
+        target_language = self.batch_language_var.get().strip()
+
+        if not json_file:
+            return False, '请选择 JSON 配置文件。', 'error' if strict else 'warning'
+        if not os.path.exists(json_file):
+            return False, 'JSON 配置文件不存在，请重新选择。', 'error'
+        if not mapping_file:
+            return False, '请选择映射表文件。', 'error' if strict else 'warning'
+        if not os.path.exists(mapping_file):
+            return False, '映射表文件不存在，请重新选择。', 'error'
+        if not excel_dir:
+            return False, '请选择 Excel 文件目录。', 'error' if strict else 'warning'
+        if not os.path.exists(excel_dir):
+            return False, 'Excel 文件目录不存在，请重新选择。', 'error'
+        if not target_language:
+            return False, '请选择目标语言。', 'error' if strict else 'warning'
+
+        for value, label in ((self.batch_field_row_var.get().strip(), '字段行'), (self.batch_data_start_row_var.get().strip(), '数据起始行')):
+            if value and not value.isdigit():
+                return False, f'{label}需要是整数。', 'error' if strict else 'warning'
+
+        report_file = self.batch_report_var.get().strip()
+        if report_file:
+            return True, f'将按 {target_language} 批量修改，并写出报告: {report_file}', 'success'
+        return True, f'将按 {target_language} 批量修改，报告文件可选。', 'info'
+
+    def _refresh_json_validation(self):
+        _, text, tone = self._validate_json_inputs(strict=False)
+        self._set_inline_message('json_detector', text, tone)
+
+    def _refresh_excel_validation(self):
+        _, text, tone = self._validate_excel_inputs(strict=False)
+        self._set_inline_message('excel_data_processor', text, tone)
+
+    def _refresh_cpt_validation(self):
+        _, text, tone = self._validate_cpt_inputs(strict=False)
+        self._set_inline_message('cross_project_translator', text, tone)
+
+    def _refresh_field_validation(self):
+        _, text, tone = self._validate_field_inputs(strict=False)
+        self._set_inline_message('field_extractor', text, tone)
+
+    def _refresh_trt_validation(self):
+        _, text, tone = self._validate_trt_inputs(strict=False)
+        self._set_inline_message('table_range_translator', text, tone)
+
+    def _refresh_batch_validation(self):
+        _, text, tone = self._validate_batch_inputs(strict=False)
+        self._set_inline_message('batch_modifier', text, tone)
 
     def _register_tab(self, key, title, description, padding="16"):
         """注册主工作区页面并保存导航信息。"""
@@ -329,6 +1100,7 @@ class GameToolsUnified:
         for meta in self.tab_registry:
             if str(meta['frame']) == selected:
                 self.page_title_var.set(meta['title'])
+                self.page_desc_var.set(meta['description'])
                 self.page_tag_var.set(self._get_tab_visual(meta['key'])['tag'])
                 self._update_navigation_state(meta['key'])
                 break
@@ -354,13 +1126,13 @@ class GameToolsUnified:
         app_frame.columnconfigure(1, weight=1)
         app_frame.rowconfigure(0, weight=1)
 
-        sidebar_frame = tk.Frame(app_frame, bg=self.palette['sidebar_bg'], width=240)
-        sidebar_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 16))
-        sidebar_frame.grid_propagate(False)
-        sidebar_frame.columnconfigure(0, weight=1)
-        sidebar_frame.rowconfigure(1, weight=1)
+        self.sidebar_frame = tk.Frame(app_frame, bg=self.palette['sidebar_bg'], width=240)
+        self.sidebar_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 16))
+        self.sidebar_frame.grid_propagate(False)
+        self.sidebar_frame.columnconfigure(0, weight=1)
+        self.sidebar_frame.rowconfigure(1, weight=1)
 
-        brand_frame = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        brand_frame = tk.Frame(self.sidebar_frame, bg=self.palette['sidebar_bg'])
         brand_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=18, pady=(20, 16))
 
         brand_mark = tk.Frame(brand_frame, bg=self.palette['accent'], height=5, width=48)
@@ -373,7 +1145,7 @@ class GameToolsUnified:
             style='SidebarMeta.TLabel',
         ).pack(anchor=tk.W, pady=(4, 0))
 
-        nav_container = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        nav_container = tk.Frame(self.sidebar_frame, bg=self.palette['sidebar_bg'])
         nav_container.grid(row=1, column=0, sticky=(tk.N, tk.S, tk.E, tk.W), padx=(12, 8), pady=(0, 12))
         nav_container.columnconfigure(0, weight=1)
         nav_container.rowconfigure(0, weight=1)
@@ -402,7 +1174,7 @@ class GameToolsUnified:
         self.nav_items_frame.bind('<Leave>', self._unbind_nav_mousewheel)
         self.root.after_idle(self._refresh_nav_scrollbar)
 
-        sidebar_footer = tk.Frame(sidebar_frame, bg=self.palette['sidebar_bg'])
+        sidebar_footer = tk.Frame(self.sidebar_frame, bg=self.palette['sidebar_bg'])
         sidebar_footer.grid(row=2, column=0, sticky=(tk.W, tk.E), padx=18, pady=(4, 18))
 
         footer_rule = tk.Frame(sidebar_footer, bg=self.palette['sidebar_hover'], height=1)
@@ -426,14 +1198,25 @@ class GameToolsUnified:
         header_frame.grid_columnconfigure(0, weight=1)
 
         self.page_title_var = tk.StringVar(value="工具工作台")
+        self.page_desc_var = tk.StringVar(value="打开左侧模块即可开始执行任务。")
         self.page_tag_var = tk.StringVar(value="GT")
 
         ttk.Label(header_frame, textvariable=self.page_title_var, style='HeaderTitle.TLabel').grid(
             row=0, column=0, sticky=tk.W
         )
+        ttk.Label(header_frame, textvariable=self.page_desc_var, style='Info.TLabel').grid(
+            row=1, column=0, sticky=tk.W, pady=(10, 0)
+        )
 
         meta_frame = tk.Frame(header_frame, bg=self.palette['surface_alt'])
-        meta_frame.grid(row=0, column=1, sticky=tk.E)
+        meta_frame.grid(row=0, column=1, rowspan=2, sticky=tk.E)
+        self.sidebar_toggle_button = ttk.Button(
+            meta_frame,
+            text='收起导航',
+            style='Quiet.TButton',
+            command=self._toggle_sidebar,
+        )
+        self.sidebar_toggle_button.pack(anchor=tk.E, pady=(0, 8))
         ttk.Label(meta_frame, textvariable=self.page_tag_var, style='HeaderTag.TLabel').pack(anchor=tk.E)
         ttk.Label(meta_frame, text=f"v{get_version()}", style='HeaderMeta.TLabel').pack(anchor=tk.E, pady=(8, 0))
 
@@ -470,7 +1253,7 @@ class GameToolsUnified:
         if self.tab_registry:
             self.select_tab(self.tab_registry[0]['key'])
 
-        self.status_var = tk.StringVar(value="")
+        self.status_var = tk.StringVar(value="准备就绪")
         status_bar = ttk.Label(workspace_frame, textvariable=self.status_var, style='Status.TLabel', anchor=tk.W)
         status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(12, 0))
     
@@ -512,17 +1295,20 @@ class GameToolsUnified:
         self.cpt_output_file_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 8), pady=2)
         self.cpt_output_browse_button = ttk.Button(file_frame, text="选择", command=self.browse_cpt_output_file, style='Subtle.TButton')
         self.cpt_output_browse_button.grid(row=2, column=2, pady=2)
+
+        self.inline_messages['cross_project_translator'] = self._create_inline_message(file_frame, row=3)
         
         action_panel = self._create_action_panel(right_column, 0)
 
         self.cpt_process_button = ttk.Button(action_panel, text="执行", command=self.start_cross_project_translation, style='Accent.TButton')
         self.cpt_process_button.pack(fill=tk.X)
-        self.cpt_clear_button = ttk.Button(action_panel, text="清空", command=self.clear_cpt_results, style='Subtle.TButton')
+        self.cpt_clear_button = ttk.Button(action_panel, text="清空", command=self.clear_cpt_results, style='Danger.TButton')
         self.cpt_clear_button.pack(fill=tk.X, pady=(8, 0))
-        self.cpt_export_button = ttk.Button(action_panel, text="导出", command=self.export_cpt_results, state="disabled", style='Subtle.TButton')
+        self.cpt_export_button = ttk.Button(action_panel, text="导出", command=self.export_cpt_results, state="disabled", style='Quiet.TButton')
         self.cpt_export_button.pack(fill=tk.X, pady=(8, 0))
-        self.cpt_view_results_button = ttk.Button(action_panel, text="结果", command=lambda: self.show_results_dialog('cross_project_translator'), style='Subtle.TButton')
+        self.cpt_view_results_button = ttk.Button(action_panel, text="结果", command=lambda: self.show_results_dialog('cross_project_translator'), style='Quiet.TButton')
         self.cpt_view_results_button.pack(fill=tk.X, pady=(8, 0))
+        self._create_task_panel(action_panel, 'cross_project_translator')
     
     
     def create_json_detector_tab(self):
@@ -551,6 +1337,8 @@ class GameToolsUnified:
         self.json_browse_button = ttk.Button(path_frame, text="选择", 
                             command=self.browse_json_folder, style='Subtle.TButton')
         self.json_browse_button.grid(row=0, column=2, pady=(0, 5))
+
+        self.inline_messages['json_detector'] = self._create_inline_message(path_frame, row=1)
         
         action_panel = self._create_action_panel(right_column, 0)
 
@@ -560,17 +1348,18 @@ class GameToolsUnified:
         self.json_detect_button.pack(fill=tk.X)
         
         self.json_clear_button = ttk.Button(action_panel, text="清空", 
-                           command=self.clear_json_results, style='Subtle.TButton')
+                           command=self.clear_json_results, style='Danger.TButton')
         self.json_clear_button.pack(fill=tk.X, pady=(8, 0))
         
         self.json_save_button = ttk.Button(action_panel, text="保存", 
                                           command=self.save_json_report, 
-                          state="disabled", style='Subtle.TButton')
+                          state="disabled", style='Quiet.TButton')
         self.json_save_button.pack(fill=tk.X, pady=(8, 0))
         
         self.json_view_results_button = ttk.Button(action_panel, text="结果", 
-                              command=lambda: self.show_results_dialog('json_detector'), style='Subtle.TButton')
+                              command=lambda: self.show_results_dialog('json_detector'), style='Quiet.TButton')
         self.json_view_results_button.pack(fill=tk.X, pady=(8, 0))
+        self._create_task_panel(action_panel, 'json_detector')
     
     def create_excel_data_processor_tab(self):
         """创建Excel数据处理工具页签"""
@@ -646,6 +1435,8 @@ class GameToolsUnified:
         self.excel_include_summary_check = ttk.Checkbutton(options_frame, text="汇总工作表", 
                                                           variable=self.excel_include_summary_var)
         self.excel_include_summary_check.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+
+        self.inline_messages['excel_data_processor'] = self._create_inline_message(left_column, row=2, columnspan=1)
         
         action_panel = self._create_action_panel(right_column, 1)
 
@@ -653,19 +1444,21 @@ class GameToolsUnified:
                                                command=self.start_excel_consolidation, 
                                                style='Accent.TButton')
         self.excel_process_button.pack(fill=tk.X)
-        
+
         self.excel_clear_button = ttk.Button(action_panel, text="清空", 
-                             command=self.clear_excel_results, style='Subtle.TButton')
+                     command=self.clear_excel_results, style='Danger.TButton')
         self.excel_clear_button.pack(fill=tk.X, pady=(8, 0))
-        
+
         self.excel_preview_button = ttk.Button(action_panel, text="预览", 
                                                command=self.preview_excel_data,
-                               state="disabled", style='Subtle.TButton')
+                       state="disabled", style='Quiet.TButton')
         self.excel_preview_button.pack(fill=tk.X, pady=(8, 0))
-        
+
         self.excel_view_results_button = ttk.Button(action_panel, text="结果", 
-                               command=lambda: self.show_results_dialog('excel_processor'), style='Subtle.TButton')
+                       command=lambda: self.show_results_dialog('excel_processor'), style='Quiet.TButton')
         self.excel_view_results_button.pack(fill=tk.X, pady=(8, 0))
+
+        self._create_task_panel(action_panel, 'excel_data_processor')
     
     def create_field_extractor_tab(self):
         """创建表字段导出页签"""
@@ -735,6 +1528,8 @@ class GameToolsUnified:
         self.field_output_browse_button = ttk.Button(dir_frame, text="选择", 
                                 command=self.browse_field_output_directory, style='Subtle.TButton')
         self.field_output_browse_button.grid(row=3, column=2)
+
+        self.inline_messages['field_extractor'] = self._create_inline_message(dir_frame, row=4, columnspan=4)
         
         # 选项设置区域
         options_frame = ttk.LabelFrame(right_column, text="选项", padding="10")
@@ -770,20 +1565,22 @@ class GameToolsUnified:
         self.field_extract_button.pack(fill=tk.X)
         
         self.field_copy_button = ttk.Button(action_panel, text="复制", 
-                           command=self.copy_field_json_result, style='Subtle.TButton')
+                                    command=self.copy_field_json_result, style='Quiet.TButton')
         self.field_copy_button.pack(fill=tk.X, pady=(8, 0))
         
         self.field_error_log_button = ttk.Button(action_panel, text="日志", 
-                            command=self.show_field_error_logs, style='Subtle.TButton')
+                                     command=self.show_field_error_logs, style='Quiet.TButton')
         self.field_error_log_button.pack(fill=tk.X, pady=(8, 0))
         
         self.field_clear_button = ttk.Button(action_panel, text="清空", 
-                            command=self.clear_field_results, style='Subtle.TButton')
+                                     command=self.clear_field_results, style='Danger.TButton')
         self.field_clear_button.pack(fill=tk.X, pady=(8, 0))
         
         self.field_view_results_button = ttk.Button(action_panel, text="结果", 
-                               command=lambda: self.show_results_dialog('field_extractor'), style='Subtle.TButton')
+                                         command=lambda: self.show_results_dialog('field_extractor'), style='Quiet.TButton')
         self.field_view_results_button.pack(fill=tk.X, pady=(8, 0))
+
+        self._create_task_panel(action_panel, 'field_extractor')
     
     def create_table_range_translator_tab(self):
         """创建多语言翻译提取页签"""
@@ -868,6 +1665,8 @@ class GameToolsUnified:
         self.trt_output_dir_browse_button = ttk.Button(output_frame, text="选择", 
                                    command=self.browse_trt_output_directory, style='Subtle.TButton')
         self.trt_output_dir_browse_button.grid(row=0, column=2)
+
+        self.inline_messages['table_range_translator'] = self._create_inline_message(output_frame, row=1)
         
         # 兼容旧变量
         self.trt_output_var = tk.StringVar()
@@ -884,12 +1683,14 @@ class GameToolsUnified:
         self.trt_process_button.pack(fill=tk.X)
         
         self.trt_clear_button = ttk.Button(action_panel, text="清空", 
-                          command=self.clear_trt_results, style='Subtle.TButton')
+                                  command=self.clear_trt_results, style='Danger.TButton')
         self.trt_clear_button.pack(fill=tk.X, pady=(8, 0))
         
         self.trt_view_results_button = ttk.Button(action_panel, text="结果", 
-                             command=lambda: self.show_results_dialog('table_range_translator'), style='Subtle.TButton')
+                                      command=lambda: self.show_results_dialog('table_range_translator'), style='Quiet.TButton')
         self.trt_view_results_button.pack(fill=tk.X, pady=(8, 0))
+
+        self._create_task_panel(action_panel, 'table_range_translator')
     
     def create_batch_modifier_tab(self):
         """创建批量改表页签"""
@@ -970,6 +1771,8 @@ class GameToolsUnified:
         self.batch_report_browse_button = ttk.Button(file_frame, text="选择", 
                                 command=self.browse_batch_report_file, style='Subtle.TButton')
         self.batch_report_browse_button.grid(row=3, column=2)
+
+        self.inline_messages['batch_modifier'] = self._create_inline_message(file_frame, row=4, columnspan=6)
         
         # 隐藏的变量（保持代码兼容性）
         self.batch_auto_match_var = tk.BooleanVar(value=False)  # 默认关闭自动匹配
@@ -1013,28 +1816,31 @@ class GameToolsUnified:
         self.batch_process_button.pack(fill=tk.X)
         
         self.batch_preview_button = ttk.Button(action_panel, text="预览", 
-                              command=self.preview_batch_mapping, style='Subtle.TButton')
+                                                            command=self.preview_batch_mapping, style='Quiet.TButton')
         self.batch_preview_button.pack(fill=tk.X, pady=(8, 0))
         
         self.batch_clear_button = ttk.Button(action_panel, text="清空", 
-                            command=self.clear_batch_results, style='Subtle.TButton')
+                                                        command=self.clear_batch_results, style='Danger.TButton')
         self.batch_clear_button.pack(fill=tk.X, pady=(8, 0))
         
         self.batch_view_results_button = ttk.Button(action_panel, text="结果", 
-                               command=lambda: self.show_results_dialog('batch_modifier'), style='Subtle.TButton')
+                                                             command=lambda: self.show_results_dialog('batch_modifier'), style='Quiet.TButton')
         self.batch_view_results_button.pack(fill=tk.X, pady=(8, 0))
+
+        self._create_task_panel(action_panel, 'batch_modifier')
     
     def create_about_tab(self):
-        """创建关于页签"""
+        """创建工作台首页。"""
         about_frame = self._register_tab(
             'about',
-            '概览',
-            '',
+            '工作台',
+            '常用任务、最近任务和环境诊断。',
             padding="20"
         )
 
-        about_frame.columnconfigure(0, weight=1)
-        about_frame.rowconfigure(1, weight=1)
+        about_frame.columnconfigure(0, weight=3)
+        about_frame.columnconfigure(1, weight=2)
+        about_frame.rowconfigure(2, weight=1)
 
         hero_frame = tk.Frame(
             about_frame,
@@ -1044,20 +1850,30 @@ class GameToolsUnified:
             padx=24,
             pady=24,
         )
-        hero_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 18))
+        hero_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 18))
         hero_frame.grid_columnconfigure(0, weight=1)
 
-        ttk.Label(hero_frame, text="GameTools", style='Title.TLabel').grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(hero_frame, text="GameTools 工作台", style='Title.TLabel').grid(row=0, column=0, sticky=tk.W)
         ttk.Label(hero_frame, text=format_version_string(), style='HeaderMeta.TLabel').grid(row=0, column=1, sticky=tk.E)
+        ttk.Label(
+            hero_frame,
+            text="优先从这里进入高频流程，执行记录、环境状态和诊断信息会集中展示。",
+            style='Info.TLabel',
+        ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
 
         metrics_frame = ttk.Frame(about_frame)
-        metrics_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        metrics_frame.columnconfigure((0, 1, 2), weight=1)
+        metrics_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 18))
+        metrics_frame.columnconfigure((0, 1, 2, 3), weight=1)
+
+        self.dashboard_recent_count_var = tk.StringVar(
+            value=str(len(getattr(self.ui_config, 'recent_tasks', []) or []))
+        )
 
         metric_specs = [
             ("版本", f"v{get_version()}"),
             ("构建日", get_build_date()),
             ("模块", str(max(len(self.tab_registry) - 1, 0))),
+            ("最近任务", self.dashboard_recent_count_var),
         ]
 
         for column, (label_text, value_text) in enumerate(metric_specs):
@@ -1069,12 +1885,81 @@ class GameToolsUnified:
                 padx=20,
                 pady=18,
             )
-            card.grid(row=0, column=column, sticky=(tk.W, tk.E), padx=(0 if column == 0 else 8, 0), pady=(0, 18))
+            card.grid(row=0, column=column, sticky=(tk.W, tk.E), padx=(0 if column == 0 else 8, 0))
             ttk.Label(card, text=label_text, style='Info.TLabel').pack(anchor=tk.W)
-            ttk.Label(card, text=value_text, style='HeaderTitle.TLabel').pack(anchor=tk.W, pady=(8, 0))
+            if isinstance(value_text, tk.StringVar):
+                ttk.Label(card, textvariable=value_text, style='HeaderTitle.TLabel').pack(anchor=tk.W, pady=(8, 0))
+            else:
+                ttk.Label(card, text=value_text, style='HeaderTitle.TLabel').pack(anchor=tk.W, pady=(8, 0))
 
-        modules_frame = ttk.LabelFrame(about_frame, text="模块", padding=16)
-        modules_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 18))
+        quick_actions_frame = ttk.LabelFrame(about_frame, text="常用任务", padding=16)
+        quick_actions_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        quick_actions_frame.columnconfigure((0, 1), weight=1)
+
+        action_specs = [
+            ('batch_modifier', '批量改表', '直接进入高频修改流程'),
+            ('table_range_translator', '多语言提取', '从多语言目录导出翻译内容'),
+            ('field_extractor', '字段导出', '导出字段和示例文本'),
+            ('cross_project_translator', '跨项目翻译', '根据映射表生成对应关系'),
+        ]
+
+        visible_actions = [item for item in action_specs if item[0] in self.tab_lookup]
+
+        for index, (task_key, title, description) in enumerate(visible_actions):
+            row = index // 2
+            column = index % 2
+            card = tk.Frame(
+                quick_actions_frame,
+                bg=self.palette['surface'],
+                highlightthickness=1,
+                highlightbackground=self.palette['border'],
+                padx=16,
+                pady=16,
+            )
+            card.grid(row=row, column=column, sticky=(tk.W, tk.E), padx=(0 if column == 0 else 8, 0), pady=(0, 10))
+            tk.Label(card, text=title, bg=self.palette['surface'], fg=self.palette['text'], font=('Bahnschrift', 12, 'bold')).pack(anchor=tk.W)
+            tk.Label(
+                card,
+                text=description,
+                bg=self.palette['surface'],
+                fg=self.palette['muted_text'],
+                wraplength=280,
+                justify='left',
+                font=('Microsoft YaHei UI', 9),
+            ).pack(anchor=tk.W, pady=(8, 14))
+            ttk.Button(card, text='打开', style='Accent.TButton', command=lambda key=task_key: self.select_tab(key)).pack(anchor=tk.W)
+
+        utility_row = ttk.Frame(quick_actions_frame)
+        utility_row.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(8, 0))
+        ttk.Button(utility_row, text='界面设置', style='Quiet.TButton', command=self.show_settings_dialog).pack(side=tk.LEFT)
+        ttk.Button(utility_row, text='复制诊断', style='Quiet.TButton', command=self._copy_diagnostics_to_clipboard).pack(side=tk.LEFT, padx=(8, 0))
+
+        right_column = ttk.Frame(about_frame)
+        right_column.grid(row=2, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right_column.columnconfigure(0, weight=1)
+        right_column.rowconfigure(1, weight=1)
+
+        recent_frame = ttk.LabelFrame(right_column, text="最近任务", padding=16)
+        recent_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.dashboard_frames['recent_tasks'] = recent_frame
+
+        diagnostics_frame = ttk.LabelFrame(right_column, text="环境与诊断", padding=16)
+        diagnostics_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        diagnostics_label = tk.Label(
+            diagnostics_frame,
+            text='',
+            bg=self.palette['surface'],
+            fg=self.palette['text'],
+            justify='left',
+            anchor='nw',
+            wraplength=430,
+            font=('Consolas', 9),
+        )
+        diagnostics_label.pack(fill=tk.BOTH, expand=True)
+        self.dashboard_frames['diagnostics_label'] = diagnostics_label
+
+        modules_frame = ttk.LabelFrame(right_column, text="可用模块", padding=16)
+        modules_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
 
         badge_row = ttk.Frame(modules_frame)
         badge_row.pack(fill=tk.X)
@@ -1088,10 +1973,6 @@ class GameToolsUnified:
                 padx=(0, 18),
                 pady=(0, 10),
             )
-
-        action_frame = ttk.Frame(about_frame)
-        action_frame.grid(row=3, column=0, sticky=tk.W)
-        ttk.Button(action_frame, text="界面设置", command=self.show_settings_dialog, style='Accent.TButton').pack(side=tk.LEFT)
     
     def show_settings_dialog(self):
         """显示设置对话框"""
@@ -1314,6 +2195,51 @@ class GameToolsUnified:
                                text=title_map.get(result_type, '处理结果'),
                                style='Heading.TLabel')
         title_label.pack()
+
+        task_key = RESULT_TASK_KEYS.get(result_type)
+        task_summary = self.task_state.get(task_key, {}) if task_key else {}
+        if task_summary:
+            summary_frame = tk.Frame(
+                dialog,
+                bg=self.palette['surface_alt'],
+                highlightthickness=1,
+                highlightbackground=self.palette['border'],
+                padx=12,
+                pady=12,
+            )
+            summary_frame.pack(fill=tk.X, padx=10)
+
+            headline = task_summary.get('headline') or '最近一次执行摘要'
+            tk.Label(
+                summary_frame,
+                text=headline,
+                bg=self.palette['surface_alt'],
+                fg=self.palette['text'],
+                font=('Bahnschrift', 11, 'bold'),
+            ).pack(anchor=tk.W)
+
+            metrics = task_summary.get('metrics', [])
+            if metrics:
+                metrics_text = '    '.join(f"{label}: {value}" for label, value in metrics)
+                tk.Label(
+                    summary_frame,
+                    text=metrics_text,
+                    bg=self.palette['surface_alt'],
+                    fg=self.palette['info'],
+                    font=('Microsoft YaHei UI', 9),
+                ).pack(anchor=tk.W, pady=(6, 0))
+
+            detail = task_summary.get('detail', '')
+            if detail:
+                tk.Label(
+                    summary_frame,
+                    text=detail,
+                    bg=self.palette['surface_alt'],
+                    fg=self.palette['muted_text'],
+                    wraplength=840,
+                    justify='left',
+                    font=('Microsoft YaHei UI', 9),
+                ).pack(anchor=tk.W, pady=(6, 0))
         
         # 结果显示区域
         result_frame = ttk.Frame(dialog, padding="10")
@@ -1380,14 +2306,17 @@ class GameToolsUnified:
     def start_json_detection(self):
         """开始JSON错误检测"""
         path = self.json_path_var.get().strip()
-        
-        if not path:
-            messagebox.showerror("错误", "请选择路径")
+
+        valid, message, tone = self._validate_json_inputs(strict=True)
+        self._set_inline_message('json_detector', message, tone)
+        if not valid:
             return
-        
-        if not os.path.exists(path):
-            messagebox.showerror("错误", "路径不存在")
-            return
+
+        self._begin_task_tracking(
+            'json_detector',
+            '正在扫描 JSON 文件...',
+            {'json_detector.path': path},
+        )
         
         # 在新线程中执行检测
         self._start_background_task(
@@ -1400,6 +2329,12 @@ class GameToolsUnified:
     def _json_detection(self, path):
         """JSON错误检测（后台线程）"""
         try:
+            self._call_on_ui_thread(
+                self._update_task_progress,
+                'json_detector',
+                f"正在检查: {os.path.basename(path) or path}",
+                30,
+            )
             # 自动检测：如果是文件夹则检测文件夹，如果是文件则检测单个文件
             if os.path.isdir(path):
                 report = self.json_detector.detect_errors_in_folder(path)
@@ -1415,6 +2350,14 @@ class GameToolsUnified:
         """更新JSON错误检测结果"""
         self.clear_result('json_detector')
         self.append_result('json_detector', report)
+
+        self._complete_task_tracking(
+            'json_detector',
+            'success',
+            'JSON 检测完成',
+            metrics=[('报告行数', len([line for line in report.splitlines() if line.strip()]))],
+            detail='详细报告可在结果窗口中查看或导出。',
+        )
         
         self.json_save_button.config(state="normal")
         self._finish_background_task(
@@ -1429,6 +2372,14 @@ class GameToolsUnified:
         """显示JSON错误检测错误"""
         self.clear_result('json_detector')
         self.append_result('json_detector', error_msg)
+
+        self._complete_task_tracking(
+            'json_detector',
+            'error',
+            'JSON 检测失败',
+            metrics=[('错误', 1)],
+            detail=error_msg,
+        )
         
         self._finish_background_task(
             widgets_to_enable=(self.json_detect_button,),
@@ -1442,6 +2393,14 @@ class GameToolsUnified:
         """清空JSON检测结果"""
         self.clear_result('json_detector')
         self.json_save_button.config(state="disabled")
+        self._set_task_panel_state(
+            'json_detector',
+            '尚未开始',
+            message='结果已清空',
+            progress=0,
+            summary='最近结果已清空。',
+            tone='muted',
+        )
     
     def save_json_report(self):
         """保存JSON检测报告"""
@@ -1494,29 +2453,25 @@ class GameToolsUnified:
         input_file = self.excel_input_var.get().strip()
         output_folder = self.excel_output_folder_var.get().strip()
         output_filename = self.excel_output_filename_var.get().strip()
-        
-        if not input_file:
-            messagebox.showerror("错误", "请选择输入文件")
-            return
-        
-        if not output_folder:
-            messagebox.showerror("错误", "请选择输出文件夹")
-            return
-        
-        if not output_filename:
-            messagebox.showerror("错误", "请输入输出文件名")
-            return
-        
-        if not os.path.exists(input_file):
-            messagebox.showerror("错误", "输入文件不存在")
-            return
-        
-        if not os.path.exists(output_folder):
-            messagebox.showerror("错误", "输出文件夹不存在")
+
+        valid, message, tone = self._validate_excel_inputs(strict=True)
+        self._set_inline_message('excel_data_processor', message, tone)
+        if not valid:
             return
         
         # 构建完整的输出文件路径
         output_file = os.path.join(output_folder, output_filename)
+
+        self._begin_task_tracking(
+            'excel_data_processor',
+            '正在整合 Excel 数据...',
+            {
+                'excel.input': input_file,
+                'excel.output_folder': output_folder,
+                'excel.output_filename': output_filename,
+                'excel.output_file': output_file,
+            },
+        )
         
         group_column = self.excel_group_column_var.get().strip() or None
         include_summary = self.excel_include_summary_var.get()
@@ -1534,8 +2489,14 @@ class GameToolsUnified:
                                      include_summary, sheet_prefix):
         """Excel数据整合处理（后台线程）"""
         try:
+            self._call_on_ui_thread(
+                self._update_task_progress,
+                'excel_data_processor',
+                f"正在处理: {os.path.basename(input_file)}",
+                35,
+            )
             # 清空结果
-            self._call_on_ui_thread(self.clear_excel_results)
+            self._call_on_ui_thread(self.clear_result, 'excel_processor')
             
             # 显示开始信息
             self._append_result_batch_async(
@@ -1572,6 +2533,15 @@ class GameToolsUnified:
         report = self.excel_processor.get_process_report()
         self.append_result('excel_processor', report)
         self.append_result('excel_processor', "\n\n✅ Excel数据处理完成！")
+
+        output_file = self.task_state.get('excel_data_processor', {}).get('inputs', {}).get('excel.output_file', '')
+        self._complete_task_tracking(
+            'excel_data_processor',
+            'success',
+            'Excel 数据整合完成',
+            metrics=[('输出文件', os.path.basename(output_file) if output_file else '已生成')],
+            detail='预览和详细报告已可查看。',
+        )
         self._finish_background_task(
             widgets_to_enable=(self.excel_process_button, self.excel_preview_button),
             status_message="Excel处理完成",
@@ -1583,6 +2553,13 @@ class GameToolsUnified:
     def _show_excel_error_result(self, error_msg):
         """显示Excel处理错误结果"""
         self.append_result('excel_processor', f"❌ {error_msg}\n")
+        self._complete_task_tracking(
+            'excel_data_processor',
+            'error',
+            'Excel 数据整合失败',
+            metrics=[('错误', 1)],
+            detail=error_msg,
+        )
         self._finish_background_task(
             widgets_to_enable=(self.excel_process_button, self.excel_preview_button),
             status_message="Excel处理失败",
@@ -1638,6 +2615,14 @@ class GameToolsUnified:
     def clear_excel_results(self):
         """清空Excel整合结果"""
         self.clear_result('excel_processor')
+        self._set_task_panel_state(
+            'excel_data_processor',
+            '尚未开始',
+            message='结果已清空',
+            progress=0,
+            summary='最近结果已清空。',
+            tone='muted',
+        )
     
     # ==================== 跨项目翻译对应相关方法 ====================
     
@@ -1682,27 +2667,21 @@ class GameToolsUnified:
         mapping_file = self.cpt_mapping_file_var.get().strip()
         project_dir = self.cpt_project_dir_var.get().strip()
         output_file = self.cpt_output_file_var.get().strip()
-        
-        # 验证输入
-        if not mapping_file:
-            messagebox.showerror("错误", "请选择映射文件")
+
+        valid, message, tone = self._validate_cpt_inputs(strict=True)
+        self._set_inline_message('cross_project_translator', message, tone)
+        if not valid:
             return
-        
-        if not project_dir:
-            messagebox.showerror("错误", "请选择项目目录")
-            return
-        
-        if not output_file:
-            messagebox.showerror("错误", "请设置输出文件")
-            return
-        
-        if not os.path.exists(mapping_file):
-            messagebox.showerror("错误", "映射文件不存在")
-            return
-        
-        if not os.path.exists(project_dir):
-            messagebox.showerror("错误", "项目目录不存在")
-            return
+
+        self._begin_task_tracking(
+            'cross_project_translator',
+            '正在建立跨项目翻译对应...',
+            {
+                'cross.mapping': mapping_file,
+                'cross.project_dir': project_dir,
+                'cross.output_file': output_file,
+            },
+        )
         
         # 在新线程中执行翻译对应
         self._start_background_task(
@@ -1716,10 +2695,18 @@ class GameToolsUnified:
         """跨项目翻译对应（后台线程）"""
         succeeded = False
         completion_message = "翻译对应处理失败，请查看结果详情"
+        metrics = []
 
         try:
             # 清空结果
-            self._call_on_ui_thread(self.clear_cpt_results)
+            self._call_on_ui_thread(self.clear_result, 'cross_project_translator')
+            self._configure_widget_async(self.cpt_export_button, state="disabled")
+            self._call_on_ui_thread(
+                self._update_task_progress,
+                'cross_project_translator',
+                f"正在分析映射表: {os.path.basename(mapping_file)}",
+                24,
+            )
             
             # 开始处理
             self._append_result_batch_async(
@@ -1736,6 +2723,12 @@ class GameToolsUnified:
             # 处理翻译映射
             results = self.cross_project_translator.process_translation_mapping(
                 mapping_file, project_dir)
+            self._call_on_ui_thread(
+                self._update_task_progress,
+                'cross_project_translator',
+                '正在生成结果与导出文件...',
+                72,
+            )
             
             if results:
                 # 显示处理报告
@@ -1749,9 +2742,16 @@ class GameToolsUnified:
                     self._configure_widget_async(self.cpt_export_button, state="normal")
                     succeeded = True
                     completion_message = "翻译对应完成！请点击查看结果按钮查看详细报告"
+                    failed_count = len([item for item in results if item.get('status') != 'success'])
+                    metrics = [
+                        ('结果数', len(results)),
+                        ('失败项', failed_count),
+                        ('导出文件', os.path.basename(output_file)),
+                    ]
                 else:
                     self._append_result_async('cross_project_translator', "导出失败！\n")
                     completion_message = "翻译对应结果导出失败，请查看结果详情"
+                    metrics = [('结果数', len(results)), ('导出', '失败')]
                 
                 # 显示详细结果（前20条）
                 self._append_result_batch_async(
@@ -1781,10 +2781,17 @@ class GameToolsUnified:
             self._append_result_async('cross_project_translator', f"❌ {error_msg}\n")
             completion_message = error_msg
         finally:
-            self._call_on_ui_thread(self._finish_cross_project_translation, succeeded, completion_message)
+            self._call_on_ui_thread(self._finish_cross_project_translation, succeeded, completion_message, metrics)
 
-    def _finish_cross_project_translation(self, succeeded, completion_message):
+    def _finish_cross_project_translation(self, succeeded, completion_message, metrics=None):
         """统一收敛跨项目翻译对应任务的完成态，避免失败时误报成功。"""
+        self._complete_task_tracking(
+            'cross_project_translator',
+            'success' if succeeded else 'error',
+            '跨项目翻译完成' if succeeded else '跨项目翻译失败',
+            metrics=metrics or [],
+            detail=completion_message,
+        )
         self._finish_background_task(
             widgets_to_enable=(self.cpt_process_button,),
             status_message="翻译对应完成" if succeeded else "翻译对应失败",
@@ -1797,6 +2804,14 @@ class GameToolsUnified:
         """清空跨项目翻译对应结果"""
         self.clear_result('cross_project_translator')
         self.cpt_export_button.config(state="disabled")
+        self._set_task_panel_state(
+            'cross_project_translator',
+            '尚未开始',
+            message='结果已清空',
+            progress=0,
+            summary='最近结果已清空。',
+            tone='muted',
+        )
     
     def export_cpt_results(self):
         """导出跨项目翻译对应结果"""
@@ -1864,18 +2879,11 @@ class GameToolsUnified:
             directories['th'] = self.field_th_dir_var.get().strip()
         
         output_dir = self.field_output_dir_var.get().strip()
-        
-        # 验证输入
-        if not directories:
-            messagebox.showerror("错误", "请至少选择一个语言目录并勾选导出")
+
+        valid, message, tone = self._validate_field_inputs(strict=True)
+        self._set_inline_message('field_extractor', message, tone)
+        if not valid:
             return
-        
-        # 验证目录存在性
-        for lang, dir_path in directories.items():
-            if not os.path.exists(dir_path):
-                lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
-                messagebox.showerror("错误", f"{lang_names[lang]}目录不存在: {dir_path}")
-                return
         
         if not output_dir:
             # 使用第一个有效目录作为输出目录
@@ -1884,6 +2892,22 @@ class GameToolsUnified:
 
         output_format = self.field_output_format_var.get()
         recursive = self.field_recursive_var.get()
+
+        self._begin_task_tracking(
+            'field_extractor',
+            '正在提取多语言字段...',
+            {
+                'field.zh_dir': self.field_zh_dir_var.get().strip(),
+                'field.vn_dir': self.field_vn_dir_var.get().strip(),
+                'field.th_dir': self.field_th_dir_var.get().strip(),
+                'field.output_dir': output_dir,
+                'field.output_format': output_format,
+                'field.recursive': recursive,
+                'field.zh_enabled': self.field_zh_check_var.get(),
+                'field.vn_enabled': self.field_vn_check_var.get(),
+                'field.th_enabled': self.field_th_check_var.get(),
+            },
+        )
         
         # 在新线程中执行提取
         self._start_background_task(
@@ -1898,6 +2922,12 @@ class GameToolsUnified:
         try:
             # 清空结果存储
             self._clear_result_async('field_extractor')
+            self.field_extractor.set_progress_callback(
+                lambda msg, percentage=None: (
+                    self._append_result_async('field_extractor', msg + "\n"),
+                    self._call_on_ui_thread(self._update_task_progress, 'field_extractor', msg, percentage),
+                )
+            )
             self._append_result_batch_async(
                 'field_extractor',
                 self._format_banner_block("开始提取多语言表字段信息...", width=60),
@@ -1924,9 +2954,6 @@ class GameToolsUnified:
                 output_format=output_format,
                 recursive=recursive
             )
-            
-            # 保存输出文件路径
-            self.results_storage['field_extractor'] = ', '.join(all_stats.get('output_files', []))
             
             # 收集所有结果
             all_results = []
@@ -1960,6 +2987,19 @@ class GameToolsUnified:
                 "\n输出文件:\n",
                 self._format_prefixed_lines(all_stats.get('output_files', [])),
             )
+
+            self._call_on_ui_thread(
+                self._complete_task_tracking,
+                'field_extractor',
+                'success',
+                '字段导出完成',
+                [
+                    ('语言数', len(all_stats['languages'])),
+                    ('字段数', all_stats['total_fields']),
+                    ('输出文件', len(all_stats.get('output_files', []))),
+                ],
+                '输出文件和详细统计已生成。',
+            )
             
             output_files_str = '\n'.join(all_stats.get('output_files', []))
             self._finish_background_task_async(
@@ -1983,6 +3023,14 @@ class GameToolsUnified:
             error_msg = traceback.format_exc()
             self._append_result_async('field_extractor', f"\n错误: {str(e)}\n")
             self._append_result_async('field_extractor', error_msg + "\n")
+            self._call_on_ui_thread(
+                self._complete_task_tracking,
+                'field_extractor',
+                'error',
+                '字段导出失败',
+                [('错误', 1)],
+                str(e),
+            )
             self._finish_background_task_async(
                 widgets_to_enable=(self.field_extract_button,),
                 status_message="字段提取失败",
@@ -2001,6 +3049,14 @@ class GameToolsUnified:
         self.field_extraction_results = None
         # 清除提取器的日志
         self.field_extractor.clear_logs()
+        self._set_task_panel_state(
+            'field_extractor',
+            '尚未开始',
+            message='结果已清空',
+            progress=0,
+            summary='最近结果已清空。',
+            tone='muted',
+        )
     
     def show_field_error_logs(self):
         """显示字段提取的错误和警告日志"""
@@ -2211,14 +3267,10 @@ class GameToolsUnified:
         vn_dir = self.trt_vn_dir_var.get().strip()
         th_dir = self.trt_th_dir_var.get().strip()
         output_dir = self.trt_output_dir_var.get().strip()
-        
-        # 验证输入
-        if not merged_json:
-            messagebox.showerror("错误", "请选择合并的JSON配置文件")
-            return
-        
-        if not os.path.exists(merged_json):
-            messagebox.showerror("错误", "JSON配置文件不存在")
+
+        valid, message, tone = self._validate_trt_inputs(strict=True)
+        self._set_inline_message('table_range_translator', message, tone)
+        if not valid:
             return
         
         # 构建语言目录字典
@@ -2230,24 +3282,26 @@ class GameToolsUnified:
         if th_dir:
             lang_dirs['th'] = th_dir
         
-        if not lang_dirs:
-            messagebox.showerror("错误", "请至少选择一个语言目录")
-            return
-        
         # 如果未指定输出目录，使用第一个语言目录
         if not output_dir:
             output_dir = list(lang_dirs.values())[0]
             self.trt_output_dir_var.set(output_dir)
         
-        # 验证目录存在性
-        for lang, dir_path in lang_dirs.items():
-            if not os.path.exists(dir_path):
-                lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
-                messagebox.showerror("错误", f"{lang_names[lang]}目录不存在")
-                return
-        
         # 自动生成输出文件名
         output_file = self.table_range_translator.generate_output_filename(output_dir)
+
+        self._begin_task_tracking(
+            'table_range_translator',
+            '正在提取多语言翻译...',
+            {
+                'trt.merged_json': merged_json,
+                'trt.zh_dir': zh_dir,
+                'trt.vn_dir': vn_dir,
+                'trt.th_dir': th_dir,
+                'trt.output_dir': output_dir,
+                'trt.output_file': output_file,
+            },
+        )
         
         # 在新线程中执行提取
         self._start_background_task(
@@ -2261,7 +3315,7 @@ class GameToolsUnified:
         """多语言翻译提取线程 - 使用合并的JSON配置"""
         try:
             # 清空结果
-            self._call_on_ui_thread(self.clear_trt_results)
+            self._call_on_ui_thread(self.clear_result, 'table_range_translator')
             
             # 开始处理
             self._append_result_batch_async(
@@ -2290,6 +3344,7 @@ class GameToolsUnified:
             def progress_callback(msg):
                 """进度回调，将消息显示到界面"""
                 self._append_result_async('table_range_translator', msg + "\n")
+                self._call_on_ui_thread(self._update_task_progress, 'table_range_translator', msg)
             
             # 使用新的合并JSON处理方法
             results = self.table_range_translator.process_with_merged_json(
@@ -2312,6 +3367,18 @@ class GameToolsUnified:
                     
                     # 显示成功消息
                     stats = self.table_range_translator.processing_stats
+                    self._call_on_ui_thread(
+                        self._complete_task_tracking,
+                        'table_range_translator',
+                        'success',
+                        '多语言翻译提取完成',
+                        [
+                            ('处理表', f"{stats['processed_tables']}/{stats['total_tables']}"),
+                            ('导出字段', stats['exported_fields']),
+                            ('提取行数', stats['total_rows']),
+                        ],
+                        os.path.basename(output_file),
+                    )
                     msg = (f"多语言翻译提取完成！\n\n"
                           f"处理表格: {stats['processed_tables']}/{stats['total_tables']}\n"
                           f"导出字段: {stats['exported_fields']} 个\n"
@@ -2327,6 +3394,14 @@ class GameToolsUnified:
                     return
                 else:
                     self._append_result_async('table_range_translator', "✗ 生成翻译CSV失败\n")
+                    self._call_on_ui_thread(
+                        self._complete_task_tracking,
+                        'table_range_translator',
+                        'error',
+                        '翻译 CSV 生成失败',
+                        [('错误', 1)],
+                        '请检查输出目录与处理日志。',
+                    )
                     self._finish_background_task_async(
                         widgets_to_enable=(self.trt_process_button,),
                         status_message="翻译提取失败",
@@ -2337,6 +3412,14 @@ class GameToolsUnified:
                     return
             else:
                 self._append_result_async('table_range_translator', "✗ 没有提取到数据\n")
+                self._call_on_ui_thread(
+                    self._complete_task_tracking,
+                    'table_range_translator',
+                    'warning',
+                    '没有提取到可导出数据',
+                    [('提取结果', 0)],
+                    '请检查 JSON 配置和源目录。',
+                )
                 self._finish_background_task_async(
                     widgets_to_enable=(self.trt_process_button,),
                     status_message="未提取到数据",
@@ -2350,6 +3433,14 @@ class GameToolsUnified:
             details = str(e) or e.__class__.__name__
             error_msg = f"处理过程中发生错误: {details}"
             self._append_result_async('table_range_translator', f"\n✗ {error_msg}\n")
+            self._call_on_ui_thread(
+                self._complete_task_tracking,
+                'table_range_translator',
+                'error',
+                '多语言翻译提取失败',
+                [('错误', 1)],
+                error_msg,
+            )
             self._finish_background_task_async(
                 widgets_to_enable=(self.trt_process_button,),
                 status_message="翻译提取失败",
@@ -2361,6 +3452,14 @@ class GameToolsUnified:
     def clear_trt_results(self):
         """清空多语言翻译提取结果"""
         self.clear_result('table_range_translator')
+        self._set_task_panel_state(
+            'table_range_translator',
+            '尚未开始',
+            message='结果已清空',
+            progress=0,
+            summary='最近结果已清空。',
+            tone='muted',
+        )
     
     # 批量改表相关方法
     def browse_batch_mapping_file(self):
@@ -2612,34 +3711,10 @@ class GameToolsUnified:
         excel_dir = self.batch_excel_dir_var.get().strip()
         report_file = self.batch_report_var.get().strip()
         target_language = self.batch_language_var.get().strip()
-        
-        # 验证必要参数
-        if not json_file:
-            messagebox.showerror("错误", "请选择JSON配置文件")
-            return
-        
-        if not os.path.exists(json_file):
-            messagebox.showerror("错误", "JSON配置文件不存在")
-            return
-        
-        if not mapping_file:
-            messagebox.showerror("错误", "请选择映射表文件")
-            return
-        
-        if not os.path.exists(mapping_file):
-            messagebox.showerror("错误", "映射表文件不存在")
-            return
-        
-        if not excel_dir:
-            messagebox.showerror("错误", "请选择Excel文件目录")
-            return
-        
-        if not os.path.exists(excel_dir):
-            messagebox.showerror("错误", "Excel文件目录不存在")
-            return
-        
-        if not target_language:
-            messagebox.showerror("错误", "请选择目标语言")
+
+        valid, message, tone = self._validate_batch_inputs(strict=True)
+        self._set_inline_message('batch_modifier', message, tone)
+        if not valid:
             return
         
         backup = self.batch_backup_var.get()
@@ -2673,6 +3748,21 @@ Excel目录: {excel_dir}
         if not messagebox.askyesno("确认", confirm_msg):
             return
 
+        self._begin_task_tracking(
+            'batch_modifier',
+            '正在批量修改 Excel 文件...',
+            {
+                'batch.json': json_file,
+                'batch.mapping': mapping_file,
+                'batch.excel_dir': excel_dir,
+                'batch.report': report_file,
+                'batch.language': target_language,
+                'batch.backup': backup,
+                'batch.field_row': field_row,
+                'batch.data_start_row': data_start_row,
+            },
+        )
+
         # 开始处理
         self._start_background_task(
             self._batch_modification_thread,
@@ -2696,7 +3786,7 @@ Excel目录: {excel_dir}
         """批量修改处理线程"""
         try:
             # 清空结果
-            self._call_on_ui_thread(self.clear_batch_results)
+            self._call_on_ui_thread(self.clear_result, 'batch_modifier')
             
             # 初始化 batch_modifier（使用 xlwings 引擎）
             modifier = self._replace_processor('batch_modifier', BatchExcelModifier)
@@ -2720,6 +3810,7 @@ Excel目录: {excel_dir}
             # 设置进度回调
             def progress_callback(msg, percentage=None):
                 self._append_result_async('batch_modifier', msg + "\n")
+                self._call_on_ui_thread(self._update_task_progress, 'batch_modifier', msg, percentage)
             
             modifier.set_progress_callback(progress_callback)
             
@@ -2806,6 +3897,19 @@ Excel目录: {excel_dir}
 报告已保存: {report_file if report_file else '未生成'}
 
 提示：如有错误请查看结果详情"""
+
+            self._call_on_ui_thread(
+                self._complete_task_tracking,
+                'batch_modifier',
+                'success',
+                '批量改表完成',
+                [
+                    ('修改文件', stats['modified_files']),
+                    ('改单元格', stats['modified_cells']),
+                    ('错误数', stats['errors']),
+                ],
+                os.path.basename(report_file) if report_file else '未生成报告',
+            )
             
             self._finish_background_task_async(
                 widgets_to_enable=(self.batch_process_button,),
@@ -2819,6 +3923,14 @@ Excel目录: {excel_dir}
         except Exception as e:
             error_msg = f"处理过程中发生错误: {str(e)}"
             self._append_result_async('batch_modifier', f"\n✗ {error_msg}\n")
+            self._call_on_ui_thread(
+                self._complete_task_tracking,
+                'batch_modifier',
+                'error',
+                '批量改表失败',
+                [('错误', 1)],
+                error_msg,
+            )
             self._finish_background_task_async(
                 widgets_to_enable=(self.batch_process_button,),
                 status_message="批量修改失败",
@@ -2838,6 +3950,14 @@ Excel目录: {excel_dir}
     def clear_batch_results(self):
         """清空批量改表结果"""
         self.clear_result('batch_modifier')
+        self._set_task_panel_state(
+            'batch_modifier',
+            '尚未开始',
+            message='结果已清空',
+            progress=0,
+            summary='最近结果已清空。',
+            tone='muted',
+        )
     
     def preview_batch_json_config(self):
         """预览JSON配置内容"""
@@ -2923,11 +4043,22 @@ Excel目录: {excel_dir}
 
 def main():
     """主函数"""
+    if sys.platform.startswith('win'):
+        try:
+            import ctypes
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            except Exception:
+                ctypes.windll.user32.SetProcessDPIAware()
+        except Exception:
+            pass
+
     root = tk.Tk()
     app = GameToolsUnified(root)
     
     # 设置窗口关闭事件
     def on_closing():
+        app.shutdown()
         root.quit()
         root.destroy()
     

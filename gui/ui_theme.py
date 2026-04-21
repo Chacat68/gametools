@@ -141,6 +141,7 @@ def apply_ui_theme(root):
         font=('Microsoft YaHei UI', 9, 'bold'),
         background=UI_PALETTE['accent'],
         foreground=UI_PALETTE['accent_text'],
+        padding=(14, 9),
         focusthickness=0,
     )
     style.map(
@@ -158,6 +159,30 @@ def apply_ui_theme(root):
     style.map(
         'Subtle.TButton',
         background=[('active', UI_PALETTE['button_hover']), ('pressed', UI_PALETTE['button_pressed'])],
+    )
+
+    style.configure(
+        'Quiet.TButton',
+        background=UI_PALETTE['surface'],
+        foreground=UI_PALETTE['muted_text'],
+        padding=(10, 7),
+    )
+    style.map(
+        'Quiet.TButton',
+        background=[('active', UI_PALETTE['surface_alt']), ('pressed', UI_PALETTE['button_pressed'])],
+        foreground=[('active', UI_PALETTE['text'])],
+    )
+
+    style.configure(
+        'Danger.TButton',
+        background='#f2dfd8',
+        foreground=UI_PALETTE['error'],
+        padding=(12, 7),
+    )
+    style.map(
+        'Danger.TButton',
+        background=[('active', '#e8c7bb'), ('pressed', '#ddb3a4')],
+        foreground=[('active', UI_PALETTE['error'])],
     )
 
     style.configure(
