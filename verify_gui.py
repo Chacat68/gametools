@@ -1,5 +1,6 @@
 ﻿import os
 import sys
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
 
@@ -10,8 +11,11 @@ os.environ['FTP_PROXY'] = ''
 os.environ['NO_PROXY'] = '*'
 
 # 添加路径
-sys.path.insert(0, r'F:\webserver\public\tools\gametools')
-sys.path.insert(0, r'F:\webserver\public\tools\gametools\gui')
+PROJECT_ROOT = Path(__file__).resolve().parent
+GUI_DIR = PROJECT_ROOT / 'gui'
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(GUI_DIR))
+os.chdir(PROJECT_ROOT)
 
 try:
     from gui.gametools_unified import GameToolsUnified

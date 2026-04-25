@@ -74,6 +74,8 @@ def get_source_files_hash() -> dict:
 
     source_patterns = [
         (script_dir, "*.py"),
+        (script_dir, "*.spec"),
+        (script_dir / "assets", "**/*"),
         (project_root / "core", "*.py"),
         (project_root / "tools", "**/*"),
         (project_root, "config.json"),
@@ -558,9 +560,10 @@ a = Analysis(
         ('../config_export.json', '.'),
     ],
     hiddenimports=minimal_hiddenimports,
-    hookspath=['.'],
+    # 使用 PyInstaller 官方 numpy/pandas hooks，避免自定义最小化 hook 裁坏 NumPy 2.x。
+    hookspath=[],
     hooksconfig={},
-    runtime_hooks=['pyi_rth_numpy_fix.py'],
+    runtime_hooks=[],
     excludes=excluded_modules,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -572,7 +575,7 @@ a = Analysis(
 a.binaries = [x for x in a.binaries if not any(
     excl in x[0].lower() for excl in [
         'qt5', 'qt6', 'pyside', 'pyqt',
-        'matplotlib', 'scipy', 'cv2',
+        'matplotlib', 'cv2',
         'libssl', 'libcrypto',  # 不需要SSL
         'mklml', 'mkl_',  # Intel MKL（如果有OpenBLAS则不需要）
     ]

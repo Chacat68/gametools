@@ -7,14 +7,30 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.46.48"
-__version_info__ = (1, 46, 48)
-__build_date__ = "2026-04-20"
+__version__ = "1.46.50"
+__version_info__ = (1, 46, 50)
+__build_date__ = "2026-04-25"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能、GUI启动优化"
 
-# 版本历史（仅保留最近5个版本，更早版本请查看 docs/VERSION_HISTORY_ARCHIVE.md）
+# 版本历史（仅保留部分近期版本，更早版本请查看 docs/VERSION_HISTORY_ARCHIVE.md）
 VERSION_HISTORY = {
+    "1.46.50": {
+        "date": "2026-04-25",
+        "changes": [
+            "📦 重新打包当前修复后的发布版本",
+            "🧪 保留打包后 GUI 冒烟校验与验证脚本修复",
+            "🔧 同步构建签名与版本元数据一致性调整"
+        ]
+    },
+    "1.46.49": {
+        "date": "2026-04-25",
+        "changes": [
+            "🛠️ 修复 PyInstaller 对 NumPy 2.x 的打包兼容问题",
+            "📦 保留 libscipy_openblas 依赖，修复打包后 pandas/numpy 启动失败",
+            "✅ 新增打包后 GUI 冒烟校验脚本 verify_proc.ps1"
+        ]
+    },
     "1.46.31": {
         "date": "2026-01-28",
         "changes": [
@@ -158,9 +174,23 @@ def format_version_string():
     return f"v{__version__} | 构建日期: {__build_date__}"
 
 
+def _parse_version_key(version_key: str):
+    """将版本号字符串转换为可比较的元组。"""
+    try:
+        return tuple(int(part) for part in version_key.split('.'))
+    except Exception:
+        return (0, 0, 0)
+
+
 def get_latest_changes():
     """获取最新版本的更新内容"""
-    latest_version = max(VERSION_HISTORY.keys(), key=lambda x: VERSION_HISTORY[x]["date"])
+    if __version__ in VERSION_HISTORY:
+        return VERSION_HISTORY[__version__]["changes"]
+
+    if not VERSION_HISTORY:
+        return []
+
+    latest_version = max(VERSION_HISTORY.keys(), key=_parse_version_key)
     return VERSION_HISTORY[latest_version]["changes"]
 
 
@@ -182,6 +212,7 @@ def increment_version(part: str = "patch") -> str:
     from pathlib import Path
     
     global __version__, __version_info__, __build_date__
+    old_version = __version__
     
     # 解析当前版本
     major, minor, patch = __version_info__
@@ -230,7 +261,7 @@ def increment_version(part: str = "patch") -> str:
     __version_info__ = new_version_info
     __build_date__ = new_build_date
     
-    print(f"[VERSION] 版本已更新: {__version__} -> {new_version}")
+    print(f"[VERSION] 版本已更新: {old_version} -> {new_version}")
     print(f"[VERSION] 构建日期: {new_build_date}")
     
     return new_version

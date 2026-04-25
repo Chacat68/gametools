@@ -1,46 +1,109 @@
-﻿$exePath = "dist\gametools_v1.46.46.exe"
-$processName = "gametools_v1.46.46"
-$altProcessName = "gametools"
+﻿param(
+    [string]$ExePath,
+    [int]$TimeoutSeconds = 30,
+    [switch]$KeepRunning
+)
 
-Write-Output "--- Starting Process ---"
-$initialProc = Start-Process -FilePath $exePath -PassThru
-$initialPid = $initialProc.Id
-Write-Output "Initial PID: $initialPid"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-Start-Sleep -Seconds 3
+function Resolve-TargetExe {
+    param([string]$RequestedPath)
 
-Write-Output "--- Checking Process Status ---"
-$initialRunning = Get-Process -Id $initialPid -ErrorAction SilentlyContinue
+    if ($RequestedPath) {
+        return (Resolve-Path -LiteralPath $RequestedPath).Path
+    }
 
-if ($null -eq $initialRunning) {
-    Write-Output "Initial PID $initialPid has exited. Searching for child or related processes..."
-} else {
-    Write-Output "Initial PID $initialPid is still running."
+    $distDir = Join-Path $PSScriptRoot 'dist'
+    $latestExe = Get-ChildItem -Path $distDir -Filter 'gametools_v*.exe' -File |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+    if (-not $latestExe) {
+        throw "未在 $distDir 下找到 gametools_v*.exe"
+    }
+
+    return $latestExe.FullName
 }
 
-$relatedProcs = Get-CimInstance Win32_Process -Filter "Name = '$processName.exe' OR Name = '$altProcessName.exe'" | 
-                Select-Object ProcessId, ParentProcessId, CommandLine, CreationDate
+function Get-MatchingProcesses {
+    param(
+        [string]$ResolvedExePath,
+        [string]$ProcessName
+    )
 
-if ($relatedProcs) {
-    Write-Output "Found related processes:"
-    foreach ($p in $relatedProcs) {
-        $age = (Get-Date) - $p.CreationDate
-        Write-Output "PID: $($p.ProcessId), ParentPID: $($p.ParentProcessId), Age: $($age.TotalSeconds)s, Cmd: $($p.CommandLine)"
-    }
-} else {
-    Write-Output "No related processes found."
+    Get-Process -Name $ProcessName -ErrorAction SilentlyContinue |
+        Where-Object {
+            try {
+                $_.Path -and ([System.StringComparer]::OrdinalIgnoreCase.Equals($_.Path, $ResolvedExePath))
+            } catch {
+                $false
+            }
+        }
 }
 
-Write-Output "--- Waiting 10 seconds total for stability ---"
-Start-Sleep -Seconds 7
+$resolvedExePath = Resolve-TargetExe -RequestedPath $ExePath
+$processName = [System.IO.Path]::GetFileNameWithoutExtension($resolvedExePath)
+$existingProcessIds = @(
+    Get-MatchingProcesses -ResolvedExePath $resolvedExePath -ProcessName $processName |
+        Select-Object -ExpandProperty Id
+)
 
-$finalProcs = Get-CimInstance Win32_Process -Filter "Name = '$processName.exe' OR Name = '$altProcessName.exe'"
-if ($finalProcs) {
-    Write-Output "Status: SUCCESS. GUI processes are still running after 10s."
-    foreach ($p in $finalProcs) {
-        Write-Output "Terminating PID: $($p.ProcessId)"
-        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+Write-Output "[INFO] Exe: $resolvedExePath"
+Write-Output "[INFO] ProcessName: $processName"
+Write-Output "[INFO] TimeoutSeconds: $TimeoutSeconds"
+
+$startedProc = Start-Process -FilePath $resolvedExePath -PassThru
+Write-Output "[INFO] Initial PID: $($startedProc.Id)"
+
+$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+$windowProcess = $null
+
+while ((Get-Date) -lt $deadline) {
+    $matchingProcesses = @(
+        Get-MatchingProcesses -ResolvedExePath $resolvedExePath -ProcessName $processName |
+            Where-Object { $_.Id -notin $existingProcessIds }
+    )
+
+    if (-not $matchingProcesses -and $startedProc.HasExited) {
+        throw "进程已退出，且未发现同名驻留进程。初始 ExitCode=$($startedProc.ExitCode)"
     }
-} else {
-    Write-Output "Status: FAILURE. No related processes found after 10s."
+
+    $windowProcess = $matchingProcesses | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+    if ($windowProcess) {
+        break
+    }
+
+    Start-Sleep -Milliseconds 500
+}
+
+if (-not $windowProcess) {
+    $matchingProcesses = @(
+        Get-MatchingProcesses -ResolvedExePath $resolvedExePath -ProcessName $processName |
+            Where-Object { $_.Id -notin $existingProcessIds }
+    )
+    if ($matchingProcesses) {
+        Write-Output "[INFO] 当前匹配进程:"
+        $matchingProcesses |
+            Select-Object Id, ProcessName, MainWindowHandle, MainWindowTitle, Responding, Path |
+            Format-List |
+            Out-String |
+            Write-Output
+    }
+    throw "在 $TimeoutSeconds 秒内未发现主窗口句柄"
+}
+
+Write-Output "[SUCCESS] 主窗口已出现"
+Write-Output "[INFO] Window PID: $($windowProcess.Id)"
+Write-Output "[INFO] Window Title: $($windowProcess.MainWindowTitle)"
+
+if (-not $KeepRunning) {
+    $allProcesses = @(
+        Get-MatchingProcesses -ResolvedExePath $resolvedExePath -ProcessName $processName |
+            Where-Object { $_.Id -notin $existingProcessIds }
+    )
+    foreach ($proc in $allProcesses) {
+        Write-Output "[INFO] Stopping PID: $($proc.Id)"
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    }
 }
