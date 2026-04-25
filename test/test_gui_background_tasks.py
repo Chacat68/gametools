@@ -39,6 +39,20 @@ def _create_app():
     return root, app
 
 
+def _collect_widget_texts(widget):
+    texts = []
+    try:
+        value = widget.cget('text')
+        if value:
+            texts.append(value)
+    except Exception:
+        pass
+
+    for child in widget.winfo_children():
+        texts.extend(_collect_widget_texts(child))
+    return texts
+
+
 def test_field_extraction_snapshots_arguments():
     """启动字段提取时应冻结线程参数，而不是依赖后续 UI 变量。"""
     root, app = _create_app()
@@ -177,6 +191,67 @@ def test_batch_modifier_layout_keeps_critical_widgets():
         root.destroy()
 
 
+def test_default_tab_prefers_first_feature_and_about_page_renamed():
+    """启动时应优先选中首个功能页，关于页使用新的命名。"""
+    original_last_active_tab = unified_module.config_manager.config.ui.last_active_tab
+    unified_module.config_manager.config.ui.last_active_tab = 'about'
+
+    try:
+        root, app = _create_app()
+        try:
+            if app._get_current_tab_key() != 'batch_modifier':
+                print(f"❌ 默认页签不正确: {app._get_current_tab_key()}")
+                return False
+
+            if app.page_title_var.get() != '批量改表':
+                print(f"❌ 启动后头部标题不正确: {app.page_title_var.get()}")
+                return False
+
+            app.select_tab('about')
+            root.update_idletasks()
+
+            if app.page_title_var.get() != '关于':
+                print(f"❌ 关于页标题未更新: {app.page_title_var.get()}")
+                return False
+
+            if app.tab_lookup['about']['title'] != '关于':
+                print(f"❌ 关于页页签标题未更新: {app.tab_lookup['about']['title']}")
+                return False
+
+            print("✅ 默认页签和关于页命名正常")
+            return True
+        finally:
+            root.destroy()
+    finally:
+        unified_module.config_manager.config.ui.last_active_tab = original_last_active_tab
+
+
+def test_about_page_uses_information_sections_instead_of_workbench_cards():
+    """关于页应展示说明与状态区，而不是直接开始的工作台卡片。"""
+    root, app = _create_app()
+
+    try:
+        app.select_tab('about')
+        root.update_idletasks()
+
+        texts = _collect_widget_texts(app.tab_lookup['about']['frame'])
+
+        if '直接开始' in texts:
+            print(f"❌ 关于页仍然存在工作台文案: {texts}")
+            return False
+
+        expected_texts = {'工具信息', '状态与支持', '定位与能力', '版本与环境', '最近记录', '环境诊断'}
+        missing = [value for value in expected_texts if value not in texts]
+        if missing:
+            print(f"❌ 关于页缺少信息分区: {missing}")
+            return False
+
+        print("✅ 关于页信息结构正常")
+        return True
+    finally:
+        root.destroy()
+
+
 def test_finish_background_task_updates_status_and_message():
     """统一收尾逻辑应恢复按钮、更新状态并发出正确消息。"""
     root, app = _create_app()
@@ -300,6 +375,8 @@ def main():
         ("字段提取参数冻结", test_field_extraction_snapshots_arguments),
         ("处理器替换", test_replace_processor_refreshes_batch_modifier),
         ("批量改表页结构", test_batch_modifier_layout_keeps_critical_widgets),
+        ("默认页签与关于页命名", test_default_tab_prefers_first_feature_and_about_page_renamed),
+        ("关于页信息结构", test_about_page_uses_information_sections_instead_of_workbench_cards),
         ("统一收尾逻辑", test_finish_background_task_updates_status_and_message),
         ("结果格式化 helper", test_result_format_helpers),
         ("任务跟踪与最近任务", test_task_tracking_updates_recent_history),

@@ -52,7 +52,7 @@ TAB_VISUALS = {
     'field_extractor': {'tag': 'FD', 'tone': '#a48749'},
     'table_range_translator': {'tag': 'ML', 'tone': '#8e7258'},
     'batch_modifier': {'tag': 'BM', 'tone': '#86606c'},
-    'about': {'tag': 'HM', 'tone': '#647b85'},
+    'about': {'tag': 'AB', 'tone': '#647b85'},
 }
 
 TASK_RESULT_KEYS = {
@@ -78,7 +78,7 @@ TASK_TITLES = {
 NAV_SECTIONS = [
     ('主要流程', ('batch_modifier', 'table_range_translator', 'field_extractor', 'cross_project_translator')),
     ('辅助工具', ('excel_data_processor', 'json_detector')),
-    ('工作台', ('about',)),
+    ('关于', ('about',)),
 ]
 
 HOME_FLOW_SPECS = [
@@ -100,7 +100,7 @@ TAB_DESCRIPTIONS = {
     'field_extractor': '在这里完成多语言字段扫描、筛选和导出。',
     'table_range_translator': '在这里完成配置读取、多语言提取和结果输出。',
     'batch_modifier': '在这里完成配置加载、批量改表和结果输出。',
-    'about': '在这里进入主要流程和辅助工具。',
+    'about': '在这里查看工具信息、界面设置和诊断入口。',
 }
 
 BUTTON_LABELS = {
@@ -167,10 +167,6 @@ class GameToolsUnified:
         self._initialize_validation_watchers()
         self._refresh_all_inline_messages()
         self._apply_sidebar_state(self.ui_config.sidebar_collapsed)
-
-        saved_tab = self.ui_config.last_active_tab
-        if saved_tab in self.tab_lookup:
-            self.select_tab(saved_tab)
 
         self._refresh_dashboard()
     
@@ -634,7 +630,7 @@ class GameToolsUnified:
         self._record_recent_task(task_key, status, headline, metrics, detail, state.get('inputs', {}))
 
     def _record_recent_task(self, task_key, status, headline, metrics=None, detail=None, inputs=None):
-        """记录最近执行任务，供首页快速进入。"""
+        """记录最近执行任务，供关于页快速恢复。"""
         entry = {
             'key': task_key,
             'title': TASK_TITLES.get(task_key, task_key),
@@ -662,7 +658,7 @@ class GameToolsUnified:
         self._refresh_dashboard()
 
     def _open_recent_task(self, entry):
-        """从首页快速恢复最近一次任务输入。"""
+        """从关于页快速恢复最近一次任务输入。"""
         if not entry:
             return
 
@@ -707,7 +703,7 @@ class GameToolsUnified:
             f"工作目录: {Path.cwd()}",
             f"配置文件: {config_manager.config_file.resolve()}",
             f"日志目录: {log_dir.resolve()}",
-            f"最近任务: {recent_task_text}",
+            f"最近记录: {recent_task_text}",
             f"最新日志: {latest_log.resolve() if latest_log else '暂无'}",
             f"最近错误: {latest_error}",
             "引擎状态: " + ' | '.join(engine_lines),
@@ -723,7 +719,7 @@ class GameToolsUnified:
         messagebox.showinfo('成功', '诊断信息已复制到剪贴板')
 
     def _show_diagnostics_dialog(self):
-        """显示完整诊断信息，避免首页被技术细节淹没。"""
+        """显示完整诊断信息，避免关于页被技术细节淹没。"""
         snapshot = self._collect_diagnostics_snapshot()
         dialog = tk.Toplevel(self.root)
         dialog.title('环境诊断')
@@ -744,7 +740,7 @@ class GameToolsUnified:
 
         ttk.Label(
             container,
-            text='这里保留完整环境信息，首页只显示对执行任务有帮助的摘要。',
+            text='这里保留完整环境信息，关于页只显示对执行任务有帮助的摘要。',
             style='Info.TLabel',
         ).pack(anchor=tk.W, pady=(6, 12))
 
@@ -773,7 +769,7 @@ class GameToolsUnified:
         }.get(tone, self.palette['text'])
 
     def _collect_diagnostics_snapshot(self):
-        """收集首页摘要和完整诊断所需的数据。"""
+        """收集关于页摘要和完整诊断所需的数据。"""
         log_dir = Path('logs')
         latest_log = None
         latest_issue = '最近没有错误或警告记录'
@@ -831,7 +827,7 @@ class GameToolsUnified:
             engine_summary += f"，缺少 {', '.join(missing_engines)}"
 
         summary_lines = [
-            f"最近任务: {recent_task_text}",
+            f"最近记录: {recent_task_text}",
             f"引擎状态: {engine_summary}",
             f"日志状态: {'已生成' if latest_log else '尚未生成'}",
         ]
@@ -843,7 +839,7 @@ class GameToolsUnified:
             f"工作目录: {Path.cwd()}",
             f"配置文件: {config_manager.config_file.resolve()}",
             f"日志目录: {log_dir.resolve()}",
-            f"最近任务: {recent_task_text}",
+            f"最近记录: {recent_task_text}",
             f"最新日志: {latest_log.resolve() if latest_log else '暂无'}",
             f"最近问题: {latest_issue}",
             "引擎状态: " + ' | '.join(
@@ -862,7 +858,7 @@ class GameToolsUnified:
         }
 
     def _refresh_dashboard(self):
-        """刷新首页中的最近任务和诊断区域。"""
+        """刷新关于页中的最近记录和诊断区域。"""
         recent_tasks = getattr(self.ui_config, 'recent_tasks', []) or []
         latest_entry = recent_tasks[0] if recent_tasks else None
 
@@ -871,7 +867,7 @@ class GameToolsUnified:
         recent_action = self.dashboard_frames.get('recent_action')
 
         if latest_entry:
-            recent_summary = latest_entry.get('headline') or latest_entry.get('title') or '最近任务'
+            recent_summary = latest_entry.get('headline') or latest_entry.get('title') or '最近记录'
             recent_meta = ' · '.join(
                 part for part in (latest_entry.get('timestamp', ''), latest_entry.get('title', '')) if part
             )
@@ -891,17 +887,17 @@ class GameToolsUnified:
                 recent_detail.config(text='\n'.join(detail_lines))
             if recent_action:
                 recent_action.config(
-                    text='打开最近任务',
+                    text='打开最近记录',
                     state=tk.NORMAL,
                     command=lambda item=latest_entry: self._open_recent_task(item),
                 )
         else:
             if recent_title:
-                recent_title.config(text='还没有最近任务')
+                recent_title.config(text='还没有最近记录')
             if recent_detail:
-                recent_detail.config(text='先从左侧模块进入一个流程；最近执行记录会自动收敛到这里。')
+                recent_detail.config(text='执行任一功能后，最近记录会显示在这里，方便回到上次处理现场。')
             if recent_action:
-                recent_action.config(text='等待任务记录', state=tk.DISABLED, command=lambda: None)
+                recent_action.config(text='等待最近记录', state=tk.DISABLED, command=lambda: None)
 
         snapshot = self._collect_diagnostics_snapshot()
 
@@ -1577,6 +1573,16 @@ class GameToolsUnified:
         self.notebook.select(meta['frame'])
         self._sync_header_with_current_tab()
 
+    def _get_default_tab_key(self):
+        """返回启动时应选中的默认页面。"""
+        for _section_title, keys in NAV_SECTIONS:
+            for key in keys:
+                if key != 'about' and key in self.tab_lookup:
+                    return key
+        if self.tab_registry:
+            return self.tab_registry[0]['key']
+        return 'about'
+
     def create_widgets(self):
         """创建界面控件"""
         self.tab_registry = []
@@ -1672,7 +1678,7 @@ class GameToolsUnified:
         header_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         header_frame.grid_columnconfigure(0, weight=1)
 
-        self.page_title_var = tk.StringVar(value="工具工作台")
+        self.page_title_var = tk.StringVar(value="关于")
         self.page_desc_var = tk.StringVar(value=TAB_DESCRIPTIONS['about'])
         self.page_tag_var = tk.StringVar(value="GT")
 
@@ -1742,7 +1748,7 @@ class GameToolsUnified:
 
         self._build_navigation()
         if self.tab_registry:
-            self.select_tab(self.tab_registry[0]['key'])
+            self.select_tab(self._get_default_tab_key())
 
         self.status_var = tk.StringVar(value="准备就绪")
         status_bar = ttk.Label(workspace_frame, textvariable=self.status_var, style='Status.TLabel', anchor=tk.W)
@@ -2427,16 +2433,16 @@ class GameToolsUnified:
         self._create_task_panel(action_panel, 'batch_modifier')
     
     def create_about_tab(self):
-        """创建工作台首页。"""
+        """创建关于页。"""
         about_frame = self._register_tab(
             'about',
-            '工作台',
+            '关于',
             TAB_DESCRIPTIONS['about'],
             padding="18"
         )
 
         about_frame.columnconfigure(0, weight=1)
-        about_frame.rowconfigure(1, weight=1)
+        about_frame.rowconfigure(2, weight=1)
 
         intro_frame = tk.Frame(
             about_frame,
@@ -2458,7 +2464,7 @@ class GameToolsUnified:
         ).grid(row=0, column=0, sticky=tk.W)
         tk.Label(
             intro_frame,
-            text='一个入口处理改表、提取、翻译和检测，首页只保留当前操作真正需要的内容。',
+            text='统一处理改表、提取、翻译和检测，关于页集中展示版本、模块和诊断信息。',
             bg=self.palette['surface_alt'],
             fg=self.palette['muted_text'],
             font=('Microsoft YaHei UI', 9),
@@ -2478,72 +2484,146 @@ class GameToolsUnified:
             font=('Bahnschrift', 10, 'bold'),
         ).pack(side=tk.LEFT, padx=(12, 0))
 
-        workbench_frame = ttk.LabelFrame(about_frame, text='直接开始', padding=14)
-        workbench_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        workbench_frame.columnconfigure((0, 1), weight=1)
-        workbench_frame.rowconfigure(1, weight=1)
+        def create_about_card(parent, title, row, column):
+            card = tk.Frame(
+                parent,
+                bg=self.palette['surface_alt'],
+                highlightthickness=1,
+                highlightbackground=self.palette['border'],
+                padx=18,
+                pady=16,
+            )
+            card.grid(row=row, column=column, sticky=(tk.W, tk.E, tk.N, tk.S))
+            card.grid_columnconfigure(0, weight=1)
+            tk.Label(
+                card,
+                text=title,
+                bg=self.palette['surface_alt'],
+                fg=self.palette['text'],
+                font=('Bahnschrift', 12, 'bold'),
+                anchor='w',
+            ).grid(row=0, column=0, sticky=tk.W)
+            return card
 
-        summary_strip = tk.Frame(
-            workbench_frame,
-            bg=self.palette['surface_alt'],
-            highlightthickness=1,
-            highlightbackground=self.palette['border'],
-            padx=18,
-            pady=14,
-        )
-        summary_strip.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 14))
-        summary_strip.columnconfigure(0, weight=3)
-        summary_strip.columnconfigure(1, weight=2)
+        enabled_titles = [
+            self.tab_lookup[key]['title']
+            for _section_title, keys in NAV_SECTIONS
+            for key in keys
+            if key != 'about' and key in self.tab_lookup
+        ]
+        default_tab_title = self.tab_lookup.get(self._get_default_tab_key(), {}).get('title', '关于')
 
-        recent_panel = tk.Frame(summary_strip, bg=self.palette['surface_alt'])
-        recent_panel.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 18))
+        info_frame = ttk.LabelFrame(about_frame, text='工具信息', padding=14)
+        info_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 12))
+        info_frame.columnconfigure(0, weight=1)
+        info_frame.columnconfigure(1, weight=1)
+
+        overview_card = create_about_card(info_frame, '定位与能力', row=0, column=0)
         tk.Label(
-            recent_panel,
-            text='最近一次',
+            overview_card,
+            text='GameTools 面向策划本地化流程，统一收纳批量改表、多语言提取、字段导出和检测能力，减少多入口切换。',
+            bg=self.palette['surface_alt'],
+            fg=self.palette['muted_text'],
+            wraplength=360,
+            justify='left',
+            font=('Microsoft YaHei UI', 9),
+        ).grid(row=1, column=0, sticky=tk.W, pady=(8, 0))
+        tk.Label(
+            overview_card,
+            text='当前启用模块',
             bg=self.palette['surface_alt'],
             fg=self.palette['muted_text'],
             font=('Microsoft YaHei UI', 9),
-        ).pack(anchor=tk.W)
+        ).grid(row=2, column=0, sticky=tk.W, pady=(14, 0))
+        tk.Label(
+            overview_card,
+            text='、'.join(enabled_titles) if enabled_titles else '当前没有启用功能模块，可在界面设置中开启。',
+            bg=self.palette['surface_alt'],
+            fg=self.palette['text'],
+            wraplength=360,
+            justify='left',
+            font=('Microsoft YaHei UI', 9),
+        ).grid(row=3, column=0, sticky=tk.W, pady=(6, 0))
+        ttk.Button(
+            overview_card,
+            text='管理模块显示',
+            style='Subtle.TButton',
+            command=self.show_settings_dialog,
+        ).grid(row=4, column=0, sticky=tk.W, pady=(12, 0))
+
+        version_card = create_about_card(info_frame, '版本与环境', row=0, column=1)
+        version_card.columnconfigure(1, weight=1)
+        version_rows = [
+            ('当前版本', format_version_string()),
+            ('构建日期', get_build_date()),
+            ('Python 环境', f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"),
+            ('默认入口', default_tab_title),
+        ]
+        for index, (label_text, value_text) in enumerate(version_rows, start=1):
+            tk.Label(
+                version_card,
+                text=label_text,
+                bg=self.palette['surface_alt'],
+                fg=self.palette['muted_text'],
+                font=('Microsoft YaHei UI', 9),
+            ).grid(row=index, column=0, sticky=tk.W, pady=(8 if index == 1 else 10, 0), padx=(0, 14))
+            tk.Label(
+                version_card,
+                text=value_text,
+                bg=self.palette['surface_alt'],
+                fg=self.palette['text'],
+                font=('Bahnschrift', 10, 'bold') if index < 3 else ('Microsoft YaHei UI', 9),
+                anchor='w',
+                justify='left',
+            ).grid(row=index, column=1, sticky=(tk.W, tk.E), pady=(8 if index == 1 else 10, 0))
+
+        self._register_responsive_layout(
+            info_frame,
+            overview_card,
+            version_card,
+            left_weight=1,
+            right_weight=1,
+            breakpoint=940,
+        )
+
+        status_frame = ttk.LabelFrame(about_frame, text='状态与支持', padding=14)
+        status_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        status_frame.columnconfigure(0, weight=1)
+        status_frame.columnconfigure(1, weight=1)
+
+        recent_panel = create_about_card(status_frame, '最近记录', row=0, column=0)
         recent_title = tk.Label(
             recent_panel,
-            text='还没有最近任务',
+            text='还没有最近记录',
             bg=self.palette['surface_alt'],
             fg=self.palette['text'],
             justify='left',
             anchor='w',
             font=('Bahnschrift', 12, 'bold'),
         )
-        recent_title.pack(anchor=tk.W, pady=(6, 0))
+        recent_title.grid(row=1, column=0, sticky=tk.W, pady=(8, 0))
         recent_detail = tk.Label(
             recent_panel,
-            text='先从左侧模块进入一个流程；最近执行记录会自动收敛到这里。',
+            text='执行任一功能后，最近记录会显示在这里，方便回到上次处理现场。',
             bg=self.palette['surface_alt'],
             fg=self.palette['muted_text'],
             justify='left',
             anchor='w',
-            wraplength=480,
+            wraplength=360,
             font=('Microsoft YaHei UI', 9),
         )
-        recent_detail.pack(anchor=tk.W, pady=(6, 0))
+        recent_detail.grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
         recent_action = ttk.Button(
             recent_panel,
-            text='等待任务记录',
+            text='等待最近记录',
             style='Quiet.TButton',
             state=tk.DISABLED,
         )
-        recent_action.pack(anchor=tk.W, pady=(10, 0))
+        recent_action.grid(row=3, column=0, sticky=tk.W, pady=(12, 0))
 
-        status_panel = tk.Frame(summary_strip, bg=self.palette['surface_alt'])
-        status_panel.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
-        tk.Label(
-            status_panel,
-            text='工具状态',
-            bg=self.palette['surface_alt'],
-            fg=self.palette['muted_text'],
-            font=('Microsoft YaHei UI', 9),
-        ).pack(anchor=tk.W)
+        diagnostics_panel = create_about_card(status_frame, '环境诊断', row=0, column=1)
         diagnostics_status = tk.Label(
-            status_panel,
+            diagnostics_panel,
             text='环境状态读取中...',
             bg=self.palette['surface_alt'],
             fg=self.palette['text'],
@@ -2551,156 +2631,47 @@ class GameToolsUnified:
             anchor='w',
             font=('Bahnschrift', 11, 'bold'),
         )
-        diagnostics_status.pack(anchor=tk.W, pady=(6, 0))
+        diagnostics_status.grid(row=1, column=0, sticky=tk.W, pady=(8, 0))
         diagnostics_summary = tk.Label(
-            status_panel,
+            diagnostics_panel,
             text='',
             bg=self.palette['surface_alt'],
             fg=self.palette['text'],
             justify='left',
             anchor='w',
-            wraplength=320,
+            wraplength=360,
             font=('Microsoft YaHei UI', 9),
         )
-        diagnostics_summary.pack(anchor=tk.W, pady=(6, 0))
-        ttk.Button(status_panel, text='复制诊断', style='Quiet.TButton', command=self._copy_diagnostics_to_clipboard).pack(anchor=tk.W, pady=(10, 0))
+        diagnostics_summary.grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
+        diagnostics_actions = tk.Frame(diagnostics_panel, bg=self.palette['surface_alt'])
+        diagnostics_actions.grid(row=3, column=0, sticky=tk.W, pady=(12, 0))
+        ttk.Button(
+            diagnostics_actions,
+            text='查看完整诊断',
+            style='Quiet.TButton',
+            command=self._show_diagnostics_dialog,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            diagnostics_actions,
+            text='复制诊断',
+            style='Quiet.TButton',
+            command=self._copy_diagnostics_to_clipboard,
+        ).pack(side=tk.LEFT, padx=(8, 0))
+
+        self._register_responsive_layout(
+            status_frame,
+            recent_panel,
+            diagnostics_panel,
+            left_weight=1,
+            right_weight=1,
+            breakpoint=940,
+        )
 
         self.dashboard_frames['recent_title'] = recent_title
         self.dashboard_frames['recent_detail'] = recent_detail
         self.dashboard_frames['recent_action'] = recent_action
         self.dashboard_frames['diagnostics_status'] = diagnostics_status
         self.dashboard_frames['diagnostics_summary'] = diagnostics_summary
-
-        tasks_frame = ttk.Frame(workbench_frame, style='Page.TFrame')
-        tasks_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
-        tasks_frame.columnconfigure(0, weight=1)
-
-        primary_actions = [item for item in HOME_FLOW_SPECS if item[0] in self.tab_lookup]
-        support_actions = [item for item in HOME_SUPPORT_SPECS if item[0] in self.tab_lookup]
-
-        if not primary_actions and not support_actions:
-            ttk.Label(tasks_frame, text='当前没有可显示的模块，请先在界面设置中启用。', style='Info.TLabel').grid(
-                row=0, column=0, sticky=tk.W
-            )
-            return
-
-        def create_home_card(parent, task_key, title, description, row, column, colspan=1, featured=False):
-            visual = self._get_tab_visual(task_key)
-            card_bg = self.palette['surface_alt'] if featured else self.palette['surface']
-            border_color = self.palette['accent'] if featured else self.palette['border']
-            card = tk.Frame(
-                parent,
-                bg=card_bg,
-                highlightthickness=1,
-                highlightbackground=border_color,
-                padx=18 if featured else 14,
-                pady=16 if featured else 12,
-            )
-            card.grid(
-                row=row,
-                column=column,
-                columnspan=colspan,
-                sticky=(tk.W, tk.E),
-                padx=(0 if column == 0 else 8, 0),
-                pady=(0, 10),
-            )
-
-            header = tk.Frame(card, bg=card_bg)
-            header.pack(fill=tk.X)
-
-            tk.Label(
-                header,
-                text=visual['tag'],
-                bg=self.palette['accent'] if featured else visual['tone'],
-                fg=self.palette['accent_text'],
-                font=('Bahnschrift', 9, 'bold'),
-                padx=8,
-                pady=3,
-            ).pack(side=tk.LEFT)
-
-            if featured:
-                tk.Label(
-                    header,
-                    text='主流程',
-                    bg=card_bg,
-                    fg=self.palette['accent'],
-                    font=('Bahnschrift', 9, 'bold'),
-                ).pack(side=tk.RIGHT)
-
-            tk.Label(
-                card,
-                text=title,
-                bg=card_bg,
-                fg=self.palette['text'],
-                font=('Bahnschrift', 13 if featured else 11, 'bold'),
-                anchor='w',
-                justify='left',
-            ).pack(anchor=tk.W, pady=(10, 0))
-            tk.Label(
-                card,
-                text=description,
-                bg=card_bg,
-                fg=self.palette['muted_text'],
-                wraplength=620 if featured else 300,
-                justify='left',
-                font=('Microsoft YaHei UI', 9),
-            ).pack(anchor=tk.W, pady=(6, 10))
-            ttk.Button(
-                card,
-                text='进入主流程' if featured else '进入',
-                style='Accent.TButton' if featured else 'Subtle.TButton',
-                command=lambda key=task_key: self.select_tab(key),
-            ).pack(anchor=tk.W)
-
-        next_row = 0
-        if primary_actions:
-            ttk.Label(tasks_frame, text='主要流程', style='Heading.TLabel').grid(row=next_row, column=0, sticky=tk.W)
-            ttk.Label(tasks_frame, text='按高频工作顺序进入，先完成主任务再补充检查。', style='Info.TLabel').grid(
-                row=next_row + 1, column=0, sticky=tk.W, pady=(4, 10)
-            )
-
-            primary_frame = ttk.Frame(tasks_frame, style='Page.TFrame')
-            primary_frame.grid(row=next_row + 2, column=0, sticky=(tk.W, tk.E))
-            primary_frame.columnconfigure((0, 1), weight=1)
-
-            featured_key, featured_title, featured_description = primary_actions[0]
-            create_home_card(
-                primary_frame,
-                featured_key,
-                featured_title,
-                featured_description,
-                row=0,
-                column=0,
-                colspan=2,
-                featured=True,
-            )
-
-            remaining_actions = primary_actions[1:]
-            for index, (task_key, title, description) in enumerate(remaining_actions):
-                row = 1 + index // 2
-                column = index % 2
-                colspan = 1
-                if len(remaining_actions) % 2 == 1 and index == len(remaining_actions) - 1:
-                    column = 0
-                    colspan = 2
-                create_home_card(primary_frame, task_key, title, description, row=row, column=column, colspan=colspan)
-
-            next_row += 3
-
-        if support_actions:
-            ttk.Label(tasks_frame, text='辅助工具', style='Heading.TLabel').grid(
-                row=next_row, column=0, sticky=tk.W, pady=(8 if primary_actions else 0, 0)
-            )
-            ttk.Label(tasks_frame, text='低频处理和校验能力收纳在这里，避免和主流程抢视线。', style='Info.TLabel').grid(
-                row=next_row + 1, column=0, sticky=tk.W, pady=(4, 10)
-            )
-
-            support_frame = ttk.Frame(tasks_frame, style='Page.TFrame')
-            support_frame.grid(row=next_row + 2, column=0, sticky=(tk.W, tk.E))
-            support_frame.columnconfigure((0, 1), weight=1)
-
-            for index, (task_key, title, description) in enumerate(support_actions):
-                create_home_card(support_frame, task_key, title, description, row=0, column=index % 2)
     
     def show_settings_dialog(self):
         """显示设置对话框"""
