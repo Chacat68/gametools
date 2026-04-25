@@ -90,6 +90,9 @@ class GameToolsUnified:
         self.task_state = {}
         self.inline_messages = {}
         self.dashboard_frames = {}
+        self.tab_scroll_context = {}
+        self.responsive_layouts = []
+        self._active_tab_scroll_key = None
         self._validation_watchers_ready = False
         self._is_restoring_state = False
         self._sidebar_hidden = False
@@ -107,17 +110,13 @@ class GameToolsUnified:
         self._apply_saved_window_geometry()
         self.root.minsize(980, 680)
         
-        # 设置窗口图标
-        try:
-            self.root.iconbitmap("icon.ico")
-        except Exception:
-            pass
-        
         # 设置样式
         self.setup_styles()
+        self._apply_window_icon()
         
         # 创建界面
         self.create_widgets()
+        self._apply_sidebar_width(self.ui_config.sidebar_width)
 
         self._restore_form_state()
         self._initialize_validation_watchers()
@@ -171,7 +170,58 @@ class GameToolsUnified:
     
     def setup_styles(self):
         """设置界面样式"""
-        self.palette, self.style = apply_ui_theme(self.root)
+        self.palette, self.style = apply_ui_theme(self.root, font_size=self.ui_config.font_size)
+
+    def _resolve_runtime_asset(self, *relative_paths):
+        """在开发环境与 PyInstaller 环境下定位资源文件。"""
+        search_roots = []
+        if hasattr(sys, '_MEIPASS'):
+            search_roots.append(Path(sys._MEIPASS))
+
+        current_dir = Path(__file__).resolve().parent
+        search_roots.extend([current_dir, current_dir.parent, Path.cwd()])
+
+        checked_paths = set()
+        for root in search_roots:
+            for relative_path in relative_paths:
+                candidate = root / relative_path
+                normalized = str(candidate)
+                if normalized in checked_paths:
+                    continue
+                checked_paths.add(normalized)
+                if candidate.exists():
+                    return candidate
+        return None
+
+    def _apply_window_icon(self):
+        """应用窗口与打包产物共享的图标资源。"""
+        icon_path = self._resolve_runtime_asset(
+            Path('gui_assets') / 'gametools.ico',
+            Path('assets') / 'gametools.ico',
+            Path('gui') / 'assets' / 'gametools.ico',
+            Path('icon.ico'),
+        )
+        if not icon_path:
+            return
+
+        try:
+            self.root.iconbitmap(str(icon_path))
+        except Exception:
+            logging.exception("加载窗口图标失败: %s", icon_path)
+
+    def _apply_sidebar_width(self, width=None):
+        """应用侧栏宽度配置。"""
+        if not hasattr(self, 'sidebar_frame'):
+            return
+
+        try:
+            sidebar_width = int(width or getattr(self.ui_config, 'sidebar_width', 240) or 240)
+        except (TypeError, ValueError):
+            sidebar_width = 240
+
+        sidebar_width = max(220, min(sidebar_width, 320))
+        self.sidebar_frame.configure(width=sidebar_width)
+        self.sidebar_frame.grid_propagate(False)
 
     def _apply_saved_window_geometry(self):
         """按配置恢复窗口大小和位置。"""
@@ -627,6 +677,145 @@ class GameToolsUnified:
         self.root.update()
         messagebox.showinfo('成功', '诊断信息已复制到剪贴板')
 
+    def _show_diagnostics_dialog(self):
+        """显示完整诊断信息，避免首页被技术细节淹没。"""
+        snapshot = self._collect_diagnostics_snapshot()
+        dialog = tk.Toplevel(self.root)
+        dialog.title('环境诊断')
+        dialog.geometry('760x560')
+        dialog.minsize(640, 420)
+        dialog.transient(self.root)
+
+        container = ttk.Frame(dialog, padding=14)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(
+            container,
+            text=snapshot['status_title'],
+            bg=self.palette['surface'],
+            fg=self._resolve_tone_color(snapshot['status_tone']),
+            font=('Bahnschrift', 13, 'bold'),
+        ).pack(anchor=tk.W)
+
+        ttk.Label(
+            container,
+            text='这里保留完整环境信息，首页只显示对执行任务有帮助的摘要。',
+            style='Info.TLabel',
+        ).pack(anchor=tk.W, pady=(6, 12))
+
+        result_text = scrolledtext.ScrolledText(
+            container,
+            wrap=tk.WORD,
+            font=('Consolas', 9),
+        )
+        result_text.pack(fill=tk.BOTH, expand=True)
+        result_text.insert('1.0', '\n'.join(snapshot['full_lines']))
+        result_text.config(state='disabled')
+
+        actions = ttk.Frame(container)
+        actions.pack(fill=tk.X, pady=(12, 0))
+        ttk.Button(actions, text='复制诊断', style='Quiet.TButton', command=self._copy_diagnostics_to_clipboard).pack(side=tk.LEFT)
+        ttk.Button(actions, text='关闭', style='Accent.TButton', command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def _resolve_tone_color(self, tone):
+        """将状态 tone 转换为实际颜色。"""
+        return {
+            'muted': self.palette['muted_text'],
+            'info': self.palette['info'],
+            'success': self.palette['success'],
+            'warning': self.palette['warning'],
+            'error': self.palette['error'],
+        }.get(tone, self.palette['text'])
+
+    def _collect_diagnostics_snapshot(self):
+        """收集首页摘要和完整诊断所需的数据。"""
+        log_dir = Path('logs')
+        latest_log = None
+        latest_issue = '最近没有错误或警告记录'
+        latest_issue_tone = 'success'
+
+        if log_dir.exists():
+            logs = sorted(log_dir.glob('*.log'), key=lambda item: item.stat().st_mtime, reverse=True)
+            latest_log = logs[0] if logs else None
+
+        if latest_log:
+            try:
+                with open(latest_log, 'r', encoding='utf-8') as file_obj:
+                    tail_lines = file_obj.readlines()[-200:]
+                for line in reversed(tail_lines):
+                    if 'CRITICAL' in line or 'ERROR' in line:
+                        latest_issue = line.strip()
+                        latest_issue_tone = 'error'
+                        break
+                    if 'WARNING' in line:
+                        latest_issue = line.strip()
+                        latest_issue_tone = 'warning'
+                        break
+            except Exception:
+                latest_issue = '最近日志存在，但读取失败'
+                latest_issue_tone = 'warning'
+        else:
+            latest_issue = '尚未生成运行日志，首次执行任务后会记录到 logs 目录'
+            latest_issue_tone = 'info'
+
+        available_engines = []
+        missing_engines = []
+        for module_name in ('xlwings', 'openpyxl', 'pandas'):
+            if importlib.util.find_spec(module_name):
+                available_engines.append(module_name)
+            else:
+                missing_engines.append(module_name)
+
+        recent_task = (getattr(self.ui_config, 'recent_tasks', []) or [{}])[0]
+        recent_task_text = recent_task.get('title', '暂无') if isinstance(recent_task, dict) else '暂无'
+
+        status_tone = 'success'
+        status_title = '环境状态正常'
+        if latest_issue_tone == 'error':
+            status_tone = 'error'
+            status_title = '环境中有错误记录'
+        elif latest_issue_tone == 'warning' or missing_engines:
+            status_tone = 'warning'
+            status_title = '环境需要关注'
+        elif latest_issue_tone == 'info':
+            status_tone = 'info'
+            status_title = '首次运行前环境摘要'
+
+        engine_summary = f"{len(available_engines)}/3 可用"
+        if missing_engines:
+            engine_summary += f"，缺少 {', '.join(missing_engines)}"
+
+        summary_lines = [
+            f"最近任务: {recent_task_text}",
+            f"引擎状态: {engine_summary}",
+            f"日志状态: {'已生成' if latest_log else '尚未生成'}",
+        ]
+
+        full_lines = [
+            f"版本: {format_version_string()}",
+            f"构建日期: {get_build_date()}",
+            f"Python: {sys.executable}",
+            f"工作目录: {Path.cwd()}",
+            f"配置文件: {config_manager.config_file.resolve()}",
+            f"日志目录: {log_dir.resolve()}",
+            f"最近任务: {recent_task_text}",
+            f"最新日志: {latest_log.resolve() if latest_log else '暂无'}",
+            f"最近问题: {latest_issue}",
+            "引擎状态: " + ' | '.join(
+                f"{module_name}: {'可用' if module_name in available_engines else '缺失'}"
+                for module_name in ('xlwings', 'openpyxl', 'pandas')
+            ),
+        ]
+
+        return {
+            'status_title': status_title,
+            'status_tone': status_tone,
+            'summary_lines': summary_lines,
+            'latest_issue': latest_issue,
+            'latest_issue_tone': latest_issue_tone,
+            'full_lines': full_lines,
+        }
+
     def _refresh_dashboard(self):
         """刷新首页中的最近任务和诊断区域。"""
         if hasattr(self, 'dashboard_recent_count_var'):
@@ -645,7 +834,7 @@ class GameToolsUnified:
                     style='Info.TLabel',
                 ).pack(anchor=tk.W)
             else:
-                for entry in recent_tasks[:5]:
+                for entry in recent_tasks[:3]:
                     row = tk.Frame(recent_frame, bg=self.palette['surface'])
                     row.pack(fill=tk.X, pady=(0, 8))
 
@@ -684,9 +873,25 @@ class GameToolsUnified:
                         command=lambda item=entry: self._open_recent_task(item),
                     ).pack(anchor=tk.W, pady=(6, 0))
 
-        diagnostics_label = self.dashboard_frames.get('diagnostics_label')
-        if diagnostics_label:
-            diagnostics_label.config(text=self._collect_diagnostics_text())
+        snapshot = self._collect_diagnostics_snapshot()
+
+        diagnostics_status = self.dashboard_frames.get('diagnostics_status')
+        if diagnostics_status:
+            diagnostics_status.config(
+                text=snapshot['status_title'],
+                fg=self._resolve_tone_color(snapshot['status_tone']),
+            )
+
+        diagnostics_summary = self.dashboard_frames.get('diagnostics_summary')
+        if diagnostics_summary:
+            diagnostics_summary.config(text='\n'.join(snapshot['summary_lines']))
+
+        diagnostics_issue = self.dashboard_frames.get('diagnostics_issue')
+        if diagnostics_issue:
+            diagnostics_issue.config(
+                text=snapshot['latest_issue'],
+                fg=self._resolve_tone_color(snapshot['latest_issue_tone']),
+            )
 
     def _watch_vars(self, callback, *variables):
         """给变量绑定校验刷新回调。"""
@@ -908,9 +1113,114 @@ class GameToolsUnified:
         _, text, tone = self._validate_batch_inputs(strict=False)
         self._set_inline_message('batch_modifier', text, tone)
 
+    def _create_scrollable_tab_body(self, tab_key, tab_frame, padding):
+        """为页签创建统一的滚动容器。"""
+        tab_frame.columnconfigure(0, weight=1)
+        tab_frame.rowconfigure(0, weight=1)
+
+        scroll_host = ttk.Frame(tab_frame, style='App.TFrame')
+        scroll_host.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        scroll_host.columnconfigure(0, weight=1)
+        scroll_host.rowconfigure(0, weight=1)
+
+        canvas = tk.Canvas(
+            scroll_host,
+            bg=self.palette['app_bg'],
+            highlightthickness=0,
+            borderwidth=0,
+            relief='flat',
+        )
+        canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        scrollbar = ttk.Scrollbar(scroll_host, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        body = ttk.Frame(canvas, padding=padding, style='Page.TFrame')
+        body.columnconfigure(0, weight=1)
+        window = canvas.create_window((0, 0), window=body, anchor='nw')
+
+        self.tab_scroll_context[tab_key] = {
+            'host': scroll_host,
+            'canvas': canvas,
+            'scrollbar': scrollbar,
+            'body': body,
+            'window': window,
+            'scroll_enabled': False,
+        }
+
+        body.bind('<Configure>', lambda _event, key=tab_key: self._update_tab_scrollregion(key))
+        canvas.bind('<Configure>', lambda event, key=tab_key: self._update_tab_canvas_width(key, event.width))
+        scroll_host.bind('<Enter>', lambda _event, key=tab_key: self._bind_tab_mousewheel(key))
+        scroll_host.bind('<Leave>', lambda _event, key=tab_key: self._unbind_tab_mousewheel(key))
+        self.root.after_idle(lambda key=tab_key: self._refresh_tab_scrollbar(key))
+        return body
+
+    def _update_tab_scrollregion(self, tab_key):
+        """同步页签滚动区域。"""
+        context = self.tab_scroll_context.get(tab_key)
+        if not context:
+            return
+
+        context['canvas'].configure(scrollregion=context['canvas'].bbox('all'))
+        self._refresh_tab_scrollbar(tab_key)
+
+    def _update_tab_canvas_width(self, tab_key, width):
+        """让页签内容宽度跟随可视区域变化。"""
+        context = self.tab_scroll_context.get(tab_key)
+        if not context:
+            return
+
+        context['canvas'].itemconfigure(context['window'], width=width)
+        self._refresh_tab_scrollbar(tab_key)
+
+    def _refresh_tab_scrollbar(self, tab_key):
+        """按内容高度决定是否显示页签滚动条。"""
+        context = self.tab_scroll_context.get(tab_key)
+        if not context:
+            return
+
+        bbox = context['canvas'].bbox('all')
+        content_height = bbox[3] - bbox[1] if bbox else 0
+        canvas_height = context['canvas'].winfo_height()
+        should_scroll = canvas_height > 1 and content_height > canvas_height + 2
+        context['scroll_enabled'] = should_scroll
+
+        if should_scroll:
+            if not context['scrollbar'].winfo_ismapped():
+                context['scrollbar'].grid(row=0, column=1, sticky=(tk.N, tk.S))
+        else:
+            context['canvas'].yview_moveto(0)
+            if context['scrollbar'].winfo_ismapped():
+                context['scrollbar'].grid_remove()
+            if self._active_tab_scroll_key == tab_key:
+                self._unbind_tab_mousewheel(tab_key)
+
+    def _bind_tab_mousewheel(self, tab_key):
+        """鼠标进入页签内容区域后启用滚轮滚动。"""
+        context = self.tab_scroll_context.get(tab_key)
+        if context and context['scroll_enabled']:
+            self._active_tab_scroll_key = tab_key
+            self.notebook.bind_all('<MouseWheel>', self._on_tab_mousewheel)
+
+    def _unbind_tab_mousewheel(self, tab_key=None):
+        """鼠标离开页签内容区域后取消滚轮绑定。"""
+        if tab_key is None or self._active_tab_scroll_key == tab_key:
+            self._active_tab_scroll_key = None
+            self.notebook.unbind_all('<MouseWheel>')
+
+    def _on_tab_mousewheel(self, event):
+        """处理页签内容区的滚轮滚动。"""
+        if not event.delta or not self._active_tab_scroll_key:
+            return
+
+        context = self.tab_scroll_context.get(self._active_tab_scroll_key)
+        if context and context['scroll_enabled']:
+            context['canvas'].yview_scroll(int(-event.delta / 120), 'units')
+
     def _register_tab(self, key, title, description, padding="16"):
         """注册主工作区页面并保存导航信息。"""
-        frame = ttk.Frame(self.notebook, padding=padding, style='Page.TFrame')
+        frame = ttk.Frame(self.notebook, style='App.TFrame')
+        body = self._create_scrollable_tab_body(key, frame, padding)
         self.notebook.add(frame, text=title)
         self.tab_registry.append({
             'key': key,
@@ -919,14 +1229,65 @@ class GameToolsUnified:
             'frame': frame,
         })
         self.tab_lookup[key] = self.tab_registry[-1]
-        return frame
+        return body
 
     def _get_tab_visual(self, key):
         """获取页面导航缩写和色块信息。"""
         return TAB_VISUALS.get(key, {'tag': 'GT', 'tone': self.palette['accent']})
 
+    def _register_responsive_layout(self, layout_frame, left_column, right_column,
+                                    left_weight=3, right_weight=2, breakpoint=940):
+        """注册会在窄宽度下自动堆叠的双列布局。"""
+        context = {
+            'layout_frame': layout_frame,
+            'left_column': left_column,
+            'right_column': right_column,
+            'left_weight': left_weight,
+            'right_weight': right_weight,
+            'breakpoint': breakpoint,
+            'is_stacked': None,
+        }
+        self.responsive_layouts.append(context)
+        layout_frame.bind('<Configure>', lambda event, ctx=context: self._apply_responsive_layout(ctx, event.width))
+        self.root.after_idle(lambda ctx=context: self._apply_responsive_layout(ctx))
+        return context
+
+    def _apply_responsive_layout(self, context, width=None):
+        """根据当前宽度在双列与单列堆叠之间切换。"""
+        layout_frame = context['layout_frame']
+        if not layout_frame.winfo_exists():
+            return
+
+        available_width = width or layout_frame.winfo_width()
+        if available_width <= 1:
+            return
+
+        should_stack = available_width < context['breakpoint']
+        if context['is_stacked'] == should_stack:
+            return
+
+        left_column = context['left_column']
+        right_column = context['right_column']
+
+        if should_stack:
+            layout_frame.columnconfigure(0, weight=1)
+            layout_frame.columnconfigure(1, weight=0)
+            layout_frame.rowconfigure(0, weight=0)
+            layout_frame.rowconfigure(1, weight=0)
+            left_column.grid_configure(row=0, column=0, padx=(0, 0), pady=(0, 0))
+            right_column.grid_configure(row=1, column=0, pady=(12, 0))
+        else:
+            layout_frame.columnconfigure(0, weight=context['left_weight'])
+            layout_frame.columnconfigure(1, weight=context['right_weight'])
+            layout_frame.rowconfigure(0, weight=1)
+            layout_frame.rowconfigure(1, weight=0)
+            left_column.grid_configure(row=0, column=0, padx=(0, 12), pady=(0, 0))
+            right_column.grid_configure(row=0, column=1, pady=(0, 0))
+
+        context['is_stacked'] = should_stack
+
     def _build_tab_columns(self, parent, left_weight=3, right_weight=2):
-        """构建统一的双列布局。"""
+        """构建统一的响应式双列布局。"""
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(0, weight=1)
 
@@ -944,7 +1305,37 @@ class GameToolsUnified:
         right_column.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         right_column.columnconfigure(0, weight=1)
 
+        self._register_responsive_layout(
+            layout_frame,
+            left_column,
+            right_column,
+            left_weight=left_weight,
+            right_weight=right_weight,
+            breakpoint=940,
+        )
+
         return left_column, right_column
+
+    def _set_batch_advanced_visibility(self, expanded):
+        """切换批量改表页的高级选项显示状态。"""
+        frame = getattr(self, 'batch_advanced_body', None)
+        if frame is None:
+            return
+
+        self._batch_advanced_expanded = bool(expanded)
+        if self._batch_advanced_expanded:
+            frame.grid()
+        else:
+            frame.grid_remove()
+
+        if hasattr(self, 'batch_advanced_toggle_var'):
+            self.batch_advanced_toggle_var.set('收起高级选项' if self._batch_advanced_expanded else '展开高级选项')
+
+        self.root.after_idle(lambda: self._update_tab_scrollregion('batch_modifier'))
+
+    def _toggle_batch_advanced_options(self):
+        """展开或收起批量改表页的高级选项。"""
+        self._set_batch_advanced_visibility(not getattr(self, '_batch_advanced_expanded', False))
 
     def _create_action_panel(self, parent, row, pady=(0, 0)):
         """创建侧边动作卡。"""
@@ -1007,7 +1398,6 @@ class GameToolsUnified:
                 bg=self.palette['sidebar_bg'],
                 fg=self.palette['sidebar_text'],
                 anchor='w',
-                font=('Bahnschrift', 10, 'bold'),
             )
             title_label.grid(row=0, column=1, sticky=(tk.W, tk.E))
 
@@ -1097,12 +1487,14 @@ class GameToolsUnified:
     def _sync_header_with_current_tab(self, _event=None):
         """根据当前页面刷新头部标题。"""
         selected = self.notebook.select()
+        self._unbind_tab_mousewheel()
         for meta in self.tab_registry:
             if str(meta['frame']) == selected:
                 self.page_title_var.set(meta['title'])
                 self.page_desc_var.set(meta['description'])
                 self.page_tag_var.set(self._get_tab_visual(meta['key'])['tag'])
                 self._update_navigation_state(meta['key'])
+                self._refresh_tab_scrollbar(meta['key'])
                 break
 
     def select_tab(self, key):
@@ -1112,7 +1504,7 @@ class GameToolsUnified:
             return
         self.notebook.select(meta['frame'])
         self._sync_header_with_current_tab()
-    
+
     def create_widgets(self):
         """创建界面控件"""
         self.tab_registry = []
@@ -1126,7 +1518,11 @@ class GameToolsUnified:
         app_frame.columnconfigure(1, weight=1)
         app_frame.rowconfigure(0, weight=1)
 
-        self.sidebar_frame = tk.Frame(app_frame, bg=self.palette['sidebar_bg'], width=240)
+        self.sidebar_frame = tk.Frame(
+            app_frame,
+            bg=self.palette['sidebar_bg'],
+            width=max(int(getattr(self.ui_config, 'sidebar_width', 240) or 240), 220),
+        )
         self.sidebar_frame.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.W), padx=(0, 16))
         self.sidebar_frame.grid_propagate(False)
         self.sidebar_frame.columnconfigure(0, weight=1)
@@ -1694,138 +2090,254 @@ class GameToolsUnified:
     
     def create_batch_modifier_tab(self):
         """创建批量改表页签"""
-        # 批量改表框架
         batch_frame = self._register_tab(
             'batch_modifier',
             '批量改表',
             '按 JSON 配置和映射表批量修改 Excel 内容。'
         )
 
-        left_column, right_column = self._build_tab_columns(batch_frame)
-        
-        # 文件选择区域
-        file_frame = ttk.LabelFrame(left_column, text="配置", padding="10")
-        file_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
-        file_frame.columnconfigure(1, weight=1)
-        
-        # JSON配置文件（必需 - 定义表和字段）
-        ttk.Label(file_frame, text="JSON:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        left_column, right_column = self._build_tab_columns(batch_frame, left_weight=5, right_weight=3)
+
+        basic_frame = ttk.LabelFrame(left_column, text="1. 基础配置", padding="12")
+        basic_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
+        basic_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(basic_frame, text="JSON 配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
         self.batch_json_var = tk.StringVar()
-        self.batch_json_entry = ttk.Entry(file_frame, textvariable=self.batch_json_var, 
-                                         font=("Microsoft YaHei", 9))
+        self.batch_json_entry = ttk.Entry(basic_frame, textvariable=self.batch_json_var, font=("Microsoft YaHei", 9))
         self.batch_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
-        
-        self.batch_json_browse_button = ttk.Button(file_frame, text="选择", 
-                              command=self.browse_batch_json_file, style='Subtle.TButton')
+        self.batch_json_browse_button = ttk.Button(
+            basic_frame,
+            text="选择",
+            command=self.browse_batch_json_file,
+            style='Subtle.TButton',
+        )
         self.batch_json_browse_button.grid(row=0, column=2, pady=(0, 8))
-        
-        # 映射表文件（如 p9-3t_分页.xlsx）
-        ttk.Label(file_frame, text="映射表:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+
+        self.batch_json_lang_label = ttk.Label(basic_frame, text="", style='AccentInfo.TLabel')
+        self.batch_json_lang_label.grid(row=1, column=1, columnspan=2, sticky=tk.W, pady=(0, 10))
+
+        ttk.Label(basic_frame, text="映射表:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
         self.batch_mapping_var = tk.StringVar()
-        self.batch_mapping_entry = ttk.Entry(file_frame, textvariable=self.batch_mapping_var, 
-                                            font=("Microsoft YaHei", 9))
-        self.batch_mapping_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
-        
-        self.batch_mapping_browse_button = ttk.Button(file_frame, text="选择", 
-                                 command=self.browse_batch_mapping_file, style='Subtle.TButton')
-        self.batch_mapping_browse_button.grid(row=1, column=2, pady=(0, 8))
-        
-        # 目标语言选择（放在映射表同一行右侧）
-        ttk.Label(file_frame, text="语言:").grid(row=1, column=3, sticky=tk.W, padx=(20, 5), pady=(0, 8))
+        self.batch_mapping_entry = ttk.Entry(basic_frame, textvariable=self.batch_mapping_var, font=("Microsoft YaHei", 9))
+        self.batch_mapping_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        self.batch_mapping_browse_button = ttk.Button(
+            basic_frame,
+            text="选择",
+            command=self.browse_batch_mapping_file,
+            style='Subtle.TButton',
+        )
+        self.batch_mapping_browse_button.grid(row=2, column=2, pady=(0, 8))
+
+        ttk.Label(basic_frame, text="目标语言:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        language_row = ttk.Frame(basic_frame)
+        language_row.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 8))
+        language_row.columnconfigure(0, weight=1)
+
         self.batch_language_var = tk.StringVar(value="VN")
         default_languages = ['VN', 'Support-CH', 'TH', 'EN', 'Polish-CH', 'VN.1']
-        self.batch_language_combo = ttk.Combobox(file_frame, textvariable=self.batch_language_var, 
-                                                 width=12, values=default_languages, state='readonly')
-        self.batch_language_combo.grid(row=1, column=4, sticky=tk.W, pady=(0, 8))
+        self.batch_language_combo = ttk.Combobox(
+            language_row,
+            textvariable=self.batch_language_var,
+            values=default_languages,
+            state='readonly',
+        )
+        self.batch_language_combo.grid(row=0, column=0, sticky=(tk.W, tk.E))
         self.batch_language_combo.bind('<<ComboboxSelected>>', self._on_batch_language_changed)
-        
-        self.batch_refresh_lang_button = ttk.Button(file_frame, text="更新", 
-                               command=self.refresh_batch_languages, width=5, style='Subtle.TButton')
-        self.batch_refresh_lang_button.grid(row=1, column=5, padx=(5, 0), pady=(0, 8))
-        
-        # JSON语言标记显示（放在JSON配置同一行右侧）
-        self.batch_json_lang_label = ttk.Label(file_frame, text="", style='AccentInfo.TLabel')
-        self.batch_json_lang_label.grid(row=0, column=3, columnspan=3, padx=(20, 0), pady=(0, 8), sticky=tk.W)
-        
-        # 映射表工作表选择（隐藏，保留变量兼容性）
-        self.batch_sheet_var = tk.StringVar()
-        
-        # Excel文件目录（要修改的文件所在目录）
-        ttk.Label(file_frame, text="目录:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.batch_excel_dir_var = tk.StringVar()
-        self.batch_excel_dir_entry = ttk.Entry(file_frame, textvariable=self.batch_excel_dir_var, 
-                                              font=("Microsoft YaHei", 9))
-        self.batch_excel_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
-        
-        self.batch_excel_dir_browse_button = ttk.Button(file_frame, text="选择", 
-                                   command=self.browse_batch_excel_directory, style='Subtle.TButton')
-        self.batch_excel_dir_browse_button.grid(row=2, column=2, pady=(0, 8))
-        
-        # 输出报告文件
-        ttk.Label(file_frame, text="报告:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
-        self.batch_report_var = tk.StringVar()
-        self.batch_report_entry = ttk.Entry(file_frame, textvariable=self.batch_report_var, 
-                                           font=("Microsoft YaHei", 9))
-        self.batch_report_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
-        
-        self.batch_report_browse_button = ttk.Button(file_frame, text="选择", 
-                                command=self.browse_batch_report_file, style='Subtle.TButton')
-        self.batch_report_browse_button.grid(row=3, column=2)
 
-        self.inline_messages['batch_modifier'] = self._create_inline_message(file_frame, row=4, columnspan=6)
-        
-        # 隐藏的变量（保持代码兼容性）
-        self.batch_auto_match_var = tk.BooleanVar(value=False)  # 默认关闭自动匹配
+        self.batch_refresh_lang_button = ttk.Button(
+            language_row,
+            text="刷新列表",
+            command=self.refresh_batch_languages,
+            style='Subtle.TButton',
+        )
+        self.batch_refresh_lang_button.grid(row=0, column=1, padx=(8, 0))
+
+        ttk.Label(
+            basic_frame,
+            text="语言列表会根据映射表自动刷新，默认优先沿用当前选择。",
+            style='Info.TLabel',
+        ).grid(row=4, column=1, columnspan=2, sticky=tk.W)
+
+        self.batch_sheet_var = tk.StringVar()
+
+        target_frame = ttk.LabelFrame(left_column, text="2. 执行目标", padding="12")
+        target_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
+        target_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(target_frame, text="Excel 目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.batch_excel_dir_var = tk.StringVar()
+        self.batch_excel_dir_entry = ttk.Entry(target_frame, textvariable=self.batch_excel_dir_var, font=("Microsoft YaHei", 9))
+        self.batch_excel_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        self.batch_excel_dir_browse_button = ttk.Button(
+            target_frame,
+            text="选择",
+            command=self.browse_batch_excel_directory,
+            style='Subtle.TButton',
+        )
+        self.batch_excel_dir_browse_button.grid(row=0, column=2, pady=(0, 8))
+
+        ttk.Label(target_frame, text="报告文件:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.batch_report_var = tk.StringVar()
+        self.batch_report_entry = ttk.Entry(target_frame, textvariable=self.batch_report_var, font=("Microsoft YaHei", 9))
+        self.batch_report_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        self.batch_report_browse_button = ttk.Button(
+            target_frame,
+            text="选择",
+            command=self.browse_batch_report_file,
+            style='Subtle.TButton',
+        )
+        self.batch_report_browse_button.grid(row=1, column=2, pady=(0, 8))
+
+        ttk.Label(
+            target_frame,
+            text="报告文件可选。若留空，批量修改仍会执行，但不会额外生成 Excel 报告。",
+            style='Info.TLabel',
+        ).grid(row=2, column=1, columnspan=2, sticky=tk.W)
+
+        self.inline_messages['batch_modifier'] = self._create_inline_message(target_frame, row=3, columnspan=3)
+
+        self.batch_auto_match_var = tk.BooleanVar(value=False)
         self.batch_table_col_var = tk.StringVar(value="")
         self.batch_id_col_var = tk.StringVar(value="ID")
         self.batch_field_col_var = tk.StringVar(value="Classification")
-        
-        # 选项设置区域
-        options_frame = ttk.LabelFrame(right_column, text="选项", padding="10")
-        options_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
-        options_frame.columnconfigure(0, weight=1)
-        
-        row1_frame = ttk.Frame(options_frame)
-        row1_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
-        
+
+        advanced_frame = ttk.LabelFrame(left_column, text="3. 高级选项", padding="12")
+        advanced_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N))
+        advanced_frame.columnconfigure(0, weight=1)
+
+        advanced_header = ttk.Frame(advanced_frame)
+        advanced_header.grid(row=0, column=0, sticky=(tk.W, tk.E))
+        advanced_header.columnconfigure(1, weight=1)
+
+        self.batch_advanced_toggle_var = tk.StringVar(value='展开高级选项')
+        ttk.Button(
+            advanced_header,
+            textvariable=self.batch_advanced_toggle_var,
+            style='Quiet.TButton',
+            command=self._toggle_batch_advanced_options,
+        ).grid(row=0, column=0, sticky=tk.W)
+        ttk.Label(
+            advanced_header,
+            text="默认值适用于大多数策划表，只有遇到特殊表结构时再调整。",
+            style='Info.TLabel',
+        ).grid(row=0, column=1, sticky=tk.W, padx=(12, 0))
+
         self.batch_backup_var = tk.BooleanVar(value=True)
-        self.batch_backup_check = ttk.Checkbutton(row1_frame, text="生成 .bak 备份", 
-                                                 variable=self.batch_backup_var)
-        self.batch_backup_check.pack(side=tk.LEFT, padx=(0, 20))
-
-        row2_frame = ttk.Frame(options_frame)
-        row2_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
-        
-        ttk.Label(row2_frame, text="数据起始行:").pack(side=tk.LEFT, padx=(0, 5))
         self.batch_data_start_row_var = tk.StringVar(value="7")
-        self.batch_data_start_row_entry = ttk.Entry(row2_frame, textvariable=self.batch_data_start_row_var, 
-                                                   width=5, font=("Microsoft YaHei", 9))
-        self.batch_data_start_row_entry.pack(side=tk.LEFT, padx=(0, 10))
-        
-        ttk.Label(row2_frame, text="字段行:").pack(side=tk.LEFT, padx=(0, 5))
         self.batch_field_row_var = tk.StringVar(value="5")
-        self.batch_field_row_entry = ttk.Entry(row2_frame, textvariable=self.batch_field_row_var, 
-                                              width=5, font=("Microsoft YaHei", 9))
-        self.batch_field_row_entry.pack(side=tk.LEFT)
-        
-        action_panel = self._create_action_panel(right_column, 1)
 
-        self.batch_process_button = ttk.Button(action_panel, text="修改", 
-                                              command=self.start_batch_modification, 
-                                              style='Accent.TButton')
+        self.batch_advanced_body = ttk.Frame(advanced_frame)
+        self.batch_advanced_body.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(12, 0))
+        self.batch_advanced_body.columnconfigure(1, weight=1)
+        self.batch_advanced_body.columnconfigure(3, weight=1)
+
+        self.batch_backup_check = ttk.Checkbutton(
+            self.batch_advanced_body,
+            text="生成 .bak 备份，便于回滚已修改文件",
+            variable=self.batch_backup_var,
+        )
+        self.batch_backup_check.grid(row=0, column=0, columnspan=4, sticky=tk.W, pady=(0, 10))
+
+        ttk.Label(self.batch_advanced_body, text="数据起始行:").grid(row=1, column=0, sticky=tk.W, padx=(0, 8))
+        self.batch_data_start_row_entry = ttk.Entry(
+            self.batch_advanced_body,
+            textvariable=self.batch_data_start_row_var,
+            width=6,
+            font=("Microsoft YaHei", 9),
+        )
+        self.batch_data_start_row_entry.grid(row=1, column=1, sticky=tk.W, padx=(0, 12))
+
+        ttk.Label(self.batch_advanced_body, text="字段行:").grid(row=1, column=2, sticky=tk.W, padx=(0, 8))
+        self.batch_field_row_entry = ttk.Entry(
+            self.batch_advanced_body,
+            textvariable=self.batch_field_row_var,
+            width=6,
+            font=("Microsoft YaHei", 9),
+        )
+        self.batch_field_row_entry.grid(row=1, column=3, sticky=tk.W)
+
+        ttk.Label(
+            self.batch_advanced_body,
+            text="Position 列会优先定位单元格；若没有 Position，则使用 ID 作为行号。",
+            style='Info.TLabel',
+        ).grid(row=2, column=0, columnspan=4, sticky=tk.W, pady=(10, 0))
+
+        self._set_batch_advanced_visibility(False)
+
+        guide_frame = ttk.LabelFrame(right_column, text="执行流程", padding="12")
+        guide_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 12))
+        ttk.Label(
+            guide_frame,
+            text="建议先预览，再批量写入",
+            style='Heading.TLabel',
+        ).pack(anchor=tk.W)
+        for step_text in (
+            '1. 先选择 JSON 配置和映射表，并刷新目标语言列表。',
+            '2. 确认待修改 Excel 目录，报告文件按需填写。',
+            '3. 用预览核对映射内容，再执行批量修改。',
+        ):
+            ttk.Label(guide_frame, text=step_text, style='Info.TLabel').pack(anchor=tk.W, pady=(6, 0))
+
+        action_panel = self._create_action_panel(right_column, 1)
+        tk.Label(
+            action_panel,
+            text='执行与结果',
+            bg=self.palette['surface_alt'],
+            fg=self.palette['text'],
+            font=('Bahnschrift', 11, 'bold'),
+        ).pack(anchor=tk.W)
+        tk.Label(
+            action_panel,
+            text='修改会直接写入原 Excel。建议先用预览确认当前映射列、语言和目录。',
+            bg=self.palette['surface_alt'],
+            fg=self.palette['muted_text'],
+            wraplength=280,
+            justify='left',
+            font=('Microsoft YaHei UI', 9),
+        ).pack(anchor=tk.W, pady=(6, 12))
+
+        self.batch_process_button = ttk.Button(
+            action_panel,
+            text="开始批量修改",
+            command=self.start_batch_modification,
+            style='Accent.TButton',
+        )
         self.batch_process_button.pack(fill=tk.X)
-        
-        self.batch_preview_button = ttk.Button(action_panel, text="预览", 
-                                                            command=self.preview_batch_mapping, style='Quiet.TButton')
-        self.batch_preview_button.pack(fill=tk.X, pady=(8, 0))
-        
-        self.batch_clear_button = ttk.Button(action_panel, text="清空", 
-                                                        command=self.clear_batch_results, style='Danger.TButton')
+
+        secondary_actions = ttk.Frame(action_panel)
+        secondary_actions.pack(fill=tk.X, pady=(10, 0))
+        secondary_actions.columnconfigure((0, 1), weight=1)
+
+        self.batch_preview_button = ttk.Button(
+            secondary_actions,
+            text="预览映射",
+            command=self.preview_batch_mapping,
+            style='Quiet.TButton',
+        )
+        self.batch_preview_button.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 6))
+
+        self.batch_view_results_button = ttk.Button(
+            secondary_actions,
+            text="查看结果",
+            command=lambda: self.show_results_dialog('batch_modifier'),
+            style='Quiet.TButton',
+        )
+        self.batch_view_results_button.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(6, 0))
+
+        self.batch_clear_button = ttk.Button(
+            action_panel,
+            text="清空结果",
+            command=self.clear_batch_results,
+            style='Danger.TButton',
+        )
         self.batch_clear_button.pack(fill=tk.X, pady=(8, 0))
-        
-        self.batch_view_results_button = ttk.Button(action_panel, text="结果", 
-                                                             command=lambda: self.show_results_dialog('batch_modifier'), style='Quiet.TButton')
-        self.batch_view_results_button.pack(fill=tk.X, pady=(8, 0))
+
+        ttk.Label(
+            action_panel,
+            text='执行前会再次弹出确认信息，并显示 Position 或 ID 的定位方式。',
+            style='Info.TLabel',
+        ).pack(anchor=tk.W, pady=(10, 0))
 
         self._create_task_panel(action_panel, 'batch_modifier')
     
@@ -1857,7 +2369,7 @@ class GameToolsUnified:
         ttk.Label(hero_frame, text=format_version_string(), style='HeaderMeta.TLabel').grid(row=0, column=1, sticky=tk.E)
         ttk.Label(
             hero_frame,
-            text="优先从这里进入高频流程，执行记录、环境状态和诊断信息会集中展示。",
+            text="优先处理高频任务，最近执行记录和环境摘要保留在首页，完整诊断放到单独窗口。",
             style='Info.TLabel',
         ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
 
@@ -1892,8 +2404,25 @@ class GameToolsUnified:
             else:
                 ttk.Label(card, text=value_text, style='HeaderTitle.TLabel').pack(anchor=tk.W, pady=(8, 0))
 
-        quick_actions_frame = ttk.LabelFrame(about_frame, text="常用任务", padding=16)
-        quick_actions_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        home_layout = ttk.Frame(about_frame, style='Page.TFrame')
+        home_layout.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        home_layout.columnconfigure(0, weight=3)
+        home_layout.columnconfigure(1, weight=2)
+        home_layout.rowconfigure(0, weight=1)
+
+        quick_actions_column = ttk.Frame(home_layout, style='Page.TFrame')
+        quick_actions_column.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 12))
+        quick_actions_column.columnconfigure(0, weight=1)
+
+        right_column = ttk.Frame(home_layout, style='Page.TFrame')
+        right_column.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
+        right_column.columnconfigure(0, weight=1)
+        right_column.rowconfigure(1, weight=1)
+
+        self._register_responsive_layout(home_layout, quick_actions_column, right_column, left_weight=3, right_weight=2, breakpoint=940)
+
+        quick_actions_frame = ttk.LabelFrame(quick_actions_column, text="常用任务", padding=16)
+        quick_actions_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         quick_actions_frame.columnconfigure((0, 1), weight=1)
 
         action_specs = [
@@ -1932,20 +2461,25 @@ class GameToolsUnified:
         utility_row = ttk.Frame(quick_actions_frame)
         utility_row.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(8, 0))
         ttk.Button(utility_row, text='界面设置', style='Quiet.TButton', command=self.show_settings_dialog).pack(side=tk.LEFT)
-        ttk.Button(utility_row, text='复制诊断', style='Quiet.TButton', command=self._copy_diagnostics_to_clipboard).pack(side=tk.LEFT, padx=(8, 0))
-
-        right_column = ttk.Frame(about_frame)
-        right_column.grid(row=2, column=1, sticky=(tk.W, tk.E, tk.N, tk.S))
-        right_column.columnconfigure(0, weight=1)
-        right_column.rowconfigure(1, weight=1)
 
         recent_frame = ttk.LabelFrame(right_column, text="最近任务", padding=16)
         recent_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         self.dashboard_frames['recent_tasks'] = recent_frame
 
-        diagnostics_frame = ttk.LabelFrame(right_column, text="环境与诊断", padding=16)
+        diagnostics_frame = ttk.LabelFrame(right_column, text="环境摘要", padding=16)
         diagnostics_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
-        diagnostics_label = tk.Label(
+        diagnostics_status = tk.Label(
+            diagnostics_frame,
+            text='环境状态读取中...',
+            bg=self.palette['surface'],
+            fg=self.palette['text'],
+            justify='left',
+            anchor='w',
+            font=('Bahnschrift', 11, 'bold'),
+        )
+        diagnostics_status.pack(fill=tk.X)
+
+        diagnostics_summary = tk.Label(
             diagnostics_frame,
             text='',
             bg=self.palette['surface'],
@@ -1953,10 +2487,31 @@ class GameToolsUnified:
             justify='left',
             anchor='nw',
             wraplength=430,
-            font=('Consolas', 9),
+            font=('Microsoft YaHei UI', 9),
         )
-        diagnostics_label.pack(fill=tk.BOTH, expand=True)
-        self.dashboard_frames['diagnostics_label'] = diagnostics_label
+        diagnostics_summary.pack(fill=tk.X, pady=(10, 0))
+
+        ttk.Label(diagnostics_frame, text='最新提示', style='Info.TLabel').pack(anchor=tk.W, pady=(12, 0))
+        diagnostics_issue = tk.Label(
+            diagnostics_frame,
+            text='',
+            bg=self.palette['surface'],
+            fg=self.palette['muted_text'],
+            justify='left',
+            anchor='nw',
+            wraplength=430,
+            font=('Microsoft YaHei UI', 9),
+        )
+        diagnostics_issue.pack(fill=tk.X, pady=(6, 0))
+
+        diagnostics_actions = ttk.Frame(diagnostics_frame)
+        diagnostics_actions.pack(fill=tk.X, pady=(14, 0))
+        ttk.Button(diagnostics_actions, text='查看诊断', style='Quiet.TButton', command=self._show_diagnostics_dialog).pack(side=tk.LEFT)
+        ttk.Button(diagnostics_actions, text='复制诊断', style='Quiet.TButton', command=self._copy_diagnostics_to_clipboard).pack(side=tk.LEFT, padx=(8, 0))
+
+        self.dashboard_frames['diagnostics_status'] = diagnostics_status
+        self.dashboard_frames['diagnostics_summary'] = diagnostics_summary
+        self.dashboard_frames['diagnostics_issue'] = diagnostics_issue
 
         modules_frame = ttk.LabelFrame(right_column, text="可用模块", padding=16)
         modules_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
@@ -1988,8 +2543,8 @@ class GameToolsUnified:
         
         # 创建对话框
         dialog = tk.Toplevel(self.root)
-        dialog.title("界面设置")
-        dialog.geometry("460x420")
+        dialog.title("界面与模块设置")
+        dialog.geometry("520x560")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -2004,9 +2559,46 @@ class GameToolsUnified:
         main_frame = ttk.Frame(dialog, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # 标题
+        appearance_frame = ttk.LabelFrame(main_frame, text="外观与布局", padding="12")
+        appearance_frame.pack(fill=tk.X, pady=(0, 14))
+        appearance_frame.columnconfigure(1, weight=1)
+
+        font_size_var = tk.StringVar(value=str(getattr(self.ui_config, 'font_size', 10)))
+        sidebar_width_var = tk.StringVar(value=str(getattr(self.ui_config, 'sidebar_width', 240)))
+        auto_position_var = tk.BooleanVar(value=getattr(self.ui_config, 'auto_save_position', True))
+
+        ttk.Label(appearance_frame, text="界面字号").grid(row=0, column=0, sticky=tk.W, padx=(0, 12), pady=(0, 8))
+        ttk.Combobox(
+            appearance_frame,
+            textvariable=font_size_var,
+            values=[str(value) for value in range(9, 15)],
+            state='readonly',
+            width=10,
+        ).grid(row=0, column=1, sticky=tk.W, pady=(0, 8))
+
+        ttk.Label(appearance_frame, text="侧栏宽度").grid(row=1, column=0, sticky=tk.W, padx=(0, 12), pady=(0, 8))
+        ttk.Combobox(
+            appearance_frame,
+            textvariable=sidebar_width_var,
+            values=['220', '240', '260', '280', '300', '320'],
+            state='readonly',
+            width=10,
+        ).grid(row=1, column=1, sticky=tk.W, pady=(0, 8))
+
+        ttk.Checkbutton(
+            appearance_frame,
+            text="记住窗口位置",
+            variable=auto_position_var,
+        ).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(4, 0))
+
+        ttk.Label(
+            appearance_frame,
+            text="侧栏宽度会立即应用；字号样式会尽量即时刷新，复杂页面建议重启后确认。",
+            style='Info.TLabel',
+        ).grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+
         title_label = ttk.Label(main_frame, text="模块显示", style='Heading.TLabel')
-        title_label.pack(anchor=tk.W, pady=(0, 14))
+        title_label.pack(anchor=tk.W, pady=(0, 10))
         
         # 页签勾选区域
         tabs_frame = ttk.LabelFrame(main_frame, text="页签列表", padding="10")
@@ -2043,13 +2635,41 @@ class GameToolsUnified:
         button_frame.pack(fill=tk.X)
         
         def save_and_close():
+            try:
+                font_size = max(9, min(int(font_size_var.get()), 14))
+            except (TypeError, ValueError):
+                font_size = 10
+
+            try:
+                sidebar_width = max(220, min(int(sidebar_width_var.get()), 320))
+            except (TypeError, ValueError):
+                sidebar_width = 240
+
             # 保存设置
             for key, var in tab_vars.items():
                 setattr(config_manager.config.tabs, key, var.get())
+
+            previous_font_size = getattr(self.ui_config, 'font_size', 10)
+            previous_sidebar_width = getattr(self.ui_config, 'sidebar_width', 240)
+            self.ui_config.font_size = font_size
+            self.ui_config.sidebar_width = sidebar_width
+            self.ui_config.auto_save_position = auto_position_var.get()
             
             from core.config_manager import save_config
             if save_config():
-                messagebox.showinfo("保存成功", "设置已保存！\n\n请重启程序以应用新的页签显示设置。", parent=dialog)
+                self.setup_styles()
+                self._apply_sidebar_width(sidebar_width)
+                self._sync_header_with_current_tab()
+                self._refresh_dashboard()
+
+                change_messages = []
+                if previous_sidebar_width != sidebar_width:
+                    change_messages.append('侧栏宽度已立即应用')
+                if previous_font_size != font_size:
+                    change_messages.append('字号样式已刷新，复杂页面建议重启后再次确认')
+                change_messages.append('模块显隐在下次启动时完全生效')
+
+                messagebox.showinfo("保存成功", "设置已保存。\n\n" + '\n'.join(change_messages), parent=dialog)
                 dialog.destroy()
             else:
                 messagebox.showerror("保存失败", "保存设置时出错，请检查配置文件权限。", parent=dialog)

@@ -117,6 +117,66 @@ def test_replace_processor_refreshes_batch_modifier():
         root.destroy()
 
 
+def test_batch_modifier_layout_keeps_critical_widgets():
+    """批量改表页应保留关键控件和高级选项展开逻辑。"""
+    root, app = _create_app()
+
+    try:
+        if 'batch_modifier' not in app.tab_lookup:
+            print("[FAIL] 批量改表页未注册到 tab_lookup")
+            return False
+
+        if 'batch_modifier' not in app.tab_scroll_context:
+            print("[FAIL] 批量改表页未接入统一滚动容器")
+            return False
+
+        app.select_tab('batch_modifier')
+        root.update_idletasks()
+
+        if app.page_title_var.get() != '批量改表':
+            print(f"[FAIL] 切换页签后头部标题不正确: {app.page_title_var.get()}")
+            return False
+
+        if app.batch_advanced_toggle_var.get() != '展开高级选项':
+            print(f"[FAIL] 高级选项默认文案不正确: {app.batch_advanced_toggle_var.get()}")
+            return False
+
+        if app.batch_advanced_body.winfo_ismapped():
+            print("[FAIL] 高级选项默认不应展开")
+            return False
+
+        expected_buttons = {
+            '开始批量修改': app.batch_process_button.cget('text'),
+            '预览映射': app.batch_preview_button.cget('text'),
+            '查看结果': app.batch_view_results_button.cget('text'),
+            '清空结果': app.batch_clear_button.cget('text'),
+        }
+        for expected, actual in expected_buttons.items():
+            if expected != actual:
+                print(f"[FAIL] 按钮文案不正确: 期望 {expected}，实际 {actual}")
+                return False
+
+        app._toggle_batch_advanced_options()
+        root.update_idletasks()
+
+        if app.batch_advanced_toggle_var.get() != '收起高级选项':
+            print(f"[FAIL] 高级选项展开后文案不正确: {app.batch_advanced_toggle_var.get()}")
+            return False
+
+        if not app.batch_advanced_body.winfo_ismapped():
+            print("[FAIL] 高级选项展开后内容未显示")
+            return False
+
+        print("[PASS] 批量改表页结构和交互锚点正常")
+        return True
+    finally:
+        try:
+            app.batch_modifier.close()
+        except Exception:
+            pass
+        root.destroy()
+
+
 def test_finish_background_task_updates_status_and_message():
     """统一收尾逻辑应恢复按钮、更新状态并发出正确消息。"""
     root, app = _create_app()
@@ -239,6 +299,7 @@ def main():
     tests = [
         ("字段提取参数冻结", test_field_extraction_snapshots_arguments),
         ("处理器替换", test_replace_processor_refreshes_batch_modifier),
+        ("批量改表页结构", test_batch_modifier_layout_keeps_critical_widgets),
         ("统一收尾逻辑", test_finish_background_task_updates_status_and_message),
         ("结果格式化 helper", test_result_format_helpers),
         ("任务跟踪与最近任务", test_task_tracking_updates_recent_history),

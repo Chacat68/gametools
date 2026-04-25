@@ -29,9 +29,25 @@ UI_PALETTE = {
 }
 
 
-def apply_ui_theme(root):
+def _clamp_font_size(font_size):
+    """约束字号，避免 UI 在不同机器上失控。"""
+    try:
+        value = int(font_size)
+    except (TypeError, ValueError):
+        value = 10
+    return max(9, min(value, 14))
+
+
+def apply_ui_theme(root, font_size=10):
     """应用统一主题并返回配色和样式对象。"""
     style = ttk.Style(root)
+    font_size = _clamp_font_size(font_size)
+    body_font_size = max(font_size - 1, 8)
+    section_font_size = font_size + 1
+    title_font_size = font_size + 8
+    hero_font_size = font_size + 14
+
+    root.option_add('*Font', f'{{Microsoft YaHei UI}} {body_font_size}')
 
     for theme_name in ('clam', 'vista', 'default'):
         if theme_name in style.theme_names():
@@ -57,75 +73,75 @@ def apply_ui_theme(root):
         'TLabelframe.Label',
         background=UI_PALETTE['surface'],
         foreground=UI_PALETTE['text'],
-        font=('Bahnschrift', 11, 'bold'),
+        font=('Bahnschrift', section_font_size, 'bold'),
     )
 
     style.configure('TLabel', background=UI_PALETTE['surface'], foreground=UI_PALETTE['text'])
-    style.configure('Title.TLabel', font=('Bahnschrift', 18, 'bold'))
-    style.configure('Heading.TLabel', font=('Bahnschrift', 11, 'bold'))
-    style.configure('Info.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['muted_text'])
+    style.configure('Title.TLabel', font=('Bahnschrift', title_font_size, 'bold'))
+    style.configure('Heading.TLabel', font=('Bahnschrift', section_font_size, 'bold'))
+    style.configure('Info.TLabel', font=('Microsoft YaHei UI', body_font_size), foreground=UI_PALETTE['muted_text'])
     style.configure(
         'AccentInfo.TLabel',
         background=UI_PALETTE['surface'],
         foreground=UI_PALETTE['info'],
-        font=('Bahnschrift', 9, 'bold'),
+        font=('Bahnschrift', body_font_size, 'bold'),
     )
-    style.configure('Success.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['success'])
-    style.configure('Error.TLabel', font=('Microsoft YaHei UI', 9), foreground=UI_PALETTE['error'])
+    style.configure('Success.TLabel', font=('Microsoft YaHei UI', body_font_size), foreground=UI_PALETTE['success'])
+    style.configure('Error.TLabel', font=('Microsoft YaHei UI', body_font_size), foreground=UI_PALETTE['error'])
     style.configure(
         'HeaderTitle.TLabel',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['text'],
-        font=('Bahnschrift', 24, 'bold'),
+        font=('Bahnschrift', hero_font_size, 'bold'),
     )
     style.configure(
         'HeaderMeta.TLabel',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['accent'],
-        font=('Bahnschrift', 10, 'bold'),
+        font=('Bahnschrift', font_size, 'bold'),
     )
     style.configure(
         'HeaderTag.TLabel',
         background=UI_PALETTE['accent'],
         foreground=UI_PALETTE['accent_text'],
-        font=('Bahnschrift', 10, 'bold'),
+        font=('Bahnschrift', font_size, 'bold'),
         padding=(10, 4),
     )
     style.configure(
         'Badge.TLabel',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['accent'],
-        font=('Bahnschrift', 9, 'bold'),
+        font=('Bahnschrift', body_font_size, 'bold'),
     )
     style.configure(
         'SidebarTitle.TLabel',
         background=UI_PALETTE['sidebar_bg'],
         foreground=UI_PALETTE['sidebar_text'],
-        font=('Bahnschrift', 18, 'bold'),
+        font=('Bahnschrift', title_font_size, 'bold'),
     )
     style.configure(
         'SidebarMeta.TLabel',
         background=UI_PALETTE['sidebar_bg'],
         foreground=UI_PALETTE['sidebar_muted'],
-        font=('Bahnschrift', 9, 'bold'),
+        font=('Bahnschrift', body_font_size, 'bold'),
     )
     style.configure(
         'SidebarFoot.TLabel',
         background=UI_PALETTE['sidebar_bg'],
         foreground=UI_PALETTE['sidebar_muted'],
-        font=('Microsoft YaHei UI', 9),
+        font=('Microsoft YaHei UI', body_font_size),
     )
     style.configure(
         'Status.TLabel',
         background=UI_PALETTE['surface_alt'],
         foreground=UI_PALETTE['muted_text'],
         padding=(10, 7),
-        font=('Microsoft YaHei UI', 9),
+        font=('Microsoft YaHei UI', body_font_size),
     )
 
     style.configure(
         'TButton',
-        font=('Microsoft YaHei UI', 9),
+        font=('Microsoft YaHei UI', body_font_size),
         padding=(14, 8),
         borderwidth=0,
         background=UI_PALETTE['surface_alt'],
@@ -138,7 +154,7 @@ def apply_ui_theme(root):
     )
     style.configure(
         'Accent.TButton',
-        font=('Microsoft YaHei UI', 9, 'bold'),
+        font=('Microsoft YaHei UI', body_font_size, 'bold'),
         background=UI_PALETTE['accent'],
         foreground=UI_PALETTE['accent_text'],
         padding=(14, 9),
@@ -206,13 +222,13 @@ def apply_ui_theme(root):
         'TCheckbutton',
         background=UI_PALETTE['surface'],
         foreground=UI_PALETTE['text'],
-        font=('Microsoft YaHei UI', 9),
+        font=('Microsoft YaHei UI', body_font_size),
     )
     style.configure(
         'TRadiobutton',
         background=UI_PALETTE['surface'],
         foreground=UI_PALETTE['text'],
-        font=('Microsoft YaHei UI', 9),
+        font=('Microsoft YaHei UI', body_font_size),
     )
 
     style.configure(

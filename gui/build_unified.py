@@ -550,6 +550,7 @@ a = Analysis(
     pathex=['.', '..'],
     binaries=[],
     datas=[
+        ('assets/gametools.ico', 'gui_assets'),
         ('../core', 'core'),
         ('../tools/json_error_detector', 'tools/json_error_detector'),
         ('../tools', 'tools'),
@@ -614,7 +615,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='assets/gametools.ico',
     version_file=None,
     optimize=__OPTIMIZE__,  # Python字节码优化级别
 )
