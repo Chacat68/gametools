@@ -217,9 +217,14 @@ python test\run_all_tests.py
 ```bash
 # 运行构建脚本
 python gui/build_unified.py
+
+# 未变化时跳过重打包（不会额外递增版本号）
+python gui/build_unified.py --skip-unchanged
 ```
 
 构建完成后会在 `dist/` 目录生成 `gametools_vX.X.X.exe`
+
+`--skip-unchanged` 会同时检查源码、打包参数和当前打包环境版本；只有这些输入都未变化时才直接复用已有产物。
 
 ## 系统要求
 

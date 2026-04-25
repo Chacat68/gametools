@@ -33,6 +33,9 @@ from version import get_version, get_build_date, get_author, get_description, in
 # 最近一次成功生成到项目根目录 dist/ 的exe路径（用于打印准确产物名）
 LAST_BUILT_EXE: Optional[Path] = None
 
+# 构建缓存版本
+BUILD_CACHE_VERSION = 2
+
 # 构建缓存文件路径
 BUILD_CACHE_FILE = Path(__file__).parent / ".build_cache.json"
 
@@ -65,25 +68,29 @@ def get_file_hash(filepath: Path) -> str:
 
 
 def get_source_files_hash() -> dict:
-    """获取所有源文件的哈希值"""
+    """获取影响打包结果的输入文件哈希值。"""
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    
+
     source_patterns = [
         (script_dir, "*.py"),
         (project_root / "core", "*.py"),
-        (project_root / "tools", "*.py"),
-        (project_root, "*.json"),
+        (project_root / "tools", "**/*"),
+        (project_root, "config.json"),
+        (project_root, "config_export.json"),
+        (project_root, "requirements.txt"),
         (project_root, "version.py"),
     ]
-    
+
     hashes = {}
     for base_path, pattern in source_patterns:
         if base_path.exists():
             for filepath in base_path.glob(pattern):
-                rel_path = str(filepath.relative_to(project_root))
+                if not filepath.is_file() or '__pycache__' in filepath.parts:
+                    continue
+                rel_path = str(filepath.relative_to(project_root)).replace('\\', '/')
                 hashes[rel_path] = get_file_hash(filepath)
-    
+
     return hashes
 
 
@@ -107,22 +114,153 @@ def save_build_cache(cache: dict):
         pass
 
 
-def check_rebuild_needed() -> tuple[bool, list]:
-    """检查是否需要重新构建，返回(是否需要, 变更文件列表)"""
+def get_build_options_signature(console: bool, upx: bool, optimize: int) -> dict:
+    """生成构建参数签名。"""
+    return {
+        "console": bool(console),
+        "upx": bool(upx),
+        "optimize": int(optimize),
+    }
+
+
+def get_build_environment_signature() -> dict:
+    """获取影响打包结果的环境签名。"""
+    signature = {
+        "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "platform": sys.platform,
+        "os_name": os.name,
+    }
+
+    version_modules = {
+        "PyInstaller": "PyInstaller",
+        "pandas": "pandas",
+        "numpy": "numpy",
+        "xlwings": "xlwings",
+        "openpyxl": "openpyxl",
+    }
+
+    for label, module_name in version_modules.items():
+        try:
+            module = importlib.import_module(module_name)
+            signature[label] = getattr(module, '__version__', 'unknown')
+        except Exception:
+            signature[label] = 'missing'
+
+    try:
+        import tkinter
+
+        signature['tkinter'] = str(getattr(tkinter, 'TkVersion', 'unknown'))
+    except Exception:
+        signature['tkinter'] = 'missing'
+
+    return signature
+
+
+def get_build_signature(build_options: dict) -> dict:
+    """收集用于判断是否需要重建的完整签名。"""
+    return {
+        "schema_version": BUILD_CACHE_VERSION,
+        "file_hashes": get_source_files_hash(),
+        "build_options": dict(build_options),
+        "environment": get_build_environment_signature(),
+    }
+
+
+def collect_signature_changes(current: dict, cached: dict, prefix: str) -> list[str]:
+    """对比两个签名字典并返回变化列表。"""
+    changes = []
+    for key in sorted(set(current) | set(cached)):
+        current_value = current.get(key, '<missing>')
+        cached_value = cached.get(key, '<missing>')
+        if current_value != cached_value:
+            changes.append(f"[{prefix}] {key}: {cached_value} -> {current_value}")
+    return changes
+
+
+def update_build_cache(build_signature: dict, build_duration: float, output_path: Path):
+    """保存本次成功构建的缓存信息。"""
     cache = load_build_cache()
-    current_hashes = get_source_files_hash()
-    cached_hashes = cache.get("file_hashes", {})
-    
+    cache['schema_version'] = BUILD_CACHE_VERSION
+    cache['file_hashes'] = build_signature['file_hashes']
+    cache['build_signature'] = build_signature
+    cache['last_build_time'] = datetime.now().isoformat()
+    cache['build_duration'] = build_duration
+    cache['last_built_exe'] = str(output_path)
+    save_build_cache(cache)
+
+
+def find_existing_built_exe(version: Optional[str] = None) -> Optional[Path]:
+    """查找最近一次成功生成的版本化 exe。"""
+    cache = load_build_cache()
+    cached_output = cache.get('last_built_exe')
+    if isinstance(cached_output, str):
+        cached_path = Path(cached_output)
+        if cached_path.exists():
+            return cached_path
+
+    script_dir = Path(__file__).resolve().parent
+    dist_dir = script_dir.parent / 'dist'
+    if not dist_dir.exists():
+        return None
+
+    resolved_version = version or get_version()
+    direct_match = dist_dir / f"gametools_v{resolved_version}.exe"
+    if direct_match.exists():
+        return direct_match
+
+    timestamped_matches = sorted(
+        dist_dir.glob(f"gametools_v{resolved_version}_*.exe"),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    if timestamped_matches:
+        return timestamped_matches[0]
+
+    return None
+
+
+def check_rebuild_needed(build_options: dict) -> tuple[bool, list]:
+    """检查是否需要重新构建，返回(是否需要, 变更项列表)。"""
+    cache = load_build_cache()
+    if not cache:
+        return True, ['[cache] 未找到构建缓存']
+
+    current_signature = get_build_signature(build_options)
+    cached_signature = cache.get('build_signature')
     changed_files = []
+
+    if isinstance(cached_signature, dict):
+        cached_hashes = cached_signature.get('file_hashes', {})
+    else:
+        cached_hashes = cache.get('file_hashes', {})
+        changed_files.append('[cache] 旧版缓存不包含构建参数签名')
+
+    current_hashes = current_signature['file_hashes']
     for filepath, hash_val in current_hashes.items():
         if cached_hashes.get(filepath) != hash_val:
             changed_files.append(filepath)
-    
+
     # 检查是否有文件被删除
     for filepath in cached_hashes:
         if filepath not in current_hashes:
             changed_files.append(f"[deleted] {filepath}")
-    
+
+    if isinstance(cached_signature, dict):
+        changed_files.extend(
+            collect_signature_changes(
+                current_signature['build_options'],
+                cached_signature.get('build_options', {}),
+                'config',
+            )
+        )
+        changed_files.extend(
+            collect_signature_changes(
+                current_signature['environment'],
+                cached_signature.get('environment', {}),
+                'env',
+            )
+        )
+
     return len(changed_files) > 0, changed_files
 
 
@@ -501,38 +639,11 @@ exe = EXE(
         print("[OK] spec未变化，跳过重写")
 
 
-def build_exe(skip_if_unchanged: bool = False, parallel_build: bool = True):
-    """构建exe文件
-    
-    Args:
-        skip_if_unchanged: 如果源文件未变化则跳过构建
-        parallel_build: 是否使用并行构建（暂时保留供未来扩展）
-    """
+def build_exe(build_options: dict):
+    """构建exe文件。"""
     global LAST_BUILT_EXE
     LAST_BUILT_EXE = None
-    
-    # 增量构建检测
-    if skip_if_unchanged:
-        rebuild_needed, changed_files = check_rebuild_needed()
-        if not rebuild_needed:
-            print("\n[SKIP] 源文件未变化，跳过构建")
-            # 查找已有的exe
-            version = get_version()
-            script_dir = Path(__file__).resolve().parent
-            dist_dir = script_dir.parent / "dist"
-            existing_exe = dist_dir / f"gametools_v{version}.exe"
-            if existing_exe.exists():
-                LAST_BUILT_EXE = existing_exe
-                print(f"已有exe文件: {existing_exe}")
-                return True
-            print("[INFO] 未找到已有exe，继续构建...")
-        else:
-            print(f"\n检测到 {len(changed_files)} 个文件变化:")
-            for f in changed_files[:10]:  # 只显示前10个
-                print(f"  - {f}")
-            if len(changed_files) > 10:
-                print(f"  ... 还有 {len(changed_files) - 10} 个文件")
-    
+
     print("\n开始构建exe文件...")
     build_start_time = time.time()
 
@@ -577,15 +688,12 @@ def build_exe(skip_if_unchanged: bool = False, parallel_build: bool = True):
                 target_exe = dist_dir / f"gametools_v{version}_{timestamp}.exe"
 
         try:
-            shutil.copy2(exe_path, target_exe)
+            shutil.move(str(exe_path), str(target_exe))
             LAST_BUILT_EXE = target_exe
-            
+
             # 更新构建缓存
-            cache = load_build_cache()
-            cache["file_hashes"] = get_source_files_hash()
-            cache["last_build_time"] = datetime.now().isoformat()
-            cache["build_duration"] = build_elapsed
-            save_build_cache(cache)
+            build_signature = get_build_signature(build_options)
+            update_build_cache(build_signature, build_elapsed, target_exe)
             
             file_size_mb = target_exe.stat().st_size / 1024 / 1024
             print(f"\n[SUCCESS] 构建成功!")
@@ -598,7 +706,7 @@ def build_exe(skip_if_unchanged: bool = False, parallel_build: bool = True):
             
             return True
         except Exception as e:
-            print(f"[WARNING] 复制文件失败: {e}")
+            print(f"[WARNING] 整理构建产物失败: {e}")
             print(f"[INFO] exe文件位置: {exe_path.absolute()}")
             return True
     else:
@@ -609,9 +717,9 @@ def build_exe(skip_if_unchanged: bool = False, parallel_build: bool = True):
 def create_portable_package():
     """创建便携版包"""
     print("\n创建便携版包...")
-    
-    exe_path = Path("dist/gametools.exe")
-    if not exe_path.exists():
+
+    exe_path = LAST_BUILT_EXE or find_existing_built_exe()
+    if exe_path is None or not exe_path.exists():
         print("[ERROR] exe文件不存在，无法创建便携版")
         return False
     
@@ -681,6 +789,8 @@ def create_portable_package():
 
 def main():
     """主函数"""
+    global LAST_BUILT_EXE
+
     parser = argparse.ArgumentParser(
         description="gametools 统一版本构建脚本",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -718,23 +828,14 @@ def main():
     version_bumped = False
     build_succeeded = False
 
-    # 自动递增版本号（可通过 --no-bump 关闭，避免排错时污染版本）
-    if args.no_bump:
-        new_version = get_version()
-        print("\n[版本更新] 已禁用自动递增版本号 (--no-bump)")
-    else:
-        version_snapshot = snapshot_version_file()
-        print("\n[版本更新] 自动递增版本号...")
-        new_version = increment_version("patch")
-        version_bumped = True
-
     try:
         total_start_time = time.time()
+        current_version = get_version()
         
         print("=" * 60)
         print("gametools 统一版本构建脚本 (性能优化版)")
         print("=" * 60)
-        print(f"版本: v{new_version}")
+        print(f"当前版本: v{current_version}")
         print(f"构建日期: {get_build_date()}")
         print(f"构建时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
@@ -743,6 +844,12 @@ def main():
             args.no_upx = True
             args.optimize = 0
             print("[MODE] 快速构建模式")
+
+        build_options = get_build_options_signature(
+            console=bool(args.with_console),
+            upx=not bool(args.no_upx),
+            optimize=args.optimize,
+        )
         
         print("=" * 60)
         
@@ -755,6 +862,38 @@ def main():
         if not check_dependencies():
             print("[ERROR] 依赖检查失败")
             return False
+
+        if args.clean and args.skip_unchanged:
+            print("[INFO] 同时指定 --clean 与 --skip-unchanged，已按 --clean 执行全量构建")
+        elif args.skip_unchanged:
+            rebuild_needed, changed_files = check_rebuild_needed(build_options)
+            if not rebuild_needed:
+                print("\n[SKIP] 源文件、构建参数和打包环境均未变化，跳过构建")
+                existing_exe = find_existing_built_exe(current_version)
+                if existing_exe is not None:
+                    LAST_BUILT_EXE = existing_exe
+                    print(f"已有exe文件: {existing_exe}")
+                    build_succeeded = True
+                    return True
+                print("[INFO] 未找到已有exe，继续构建...")
+            else:
+                print(f"\n检测到 {len(changed_files)} 项构建输入变化:")
+                for item in changed_files[:10]:
+                    print(f"  - {item}")
+                if len(changed_files) > 10:
+                    print(f"  ... 还有 {len(changed_files) - 10} 项变化")
+
+        # 自动递增版本号（可通过 --no-bump 关闭，避免排错时污染版本）
+        if args.no_bump:
+            new_version = get_version()
+            print("\n[版本更新] 已禁用自动递增版本号 (--no-bump)")
+        else:
+            version_snapshot = snapshot_version_file()
+            print("\n[版本更新] 自动递增版本号...")
+            new_version = increment_version("patch")
+            version_bumped = True
+
+        print(f"[版本更新] 输出版本: v{new_version}")
         
         # 清理构建目录
         clean_build_dir = bool(args.clean)
@@ -774,7 +913,7 @@ def main():
         )
         
         # 构建exe
-        if not build_exe(skip_if_unchanged=args.skip_unchanged):
+        if not build_exe(build_options=build_options):
             print("[ERROR] 构建失败")
             return False
         

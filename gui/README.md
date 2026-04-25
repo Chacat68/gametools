@@ -69,9 +69,14 @@ gui/
 # 运行打包脚本
 python build_unified.py
 
+# 未变化时跳过重打包
+python build_unified.py --skip-unchanged
+
 # 输出位置
 dist/gametools_v{版本号}.exe
 ```
+
+`--skip-unchanged` 会校验源码、打包参数和构建环境版本，完全一致时直接复用已有 exe，并保持当前版本号不变。
 
 ---
 
