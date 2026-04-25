@@ -2,7 +2,7 @@
   "file_hashes": {
     "gui/base_detector_gui.py": "98de486f7238811f95c1c4d311c9ba16",
     "gui/build_unified.py": "96d8918fc8de4be39654a548ddeaa6cc",
-    "gui/gametools_unified.py": "53304967fb41a4832e20f05e251eff1d",
+    "gui/gametools_unified.py": "54d245dc324c8a769b45ac2ab67cb1d5",
     "gui/gui_utils.py": "72257258b484883391075493a7204eb6",
     "gui/hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
     "gui/import_helper.py": "63f6faf92e8941fca7079f8d4488c257",
@@ -42,17 +42,17 @@
     "config.json": "813e27e565251042f6c6b3c86a7335ec",
     "config_export.json": "9b54d06d75ee3977aa6175448b6ebfb1",
     "requirements.txt": "4e0b6be2d3b979f8428362aec250c7bd",
-    "version.py": "76b644f1681badc36ea7360ca3f39f32"
+    "version.py": "21a14f7ca7f097b044c16e37f64ed06c"
   },
-  "last_build_time": "2026-04-25T20:02:50.458229",
-  "build_duration": 18.328495264053345,
+  "last_build_time": "2026-04-25T21:21:06.192740",
+  "build_duration": 18.35174012184143,
   "schema_version": 2,
   "build_signature": {
     "schema_version": 2,
     "file_hashes": {
       "gui/base_detector_gui.py": "98de486f7238811f95c1c4d311c9ba16",
       "gui/build_unified.py": "96d8918fc8de4be39654a548ddeaa6cc",
-      "gui/gametools_unified.py": "53304967fb41a4832e20f05e251eff1d",
+      "gui/gametools_unified.py": "54d245dc324c8a769b45ac2ab67cb1d5",
       "gui/gui_utils.py": "72257258b484883391075493a7204eb6",
       "gui/hook_numpy.py": "4f416fa7207a4cf9fd333c4670441781",
       "gui/import_helper.py": "63f6faf92e8941fca7079f8d4488c257",
@@ -92,7 +92,7 @@
       "config.json": "813e27e565251042f6c6b3c86a7335ec",
       "config_export.json": "9b54d06d75ee3977aa6175448b6ebfb1",
       "requirements.txt": "4e0b6be2d3b979f8428362aec250c7bd",
-      "version.py": "76b644f1681badc36ea7360ca3f39f32"
+      "version.py": "21a14f7ca7f097b044c16e37f64ed06c"
     },
     "build_options": {
       "console": false,
@@ -111,5 +111,5 @@
       "tkinter": "8.6"
     }
   },
-  "last_built_exe": "F:\\webserver\\public\\tools\\gametools\\dist\\gametools_v1.46.50.exe"
+  "last_built_exe": "F:\\webserver\\public\\tools\\gametools\\dist\\gametools_v1.46.55.exe"
 }
