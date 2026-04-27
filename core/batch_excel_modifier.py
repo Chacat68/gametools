@@ -735,6 +735,48 @@ class BatchExcelModifier:
             logger.error(error_msg)
             self.error_logs.append(error_msg)
             return pd.DataFrame(), []
+
+    def _get_csv_mapping_table_names(self, df: pd.DataFrame) -> List[str]:
+        """从 CSV 映射表中提取唯一的目标表名，并统一去除扩展名。"""
+        if 'Table' not in df.columns:
+            return []
+
+        sheet_names = []
+        seen = set()
+        for table_value in df['Table'].dropna().astype(str):
+            normalized_name = Path(table_value).stem.strip()
+            normalized_key = normalized_name.lower()
+            if normalized_name and normalized_key not in seen:
+                seen.add(normalized_key)
+                sheet_names.append(normalized_name)
+
+        return sheet_names
+
+    def _filter_csv_mapping_rows(self, df: pd.DataFrame, table_name: str) -> pd.DataFrame:
+        """按表名筛选 CSV 映射数据，兼容扩展名、大小写和带路径的表名。"""
+        if df.empty or 'Table' not in df.columns:
+            return df.copy()
+
+        normalized_table_name = table_name.strip().lower()
+        table_values = df['Table'].fillna('').astype(str).str.strip()
+        normalized_exact_names = {
+            normalized_table_name,
+            f"{normalized_table_name}.xlsx",
+            f"{normalized_table_name}.xls",
+        }
+
+        normalized_values = table_values.str.lower()
+        exact_mask = normalized_values.isin(normalized_exact_names)
+        if exact_mask.any():
+            return df[exact_mask].copy()
+
+        stem_mask = table_values.apply(
+            lambda value: Path(value).stem.strip().lower() == normalized_table_name if value else False
+        )
+        if stem_mask.any():
+            return df[stem_mask].copy()
+
+        return df.iloc[0:0].copy()
     
     def get_mapping_sheets(self, mapping_path: str) -> List[str]:
         """
@@ -1409,6 +1451,7 @@ class BatchExcelModifier:
             'skipped_rows': 0,
             'skipped_no_config': 0,
             'skipped_no_file': 0,
+            'skipped_same_value': 0,
             'errors': 0
         }
         self.error_logs = []
@@ -1427,26 +1470,26 @@ class BatchExcelModifier:
         self._report_progress(f"JSON语言标记: {json_lang_name} ({json_lang_code})")
         
         # 获取所有工作表（CSV文件需要从Table列提取表名）
+        file_ext = os.path.splitext(mapping_path)[1].lower()
+        csv_mapping_df = None
         try:
-            file_ext = os.path.splitext(mapping_path)[1].lower()
             if file_ext == '.csv':
                 # CSV文件，从Table列提取所有唯一的表名
-                df_csv, _ = self.load_mapping_table(mapping_path)
-                if df_csv is None or df_csv.empty:
+                csv_mapping_df, _ = self.load_mapping_table(mapping_path)
+                if csv_mapping_df is None or csv_mapping_df.empty:
                     error_msg = "CSV文件为空或加载失败"
                     self._report_progress(error_msg)
                     self.error_logs.append(error_msg)
                     return self.processing_stats
                 
-                if 'Table' not in df_csv.columns:
+                if 'Table' not in csv_mapping_df.columns:
                     error_msg = "CSV文件缺少'Table'列"
                     self._report_progress(error_msg)
                     self.error_logs.append(error_msg)
                     return self.processing_stats
                 
                 # 提取唯一的表名（去除.xlsx/.xls扩展名）
-                unique_tables = df_csv['Table'].unique()
-                sheet_names = [t.replace('.xlsx', '').replace('.xls', '') for t in unique_tables]
+                sheet_names = self._get_csv_mapping_table_names(csv_mapping_df)
                 self._report_progress(f"映射表为CSV格式，包含 {len(sheet_names)} 个表文件")
             else:
                 with pd.ExcelFile(mapping_path) as xl:
@@ -1465,16 +1508,14 @@ class BatchExcelModifier:
             
             # 读取第一个数据工作表来检测列
             skip_sheets = ['汇总信息', '汇总', 'Summary', 'summary', '说明', 'Info']
-            file_ext = os.path.splitext(mapping_path)[1].lower()
             
             for sheet in sheet_names:
                 if sheet not in skip_sheets:
                     try:
                         if file_ext == '.csv':
-                            # CSV文件，使用load_mapping_table读取并检查列
-                            df_mapping = self.load_mapping_table(mapping_path)
-                            if df_mapping is not None:
-                                columns = df_mapping.columns.tolist()
+                            if csv_mapping_df is None:
+                                continue
+                            columns = csv_mapping_df.columns.tolist()
                         else:
                             df_sample = pd.read_excel(mapping_path, sheet_name=sheet, nrows=0)
                             columns = df_sample.columns.tolist()
@@ -1534,22 +1575,10 @@ class BatchExcelModifier:
             
             # 读取该工作表的数据
             try:
-                file_ext = os.path.splitext(mapping_path)[1].lower()
                 if file_ext == '.csv':
-                    # CSV文件，使用load_mapping_table读取并筛选表名
-                    df_all = self.load_mapping_table(mapping_path)
-                    if df_all is None or df_all.empty:
+                    if csv_mapping_df is None or csv_mapping_df.empty:
                         continue
-                    
-                    # 筛选该表的数据
-                    if 'Table' in df_all.columns:
-                        # 尝试匹配table_name (不带扩展名) 或 excel_filename (带扩展名)
-                        df = df_all[(df_all['Table'] == table_name) | (df_all['Table'] == excel_filename)]
-                        if df.empty:
-                            # 再尝试不带路径的表名
-                            df = df_all[df_all['Table'].str.contains(table_name, na=False, regex=False)]
-                    else:
-                        df = df_all  # 如果没有Table列，使用全部数据
+                    df = self._filter_csv_mapping_rows(csv_mapping_df, table_name)
                 else:
                     df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
             except Exception as e:
@@ -2094,27 +2123,26 @@ class BatchExcelModifier:
         self._report_progress(f"开始按语言批量修改，目标语言: {target_language}")
         
         # 获取所有工作表（CSV文件需要从Table列提取表名）
+        file_ext = os.path.splitext(mapping_path)[1].lower()
+        csv_mapping_df = None
         try:
-            file_ext = os.path.splitext(mapping_path)[1].lower()
-            
             if file_ext == '.csv':
                 # CSV文件，从Table列提取所有唯一的表名
-                df_csv, _ = self.load_mapping_table(mapping_path)
-                if df_csv is None or df_csv.empty:
+                csv_mapping_df, _ = self.load_mapping_table(mapping_path)
+                if csv_mapping_df is None or csv_mapping_df.empty:
                     error_msg = "CSV文件为空或加载失败"
                     self._report_progress(error_msg)
                     self.error_logs.append(error_msg)
                     return self.processing_stats
                 
-                if 'Table' not in df_csv.columns:
+                if 'Table' not in csv_mapping_df.columns:
                     error_msg = "CSV文件缺少'Table'列"
                     self._report_progress(error_msg)
                     self.error_logs.append(error_msg)
                     return self.processing_stats
                 
                 # 提取唯一的表名（去除.xlsx/.xls扩展名）
-                unique_tables = df_csv['Table'].unique()
-                sheet_names = [t.replace('.xlsx', '').replace('.xls', '') for t in unique_tables]
+                sheet_names = self._get_csv_mapping_table_names(csv_mapping_df)
                 self._report_progress(f"映射表为CSV格式，包含 {len(sheet_names)} 个表文件")
             else:
                 with pd.ExcelFile(mapping_path) as xl:
@@ -2165,24 +2193,12 @@ class BatchExcelModifier:
             # 读取该工作表的数据（支持CSV）
             try:
                 if file_ext == '.csv':
-                    # CSV文件，加载整个文件后筛选当前表的数据
-                    df_all, _ = self.load_mapping_table(mapping_path)
-                    if df_all is None or df_all.empty:
+                    if csv_mapping_df is None or csv_mapping_df.empty:
                         continue
-                    
-                    # 筛选当前表的数据（匹配table_name或excel_filename）
-                    if 'Table' in df_all.columns:
-                        mask = (df_all['Table'] == table_name) | \
-                               (df_all['Table'] == excel_filename) | \
-                               (df_all['Table'] == f"{table_name}.xlsx") | \
-                               (df_all['Table'] == f"{table_name}.xls")
-                        df = df_all[mask].copy()
-                        
-                        if df.empty:
-                            self._report_progress(f"  跳过: CSV中无 {table_name} 的数据")
-                            continue
-                    else:
-                        df = df_all
+                    df = self._filter_csv_mapping_rows(csv_mapping_df, table_name)
+                    if df.empty:
+                        self._report_progress(f"  跳过: CSV中无 {table_name} 的数据")
+                        continue
                 else:
                     # Excel文件，读取指定工作表
                     df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
