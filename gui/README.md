@@ -28,7 +28,7 @@ python gametools_unified.py
 
 ### 目录结构
 
-```
+```text
 gui/
 ├── gametools_unified.py    # 统一界面主程序与功能装配
 ├── json_detector_page.py   # JSON 检测页签控制器
@@ -51,16 +51,16 @@ gui/
 ## 功能页签
 
 | 页签 | 功能 | 核心模块 |
-|------|------|----------|
+| -------- | ------ | ---------- |
 | 跨项目翻译对应 | 翻译映射和对照 | `cross_project_translator.py` |
 | JSON检测 | JSON语法和格式错误检测 | `json_error_detector.py` |
 | Excel数据处理 | A列分组和拆分 | `excel_data_processor.py` |
 | 表字段导出 | 提取本地化字段 | `excel_field_extractor.py` |
 | 多语言翻译提取 | 按配置提取多语言 | `table_range_translator.py` |
-| 分页拆分 | 按首列创建分页 | `excel_sheet_splitter.py` |
+| 分页拆分 | 命令行按首列分页（未单独做 GUI 页签） | `tools/excel_sheet_splitter.py` → `core/excel_sheet_splitter.py` |
 | 批量改表 | 批量修改Excel | `batch_excel_modifier.py` |
-| 配置同步 | Excel配置一致性检查 | `excel_config_sync.py` |
-| Excel转CSV | 批量转换格式 | `excel_to_csv_converter.py` |
+| 配置同步 | 库 + 测试（未集成统一 GUI） | `excel_config_sync.py` |
+| Excel转CSV | 命令行 / 库入口（未集成统一 GUI） | `excel_to_csv_converter.py` |
 
 涉及「表字段导出」「多语言翻译提取」「批量改表」「配置同步」等页的策划表，默认行号与列/行边界约定见 **`../docs/EXCEL_TABLE_LAYOUT.md`** 与 **`../core/constants.py`**。
 

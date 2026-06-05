@@ -131,16 +131,20 @@ dist/*/
 test/test_output/*
 !test/test_output/.gitkeep
 
-# 测试生成的Excel和数据文件
+# 测试在 test/_runtime/ 下生成的文件（勿提交；含 generated/ 下 create_test_data 输出）
+test/_runtime/
+
+# 遗留：早期在仓库根或 test/ 下直接生成的目录（可删；保留规则防误提交）
+/test_data/
+/test_excel_files/
+/test_table_range/
 test/test_excel_files/field_extraction_result.*
 test/test_table_range/translation_master_*.xlsx
-test/test_config_sync/*.bak
-test/test_config_sync/*/*.bak
-test/test_config_sync/sync_report.xlsx
-test/test_config_sync/*/*.xlsx
 
-# 仓库根目录：配置同步测试运行时生成（勿提交；夹具见 test/test_config_sync/）
+# 遗留：早期脚本曾在仓库根目录生成的目录（可手动删除；保留 ignore 防误提交）
 /test_config_sync/
+/test_multi_lang/
+/test_output/
 
 # 构建目录
 gui/build/

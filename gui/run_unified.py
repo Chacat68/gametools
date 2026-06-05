@@ -13,9 +13,8 @@ from pathlib import Path
 if __name__ == "__main__":
     # 检测是否在 PyInstaller 环境
     if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
-        # PyInstaller 打包环境
-        # 运行时钩子 pyi_rth_numpy_fix.py 应该已经执行
-        # 这里设置工作目录为 exe 所在目录
+        # PyInstaller 打包环境（numpy/pandas 依赖由 PyInstaller 官方 hook 处理）
+        # 设置工作目录为 exe 所在目录
         exe_dir = Path(sys.executable).parent
         os.chdir(exe_dir)
         

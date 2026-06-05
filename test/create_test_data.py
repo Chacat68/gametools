@@ -6,6 +6,8 @@
 
 使用方法:
     python create_test_data.py [选项]
+
+生成文件均写入 **test/_runtime/generated/** 下对应子目录（与单测写入的 test/_runtime/ 并列，已 .gitignore），不再使用仓库根目录的 test_data / test_excel_files / test_table_range。
     
 选项:
     --all       生成所有测试数据
@@ -25,6 +27,9 @@ import argparse
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# 统一生成目录：勿提交（见仓库根 .gitignore 的 test/_runtime/）
+_GENERATED = Path(__file__).parent / "_runtime" / "generated"
+
 
 def create_basic_test_excel():
     """创建基础测试Excel文件"""
@@ -41,8 +46,8 @@ def create_basic_test_excel():
     columns = ["文件名", "分类", "ID", "中文描述", "越南文描述"]
     df = pd.DataFrame(test_data, columns=columns)
     
-    output_dir = Path("test_data")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = _GENERATED / "test_data"
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / "test_data.xlsx"
     df.to_excel(output_file, index=False)
     
@@ -54,7 +59,7 @@ def create_field_extractor_test_files():
     """创建字段提取测试文件"""
     import openpyxl
     
-    test_dir = Path(__file__).parent / "test_excel_files"
+    test_dir = _GENERATED / "test_excel_files"
     test_dir.mkdir(parents=True, exist_ok=True)
     
     # 测试文件1：包含中文字段
@@ -111,8 +116,8 @@ def create_field_type_test_files():
     """创建字段类型测试文件"""
     import openpyxl
     
-    output_dir = Path("test_excel_files")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = _GENERATED / "test_excel_files"
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -160,8 +165,8 @@ def create_filter_test_excel():
         ws.cell(row=row_idx, column=9, value=data[5])
         ws.cell(row=row_idx, column=10, value=data[6])
     
-    output_path = Path('test_excel_files/test_field_filter.xlsx')
-    output_path.parent.mkdir(exist_ok=True)
+    output_path = _GENERATED / "test_excel_files" / "test_field_filter.xlsx"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
     
     print(f"✅ 过滤测试文件已创建: {output_path}")
@@ -171,8 +176,8 @@ def create_mapping_file():
     """创建映射文件测试数据"""
     import pandas as pd
     
-    output_dir = Path("test_data")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = _GENERATED / "test_data"
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     data = {
         '文件名': ['test1.xlsx', 'test1.xlsx', 'test2.xlsx'],
@@ -192,8 +197,8 @@ def create_csv_mapping():
     """创建CSV格式映射文件"""
     import pandas as pd
     
-    output_dir = Path("test_data")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = _GENERATED / "test_data"
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     data = {
         'Table': ['test.xlsx', 'test.xlsx', 'test.xlsx'],
@@ -215,8 +220,8 @@ def create_table_range_test_files():
     import openpyxl
     import json
     
-    output_dir = Path("test_table_range")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = _GENERATED / "test_table_range"
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # 创建配置JSON
     config = {
@@ -277,6 +282,7 @@ def main():
     
     print("\n" + "=" * 60)
     print("✅ 测试数据生成完成")
+    print(f"输出根目录: {_GENERATED.resolve()}")
     print("=" * 60)
 
 

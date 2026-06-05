@@ -3078,7 +3078,6 @@ class GameToolsUnified:
             'field_extractor': '表字段导出结果',
             'table_range_translator': '多语言翻译提取结果',
             'batch_modifier': '批量改表结果',
-            'config_sync': 'Excel配置同步结果'
         }
         
         # 标题

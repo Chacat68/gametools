@@ -4,7 +4,7 @@
 
 ## 项目架构
 
-```
+```text
 gametools/
 ├── core/               # 核心功能类（所有业务逻辑）
 ├── gui/                # tkinter GUI实现（统一界面入口）
@@ -17,7 +17,7 @@ gametools/
 ### 核心模块关系
 
 | 模块 | 功能 | 关键方法 |
-|------|------|----------|
+| --- | --- | --- |
 | `batch_excel_modifier.py` | 批量改表（默认xlwings引擎） | `process_batch_modification()` |
 | `excel_field_extractor.py` | 字段导出（检测本地化列） | `extract_fields()` |
 | `table_range_translator.py` | 多语言提取 | `extract_translations()` |
@@ -33,7 +33,9 @@ gametools/
 ## 关键开发模式
 
 ### 1. 核心类标准结构
+
 每个核心类遵循相同模式（参考 `batch_excel_modifier.py`）：
+
 ```python
 class SomeProcessor:
     def __init__(self):
@@ -53,29 +55,32 @@ class SomeProcessor:
 ```
 
 ### 2. Excel处理引擎选择
+
 - **xlwings**（默认）：调用Excel原生引擎，完全保留文件结构（批注、宏等）
 - **openpyxl**（备用）：纯Python实现，不需要Excel安装
 - 关键：批量改表必须用xlwings，否则会破坏文件结构导致其他工具无法读取
 
 ### 3. 错误处理模式
-使用 `core/error_handler.py` 中的自定义异常：
-```python
-from core.error_handler import ExcelReadError, FileProcessingError, GameToolsError
-# 异常包含 message, suggestion, original_error 属性
-```
+
+业务代码使用标准 `logging` 与 Python 内置异常（`ValueError`、`FileNotFoundError`、`OSError` 等）即可；需要向用户展示时收集到处理器自带的 `error_logs` 或回调里。仓库已移除未接线的 `core/error_handler.py` 占位模块。
 
 ### 4. 本地化文本检测规则
+
 检测中文、越南文、泰文字符（在 `excel_field_extractor.py`）：
+
 ```python
 # Unicode范围
 中文: \u4e00-\u9fff, \u3400-\u4dbf
 越南文: \u00C0-\u1EF9
 泰文: \u0E00-\u0E7F
 ```
+
 过滤字段：`name`, `model`, `id`, `code`, `type` 等代码字段
 
 ### 5. GUI开发模式
+
 统一界面在 `gui/gametools_unified.py`，使用多页签设计：
+
 - 每个功能一个 `create_xxx_tab()` 方法
 - 耗时操作必须用 `threading.Thread` 避免阻塞UI
 - 结果存储在 `self.results_storage` 字典
@@ -118,5 +123,5 @@ python gui/build_unified.py
 
 1. **Excel文件操作后必须关闭**：使用 `finally` 确保资源释放
 2. **大文件分批处理**：使用 `chunk_size` 参数控制内存
-3. **进度回调节流**：`ProgressTracker` 控制更新频率避免UI卡顿
+3. **进度回调节流**：在 `_report_progress` 或 GUI 回调里做节流（时间间隔或百分比步进），避免过于频繁的 `after` 调用导致 UI 卡顿
 4. **缓存失效**：文件修改后需清理相关缓存

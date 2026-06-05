@@ -15,10 +15,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.excel_config_sync import ExcelConfigSync
 
+# 所有产物集中在 test/_runtime/，避免污染仓库根目录（见 .gitignore）
+_TEST_RUNTIME = Path(__file__).parent / "_runtime"
+TEST_CONFIG_SYNC_DIR = _TEST_RUNTIME / "config_sync"
+
 
 def create_test_directories():
     """创建测试目录和文件"""
-    test_base = Path("test_config_sync")
+    test_base = TEST_CONFIG_SYNC_DIR
     
     # 创建目录结构
     source_dir = test_base / "source"
@@ -148,7 +152,7 @@ def test_config_sync():
     print(syncer.get_stats_summary())
     
     # 生成报告
-    report_path = "test_config_sync/sync_report.xlsx"
+    report_path = str(TEST_CONFIG_SYNC_DIR / "sync_report.xlsx")
     print(f"\n5. 生成报告: {report_path}")
     syncer.generate_sync_report(report_path)
     
@@ -188,7 +192,7 @@ def test_config_sync():
 
 def cleanup_test_data():
     """清理测试数据"""
-    test_base = Path("test_config_sync")
+    test_base = TEST_CONFIG_SYNC_DIR
     if test_base.exists():
         shutil.rmtree(test_base)
         print("测试目录已清理")

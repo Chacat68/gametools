@@ -13,6 +13,9 @@ import os
 # 添加项目路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+_TEST_OUTPUT = Path(__file__).parent / "_runtime" / "output"
+
+
 def create_test_excel_with_issues():
     """创建包含问题的测试Excel文件"""
     wb = openpyxl.Workbook()
@@ -41,7 +44,7 @@ def create_test_excel_with_issues():
     ws.cell(row=7, column=5, value="字段3数据")
     
     # 保存文件
-    test_file = Path("test_output/test_error_logging.xlsx")
+    test_file = _TEST_OUTPUT / "test_error_logging.xlsx"
     test_file.parent.mkdir(parents=True, exist_ok=True)
     wb.save(test_file)
     print(f"✓ 测试文件已创建: {test_file}")
@@ -61,7 +64,7 @@ def create_incomplete_excel():
     # 没有第6行数据 - 应该产生警告
     
     # 保存文件
-    test_file = Path("test_output/test_incomplete_rows.xlsx")
+    test_file = _TEST_OUTPUT / "test_incomplete_rows.xlsx"
     test_file.parent.mkdir(parents=True, exist_ok=True)
     wb.save(test_file)
     print(f"✓ 行数不足测试文件已创建: {test_file}")
@@ -118,7 +121,7 @@ def test_error_logging():
     print("保存日志到文件")
     print("="*70)
     
-    log_file = Path("test_output/error_logging_test.log")
+    log_file = _TEST_OUTPUT / "error_logging_test.log"
     if extractor.save_logs_to_file(log_file):
         print(f"✓ 日志已保存")
         

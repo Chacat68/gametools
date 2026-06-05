@@ -43,16 +43,14 @@ gametools/
 │   ├── test_*.py                 # 功能测试脚本
 │   ├── create_test_data.py       # 测试数据生成工具
 │   ├── run_all_tests.py          # 运行所有测试脚本
-│   ├── test_config_sync/         # 随仓库提交的最小配置夹具
-│   ├── test_multi_lang/          # 随仓库提交的最小配置夹具
+│   ├── _runtime/                 # 测试运行时生成（已 .gitignore，不入库）
 │   └── README.md                 # 测试文档
-├── test_config_sync/        # 配置同步测试运行目录（仅本地，已 .gitignore，不入库）
-├── test_multi_lang/         # 多语言测试运行时工作目录（按需生成）
-├── test_output/             # 测试运行输出目录（按需生成）
 ├── docs/                    # 文档目录
 ├── dist/                    # 输出文件目录
 └── README.md               # 项目说明
 ```
+
+> **维护说明（2026-06）**：已移除仓库内无任何引用的占位/历史文件：`gui/base_detector_gui.py`、`gui/hook_numpy.py`、`gui/pyi_rth_numpy_fix.py`，以及 `core/log_manager.py`、`core/error_handler.py`、`core/progress_tracker.py`、`core/output_formats.py`、`core/result_filter.py`、`core/task_controller.py`。全局日志仍由 `core/__init__.py` 的 `setup_logging()` 初始化；打包使用 PyInstaller 官方 numpy/pandas hooks（`gui/build_unified.py` 中 `runtime_hooks=[]`）。功能测试与 **`test/create_test_data.py`** 的运行产物统一写入 **`test/_runtime/`**（含 **`generated/`** 子目录），不再默认写入仓库根下的 `test_data` / `test_excel_files` / `test_table_range`。
 
 ## 📸 界面示意
 
@@ -215,19 +213,6 @@ python gui/run_unified.py
 - 使用方法和注意事项
 - **界面与模块设置**：可开关各功能页签
 
-#### 输出模式说明
-
-- **多文件模式（默认）**：为每个 A 列内容创建单独的 Excel 文件
-- **单文件模式**：创建单个 Excel 文件包含多个工作表
-- **自动文件名**：根据 A 列内容自动生成有意义的文件名
-- **重复检测**：自动跳过已存在的文件，避免覆盖
-
-### 关于页签
-
-- 显示程序版本信息
-- 功能特性说明
-- 使用方法和注意事项
-
 ## 测试说明
 
 ### 📋 测试文件夹结构
@@ -237,15 +222,14 @@ python gui/run_unified.py
 ```text
 test/
 ├── test_*.py                    # 功能测试脚本
-├── create_test_data.py          # 测试数据生成工具
+├── create_test_data.py          # 测试数据生成工具（写入 _runtime/generated/）
 ├── run_all_tests.py             # 运行所有测试脚本
 ├── run_tests.bat                # 测试启动脚本
-├── test_config_sync/            # 随仓库提交的最小配置夹具
-├── test_multi_lang/             # 随仓库提交的最小配置夹具
+├── _runtime/                    # 全部测试运行时输出（勿提交）：config_sync、multi_lang、output、generated/…
 └── README.md                    # 详细测试文档
 ```
 
-另外，项目根目录下的 `test_multi_lang/`、`test_output/` 等为测试运行时工作目录或输出目录，会按需自动生成。根目录 **`test_config_sync/`** 同样为运行产物目录，已写入 **`.gitignore`**，不再纳入版本库；随仓库提交的夹具在 **`test/test_config_sync/`**。
+配置同步、多语言、错误日志及 **`create_test_data.py`** 的样例 Excel/映射等，均写入 **`test/_runtime/`**（`generated/` 下为 `test_data`、`test_excel_files`、`test_table_range` 等）。该树已 **`.gitignore`**。若本地仍有历史遗留的仓库根目录 **`test_data/`**、**`test_excel_files/`**、**`test_table_range/`** 或 **`test_config_sync/`**、**`test_multi_lang/`**、**`test_output/`**，可整目录删除。
 
 ### 🧪 运行测试
 
@@ -255,6 +239,9 @@ python test\test_cache.py
 
 # 运行所有测试
 python test\run_all_tests.py
+
+# 极简 GUI 冒烟（仓库根目录，不纳入 run_all_tests）
+python verify_gui.py
 ```
 
 ## 打包成 exe 文件

@@ -78,6 +78,20 @@ def contains_localized_text(text: str) -> bool:
     return bool(TEXT_PATTERN.search(text))
 
 
+def contains_cjk_vietnamese_or_thai(text: str) -> bool:
+    """
+    是否包含中文、越南文或泰文字符（不含仅拉丁字母）。
+
+    用于字段导出器中「排除名字段」的列内容抽样：纯 ITEM_001、armor_a 等
+    不应视为本地化文案，从而仍过滤 name/code/model 等列；若列内确有中越泰字符则保留，避免误伤。
+    """
+    return bool(
+        contains_chinese(text)
+        or contains_vietnamese(text)
+        or contains_thai(text)
+    )
+
+
 def is_filterable_content(value_str: str) -> bool:
     """
     检查内容是否应该被过滤（不需要处理的内容）

@@ -39,15 +39,19 @@ python tools/excel_field_extractor.py -h
 ### 2. GUI界面使用
 
 #### 方式1：独立启动
+
 ```bash
 python gui/excel_field_extractor_gui.py
 ```
+
 或双击运行：`gui/启动表字段导出工具.bat`
 
 #### 方式2：统一GUI启动
+
 ```bash
 python gui/gametools_unified.py
 ```
+
 然后选择"表字段导出"页签
 
 ### 3. 代码集成使用
@@ -76,6 +80,7 @@ print(f"输出文件: {stats['output_file']}")
 ## 输出格式
 
 ### CSV格式
+
 ```csv
 表名,字段1,字段2,字段3,...
 测试表1.xlsx#测试表1,ID,名称,描述,数值,类型
@@ -84,8 +89,9 @@ print(f"输出文件: {stats['output_file']}")
 ```
 
 ### Excel格式
+
 | 表名 | 工作表 | 字段数量 | 字段列表 |
-|------|--------|----------|----------|
+| --- | --- | --- | --- |
 | 测试表1.xlsx | 测试表1 | 5 | ID, 名称, 描述, 数值, 类型 |
 | 多工作表测试.xlsx | 角色表 | 4 | 角色ID, 角色名, 等级, 职业 |
 
@@ -99,11 +105,13 @@ print(f"输出文件: {stats['output_file']}")
 ## 文本检测规则
 
 工具会自动识别以下类型的文本：
+
 - 中文字符（\u4e00-\u9fff）
 - 英文字母（A-Z, a-z）
 - 越南文字符（À-ỹ）
 
 以下内容会被排除：
+
 - 纯数字（123, 45.67等）
 - 空单元格
 
@@ -119,8 +127,11 @@ print(f"输出文件: {stats['output_file']}")
 
 这些字段通常包含代码标识符、数字ID等非本地化内容，不应该出现在翻译字段列表中。
 
+对以上字段名，工具会在数据区抽样检查单元格内容：**仅当出现过中文、越南文或泰文字符时才保留该列**（避免把真正的中越泰文案 `name` 列误删）；纯拉丁 ID（如 `ITEM_001`）、纯数字等仍视为代码列并过滤。
+
 **示例**：
-```
+
+```text
 原始字段: c_, 序号, des_cn, des_vcn, des, name, model, id, c_
 过滤后: des_cn, des_vcn, des
 ```
@@ -130,11 +141,13 @@ print(f"输出文件: {stats['output_file']}")
 ## 测试
 
 ### 创建测试数据
+
 ```bash
 python test/create_test_excel_for_field_extractor.py
 ```
 
 ### 运行测试
+
 ```bash
 python test/test_field_extractor.py
 ```
@@ -159,15 +172,19 @@ python test/test_field_extractor.py
 ## 常见问题
 
 ### Q: 如果表格没有字段名行（默认第 5 行）怎么办？
+
 A: 工具会使用列号作为字段名（如「列1」「列2」）
 
 ### Q: 纯数字列会被提取吗？
+
 A: 不会。工具只提取包含文本内容的列
 
 ### Q: 支持.csv文件吗？
+
 A: 目前只支持.xlsx和.xls格式的Excel文件
 
 ### Q: 可以自定义字段名/类型所在行吗？
+
 A: 全项目默认值在 **`core/constants.py`** 中的 `FIELD_NAME_ROW`、`FIELD_TYPE_ROW`、`DATA_START_ROW`；修改后字段导出与多语言提取等会一并受影响，请先阅读 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md) 并做回归验证。批量改表在 GUI 中另有可配置的「字段行」「数据起始行」，与上述常量默认对齐。
 
 ## 版本历史

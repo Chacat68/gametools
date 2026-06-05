@@ -29,7 +29,10 @@ from core.constants import (
     ROW_BOUNDARY_KEYWORD,
 )
 from core.text_patterns import (
-    TEXT_PATTERN, is_filterable_content, contains_localized_text
+    TEXT_PATTERN,
+    is_filterable_content,
+    contains_localized_text,
+    contains_cjk_vietnamese_or_thai,
 )
 
 
@@ -325,8 +328,8 @@ class ExcelFieldExtractor:
                             field_name = str(field_cell.value) if field_cell.value is not None else f"列{col_num}"
 
                             # 字段名过滤（内容检测优先）：
-                            # - 若字段名在 excluded_field_names 中，但该列【不包含】本地化字符（中文/越南文/泰文），则视为代码列过滤掉。
-                            # - 若该列包含本地化字符，则保留，避免过滤真实的 name 列。
+                            # - 若字段名在 excluded_field_names 中，但该列数据区抽样【不含】中文/越南文/泰文，则视为代码列过滤掉。
+                            # - 若该列含上述脚本字符，则保留，避免过滤真实本地化 name 列。
                             if field_name and field_name.strip().lower() in self.excluded_field_names:
                                 has_localized = False
                                 if boundary_row > data_start_row:
@@ -343,7 +346,7 @@ class ExcelFieldExtractor:
                                         val_str = str(cell_val).strip()
                                         if not val_str or is_filterable_content(val_str):
                                             continue
-                                        if contains_localized_text(val_str):
+                                        if contains_cjk_vietnamese_or_thai(val_str):
                                             has_localized = True
                                             break
                                         checks += 1
@@ -409,6 +412,18 @@ class ExcelFieldExtractor:
                             'field_count': len(fields),
                             'text_columns': sorted(text_columns),
                             'has_text': True
+                        })
+                    elif text_columns:
+                        # 曾检测到文本列，但经字段名/类型过滤后无可导出字段 → 视为无文本表
+                        results.append({
+                            'excel_file': file_path.name,
+                            'sheet_name': sheet_name,
+                            'fields': [],
+                            'fields_with_examples': [],
+                            'field_column_letters': [],
+                            'field_count': 0,
+                            'text_columns': sorted(text_columns),
+                            'has_text': False
                         })
                 
                 except Exception as e:
@@ -1021,8 +1036,9 @@ if __name__ == "__main__":
     # 测试代码
     extractor = ExcelFieldExtractor()
     
-    # 示例用法
-    test_dir = Path("test_excel_files")
+    # 示例用法（与 test/create_test_data.py --field 生成目录一致）
+    _repo_root = Path(__file__).resolve().parent.parent
+    test_dir = _repo_root / "test" / "_runtime" / "generated" / "test_excel_files"
     if test_dir.exists():
         stats = extractor.process_directory(
             directory_path=str(test_dir),

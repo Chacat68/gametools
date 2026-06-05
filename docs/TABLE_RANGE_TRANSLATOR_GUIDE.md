@@ -9,17 +9,20 @@
 ### 核心特性
 
 ✅ **智能字段过滤**
+
 - 根据JSON配置自动识别表格范围
 - 只提取前端、后端、前后端字段
 - 自动忽略策划专用字段
 - 跳过no_text_tables中的表格
 
 ✅ **多语言识别**
+
 - 支持中文、越南文、泰文、英文（拉丁字母）识别
 - 自动分类语言类型（中文、越南文、泰文、英文、混合等）
 - 纯数字与结构化占位仍会被过滤
 
 ✅ **翻译总表生成**
+
 - 每个表格文件对应一个工作表标签
 - 统一的列格式：字段名 | 字段类型 | ID | 行号 | 中文内容 | 越南文 | 泰文 | 英文 | 语言类型
 - 美观的表格样式，带边框和冻结首行
@@ -65,19 +68,25 @@
 ### 2. GUI使用方式
 
 #### 步骤一：打开程序
+
 ```bash
 python gui/gametools_unified.py
 ```
 
 #### 步骤二：选择"多语言翻译提取"页签
 
+在左侧导航选择「多语言翻译提取」页签。
+
 #### 步骤三：配置文件路径
+
 1. **JSON配置**: 选择字段导出生成的JSON文件
 2. **Excel目录**: 选择包含所有Excel表格的目录
 3. **输出文件**: 选择翻译总表的保存位置
 
 #### 步骤四：开始提取
-点击"🚀 开始提取"按钮，程序将自动：
+
+点击「开始提取」按钮，程序将自动：
+
 - 加载JSON配置
 - 扫描Excel文件
 - 过滤字段类型
@@ -91,6 +100,7 @@ python core/table_range_translator.py <JSON配置文件> <Excel目录> --output 
 ```
 
 **示例**:
+
 ```bash
 python core/table_range_translator.py field_config.json excel_files/ --output 翻译总表.xlsx
 ```
@@ -105,7 +115,7 @@ python core/table_range_translator.py field_config.json excel_files/ --output �
 
 生成的 Excel 文件包含多个工作表，每个工作表对应一个源表格文件。下面以 `翻译总表.xlsx` 为示例文件名：
 
-```
+```text
 翻译总表.xlsx
 ├── 角色配置 (工作表)
 │   ├── 字段名
@@ -123,7 +133,7 @@ python core/table_range_translator.py field_config.json excel_files/ --output �
 ### 列说明
 
 | 列名 | 说明 | 示例 |
-|------|------|------|
+| --- | --- | --- |
 | **字段名** | Excel中的字段名称 | name_cn, desc_cn |
 | **字段类型** | 字段用途分类 | 前端, 后端, 前后端 |
 | **ID** | 对应行的A列ID值 | 1001, 2001 |
@@ -178,7 +188,7 @@ graph LR
 ### 字段类型分类
 
 | 字段类型 | 说明 | 是否导出 |
-|---------|------|---------|
+| --- | --- | --- |
 | **策划** | 策划专用，不需要翻译 | ❌ 跳过 |
 | **前端** | 客户端显示，需要翻译 | ✅ 导出 |
 | **后端** | 服务器使用，需要翻译 | ✅ 导出 |
@@ -187,7 +197,7 @@ graph LR
 ### 语言类型识别
 
 | 语言类型 | 字符范围 | 示例 |
-|---------|---------|------|
+| --- | --- | --- |
 | **中文** | U+4E00–U+9FFF | 张三, 宝剑 |
 | **越南文** | U+00C0–U+1EF9 | Tiểu Tam, Kiếm |
 | **泰文** | U+0E00–U+0E7F | จางซาน, คำ |
@@ -198,16 +208,19 @@ graph LR
 
 ## 📝 使用示例
 
+<!-- markdownlint-disable MD060 -->
+
 ### 示例1: 游戏角色配置
 
 **源Excel**: 角色配置.xlsx
 
 | c_ | id | name_cn | name_vn | desc_cn | model | c_ |
-|----|-----|---------|---------|---------|-------|-----|
-|    | 策划 | 前端 | 前端 | 后端 | 策划 |    |
-|    | 1001 | 张三 | Tiểu Tam | 普通角色 | model_001 |    |
+| --- | --- | --- | --- | --- | --- | --- |
+| | 策划 | 前端 | 前端 | 后端 | 策划 | |
+| | 1001 | 张三 | Tiểu Tam | 普通角色 | model_001 | |
 
 **提取结果**:
+
 - 导出字段: name_cn(前端), name_vn(前端), desc_cn(后端)
 - 跳过字段: id(策划), model(策划)
 - 提取数据: 3行
@@ -217,14 +230,17 @@ graph LR
 **源Excel**: 物品配置.xlsx
 
 | c_ | item_id | item_name_cn | item_desc | price | c_ |
-|-----|---------|--------------|-----------|-------|-----|
-|     | 策划 | 前端 | 前后端 | 后端 |    |
-|     | 2001 | 宝剑 | 锋利的剑 | 1000 |    |
+| --- | --- | --- | --- | --- | --- |
+| | 策划 | 前端 | 前后端 | 后端 | |
+| | 2001 | 宝剑 | 锋利的剑 | 1000 | |
 
 **提取结果**:
+
 - 导出字段: item_name_cn(前端), item_desc(前后端), price(后端)
 - 跳过字段: item_id(策划)
 - 提取数据: 3行
+
+<!-- markdownlint-enable MD060 -->
 
 ---
 
@@ -232,7 +248,7 @@ graph LR
 
 提取完成后，会生成详细的处理报告：
 
-```
+```text
 ======================================================================
 多语言翻译提取处理报告
 ======================================================================
@@ -297,26 +313,23 @@ graph LR
 
 ### 快速测试
 
-运行测试文件生成脚本：
+运行测试数据生成脚本（表范围样例）：
 
 ```bash
-python create_test_table_range.py
+python test/create_test_data.py --range
 ```
 
-这将创建：
-- 3个测试Excel文件（角色配置、物品配置、任务配置）
-- 1个JSON配置文件
-- 1个README说明文档
+将在 **`test/_runtime/generated/test_table_range/`** 下创建示例 Excel 与 `field_config.json`（与旧版根目录 `test_table_range/` 不同，请勿混用路径）。
 
 ### 测试命令
 
 ```bash
-python core/table_range_translator.py test_table_range\field_config.json test_table_range --output 翻译总表_测试.xlsx
+python core/table_range_translator.py test/_runtime/generated/test_table_range/field_config.json test/_runtime/generated/test_table_range --output 翻译总表_测试.xlsx
 ```
 
 ### 预期结果
 
-生成包含3个工作表的翻译总表，共25行数据。
+命令成功时会在 `--output` 路径生成翻译总表；当前 **`create_test_data.py --range`** 内置样例为 **2 个** Excel（见 `field_config.json` 中 `tables`），行数随样例数据而定。
 
 ---
 
@@ -375,11 +388,12 @@ python core/table_range_translator.py test_table_range\field_config.json test_ta
 ## 📞 技术支持
 
 如有问题或建议，请查看：
+
 - **Excel 表布局统一规范**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)
 - 项目文档：`docs/`目录
 - 源代码：`core/table_range_translator.py`
 - GUI代码：`gui/gametools_unified.py`
-- 测试用例：`create_test_table_range.py`
+- 测试数据：`test/create_test_data.py --range`（输出至 `test/_runtime/generated/test_table_range/`）
 
 ---
 

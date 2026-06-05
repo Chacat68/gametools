@@ -13,10 +13,15 @@ from pathlib import Path
 # 添加项目根目录到路径（确保可导入 core 包）
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# 产物集中在 test/_runtime/multi_lang，避免污染仓库根目录
+_TEST_RUNTIME = Path(__file__).parent / "_runtime"
+MULTI_LANG_BASE = _TEST_RUNTIME / "multi_lang"
+
+
 def create_test_folders():
     """创建测试文件夹结构"""
     # 根据图片中的文件夹结构创建测试目录
-    base_dir = "test_multi_lang"
+    base_dir = str(MULTI_LANG_BASE)
     
     folders = {
         'vn': os.path.join(base_dir, 'config'),           # 越南文（无后缀）
@@ -182,7 +187,7 @@ def test_extraction():
             print(f"   泰文: {row['thai']}")
         
         # 生成翻译总表
-        output_file = "test_multi_lang/翻译总表.xlsx"
+        output_file = str(MULTI_LANG_BASE / "翻译总表.xlsx")
         success = translator.generate_translation_master_table_multi_lang(output_file)
         
         if success:
