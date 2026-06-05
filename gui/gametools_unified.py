@@ -46,13 +46,18 @@ from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator
 from core.batch_excel_modifier import BatchExcelModifier
 from core.config_manager import config_manager
-from core.constants import SUPPORTED_LANGUAGES, MERGED_JSON_LANGUAGE_KEYS
+from core.constants import (
+    SUPPORTED_LANGUAGES,
+    MERGED_JSON_LANGUAGE_KEYS,
+    FIELD_EXTRACTION_MERGED_JSON_NAME,
+)
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_build_date
 
 
 TAB_VISUALS = {
+    'home': {'tag': 'HM', 'tone': '#4a7c8f'},
     'cross_project_translator': {'tag': 'CP', 'tone': '#c27a52'},
     'json_detector': {'tag': 'JS', 'tone': '#5e8778'},
     'excel_data_processor': {'tag': 'XL', 'tone': '#5f7f98'},
@@ -74,6 +79,7 @@ TASK_RESULT_KEYS = {
 RESULT_TASK_KEYS = {value: key for key, value in TASK_RESULT_KEYS.items()}
 
 TASK_TITLES = {
+    'home': '工作台',
     'cross_project_translator': '跨项目翻译',
     'json_detector': 'JSON检测',
     'excel_data_processor': '数据处理',
@@ -83,16 +89,17 @@ TASK_TITLES = {
 }
 
 NAV_SECTIONS = [
-    ('主要流程', ('batch_modifier', 'table_range_translator', 'field_extractor', 'cross_project_translator')),
+    ('工作台', ('home',)),
+    ('主要流程', ('field_extractor', 'table_range_translator', 'batch_modifier', 'cross_project_translator')),
     ('辅助工具', ('excel_data_processor', 'json_detector')),
     ('关于', ('about',)),
 ]
 
 HOME_FLOW_SPECS = [
-    ('batch_modifier', '批量改表', '覆盖高频改表、输出和回填，是默认主流程。'),
-    ('table_range_translator', '多语言提取', '从语言目录提取可交付翻译内容。'),
+    ('field_extractor', '字段导出', '扫描多语言表并生成合并 JSON，作为多语言提取的配置输入。'),
+    ('table_range_translator', '多语言提取', '按合并 JSON 从各语言目录抽取可交付翻译总表。'),
+    ('batch_modifier', '批量改表', '按映射表与 JSON 配置回填 Excel，适合高频改表。'),
     ('cross_project_translator', '跨项目翻译', '根据映射关系对齐项目间文本。'),
-    ('field_extractor', '字段导出', '快速确认可本地化字段与示例文本。'),
 ]
 
 HOME_SUPPORT_SPECS = [
@@ -101,12 +108,13 @@ HOME_SUPPORT_SPECS = [
 ]
 
 TAB_DESCRIPTIONS = {
+    'home': '在此统一选择各语言表目录、输出目录及常用配置文件路径，与各功能页输入框实时同步。',
     'cross_project_translator': '在这里完成映射加载、项目扫描和翻译对应输出。',
     'json_detector': '在这里完成 JSON 检测、问题定位和结果整理。',
     'excel_data_processor': '在这里完成 Excel 整理、分组整合和结果输出。',
-    'field_extractor': '在这里完成多语言字段扫描、筛选和导出。',
-    'table_range_translator': '在这里完成配置读取、多语言提取和结果输出。',
-    'batch_modifier': '在这里完成配置加载、批量改表和结果输出。',
+    'field_extractor': '在这里扫描多语言目录、筛选可本地化字段，并导出合并 JSON 供多语言提取使用。',
+    'table_range_translator': '在这里读取字段导出的合并 JSON，从各语言目录提取翻译总表或 CSV。',
+    'batch_modifier': '在这里加载映射与 JSON 配置，批量回写 Excel 表内容。',
     'about': '在这里查看工具信息、界面设置和诊断入口。',
 }
 
@@ -125,6 +133,7 @@ BUTTON_LABELS = {
     'copy_results': '复制结果',
     'view_logs': '查看日志',
     'refresh_languages': '刷新语言列表',
+    'use_field_for_trt': '用于多语言提取',
 }
 
 
@@ -158,6 +167,7 @@ class GameToolsUnified:
             threading,
         )
         self.field_extraction_results = None
+        self._field_last_merged_json_path = None
 
         self._apply_saved_window_geometry()
         self.root.minsize(980, 680)
@@ -1598,6 +1608,8 @@ class GameToolsUnified:
 
     def _get_default_tab_key(self):
         """返回启动时应选中的默认页面。"""
+        if 'home' in self.tab_lookup:
+            return 'home'
         for _section_title, keys in NAV_SECTIONS:
             for key in keys:
                 if key != 'about' and key in self.tab_lookup:
@@ -1751,6 +1763,11 @@ class GameToolsUnified:
         
         # 获取页签可见性配置
         tabs_config = config_manager.config.tabs
+
+        # 路径变量先于各页签创建，工作台与各功能页共用同一 StringVar 以实现同步
+        self._init_workspace_path_vars()
+        if getattr(tabs_config, 'home', True):
+            self.create_home_tab()
         
         # 创建各个功能页签（根据配置决定是否显示）
         if tabs_config.cross_project_translator:
@@ -1777,6 +1794,115 @@ class GameToolsUnified:
         status_bar = ttk.Label(workspace_frame, textvariable=self.status_var, style='Status.TLabel', anchor=tk.W)
         status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(12, 0))
     
+    def _init_workspace_path_vars(self):
+        """在创建页签前初始化路径型 StringVar，供工作台与各功能页共用（一处修改、处处同步）。"""
+        self.field_zh_dir_var = tk.StringVar()
+        self.field_vn_dir_var = tk.StringVar()
+        self.field_th_dir_var = tk.StringVar()
+        self.field_en_dir_var = tk.StringVar()
+        self.trt_zh_dir_var = self.field_zh_dir_var
+        self.trt_vn_dir_var = self.field_vn_dir_var
+        self.trt_th_dir_var = self.field_th_dir_var
+        self.trt_en_dir_var = self.field_en_dir_var
+
+        self.field_output_dir_var = tk.StringVar()
+        self.trt_output_dir_var = self.field_output_dir_var
+
+        self.trt_merged_json_var = tk.StringVar()
+
+        self.json_path_var = tk.StringVar()
+        self.excel_input_var = tk.StringVar()
+        self.excel_output_folder_var = tk.StringVar()
+
+        self.cpt_mapping_file_var = tk.StringVar()
+        self.cpt_project_dir_var = tk.StringVar()
+        self.cpt_output_file_var = tk.StringVar()
+
+        self.batch_json_var = tk.StringVar()
+        self.batch_mapping_var = tk.StringVar()
+        self.batch_excel_dir_var = tk.StringVar()
+        self.batch_report_var = tk.StringVar()
+
+    def _home_add_path_row(self, parent, row, label_text, string_var, browse_command):
+        """工作台单行：标签 + 路径输入 + 浏览。"""
+        ttk.Label(parent, text=label_text).grid(
+            row=row, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 6),
+        )
+        ttk.Entry(parent, textvariable=string_var, font=('Microsoft YaHei', 9)).grid(
+            row=row, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 6),
+        )
+        ttk.Button(
+            parent, text='选择', command=browse_command, style='Subtle.TButton',
+        ).grid(row=row, column=2, pady=(0, 6))
+
+    def create_home_tab(self):
+        """工作台：集中选择目录与常用文件路径，与各功能页输入框绑定同一变量。"""
+        body = self._register_tab(
+            'home',
+            '工作台',
+            TAB_DESCRIPTIONS['home'],
+        )
+        body.columnconfigure(0, weight=1)
+
+        intro = ttk.Label(
+            body,
+            text=(
+                '以下路径与侧栏各功能页中的输入框共享：在此修改会立即反映到对应页签，在功能页修改也会同步到此处。'
+                ' 可按当日任务只填需要的项。'
+            ),
+            style='Info.TLabel',
+            wraplength=780,
+            justify='left',
+        )
+        intro.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 14))
+
+        main = ttk.Frame(body)
+        main.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        main.columnconfigure((0, 1), weight=1, uniform='home_cols')
+
+        left = ttk.LabelFrame(main, text=self._format_section_title(1, '本地化主路径'), padding=12)
+        left.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), padx=(0, 8))
+        left.columnconfigure(1, weight=1)
+
+        r = 0
+        for label, var, cmd in (
+            ('中文表目录:', self.field_zh_dir_var, lambda: self.browse_field_language_dir('zh')),
+            ('越南语表目录:', self.field_vn_dir_var, lambda: self.browse_field_language_dir('vn')),
+            ('泰语表目录:', self.field_th_dir_var, lambda: self.browse_field_language_dir('th')),
+            ('英语表目录:', self.field_en_dir_var, lambda: self.browse_field_language_dir('en')),
+        ):
+            self._home_add_path_row(left, r, label, var, cmd)
+            r += 1
+        self._home_add_path_row(
+            left, r, '导出 / 多语言输出目录:', self.field_output_dir_var, self.browse_field_output_directory,
+        )
+        r += 1
+        self._home_add_path_row(
+            left, r, '合并 JSON（多语言提取）:', self.trt_merged_json_var, self.browse_trt_merged_json,
+        )
+        r += 1
+        self.inline_messages['home'] = self._create_inline_message(left, row=r, columnspan=3)
+
+        right = ttk.LabelFrame(main, text=self._format_section_title(2, '其它工具路径'), padding=12)
+        right.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N), padx=(8, 0))
+        right.columnconfigure(1, weight=1)
+
+        r2 = 0
+        for label, var, cmd in (
+            ('JSON 检测目录:', self.json_path_var, self.browse_json_folder),
+            ('Excel 整合源文件:', self.excel_input_var, self.browse_excel_input_file),
+            ('Excel 整合输出目录:', self.excel_output_folder_var, self.browse_excel_output_folder),
+            ('跨项目映射文件:', self.cpt_mapping_file_var, self.browse_cpt_mapping_file),
+            ('跨项目扫描目录:', self.cpt_project_dir_var, self.browse_cpt_project_directory),
+            ('跨项目输出文件:', self.cpt_output_file_var, self.browse_cpt_output_file),
+            ('批量改表 JSON:', self.batch_json_var, self.browse_batch_json_file),
+            ('批量改表映射:', self.batch_mapping_var, self.browse_batch_mapping_file),
+            ('批量改表 Excel 目录:', self.batch_excel_dir_var, self.browse_batch_excel_directory),
+            ('批量改表报告文件:', self.batch_report_var, self.browse_batch_report_file),
+        ):
+            self._home_add_path_row(right, r2, label, var, cmd)
+            r2 += 1
+
     def create_cross_project_translator_tab(self):
         """创建跨项目翻译对应页签"""
         translator_frame = self._register_tab(
@@ -1794,7 +1920,6 @@ class GameToolsUnified:
         
         # 映射文件选择
         ttk.Label(file_frame, text="映射:").grid(row=0, column=0, sticky=tk.W, padx=(0, 8), pady=2)
-        self.cpt_mapping_file_var = tk.StringVar()
         self.cpt_mapping_file_entry = ttk.Entry(file_frame, textvariable=self.cpt_mapping_file_var)
         self.cpt_mapping_file_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 8), pady=2)
         self.cpt_mapping_browse_button = ttk.Button(file_frame, text="选择", command=self.browse_cpt_mapping_file, style='Subtle.TButton')
@@ -1802,7 +1927,6 @@ class GameToolsUnified:
         
         # 项目目录选择
         ttk.Label(file_frame, text="目录:").grid(row=1, column=0, sticky=tk.W, padx=(0, 8), pady=2)
-        self.cpt_project_dir_var = tk.StringVar()
         self.cpt_project_dir_entry = ttk.Entry(file_frame, textvariable=self.cpt_project_dir_var)
         self.cpt_project_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 8), pady=2)
         self.cpt_project_browse_button = ttk.Button(file_frame, text="选择", command=self.browse_cpt_project_directory, style='Subtle.TButton')
@@ -1810,7 +1934,6 @@ class GameToolsUnified:
         
         # 输出文件选择
         ttk.Label(file_frame, text="结果:").grid(row=2, column=0, sticky=tk.W, padx=(0, 8), pady=2)
-        self.cpt_output_file_var = tk.StringVar()
         self.cpt_output_file_entry = ttk.Entry(file_frame, textvariable=self.cpt_output_file_var)
         self.cpt_output_file_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 8), pady=2)
         self.cpt_output_browse_button = ttk.Button(file_frame, text="选择", command=self.browse_cpt_output_file, style='Subtle.TButton')
@@ -1854,7 +1977,6 @@ class GameToolsUnified:
         
         # 输入文件
         ttk.Label(file_frame, text="源文件:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.excel_input_var = tk.StringVar()
         self.excel_input_entry = ttk.Entry(file_frame, textvariable=self.excel_input_var, 
                                          font=("Microsoft YaHei", 9))
         self.excel_input_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
@@ -1870,7 +1992,6 @@ class GameToolsUnified:
         
         # 输出文件夹
         ttk.Label(output_frame, text="目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.excel_output_folder_var = tk.StringVar()
         self.excel_output_folder_entry = ttk.Entry(output_frame, textvariable=self.excel_output_folder_var, 
                                                  font=("Microsoft YaHei", 9))
         self.excel_output_folder_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
@@ -1954,7 +2075,6 @@ class GameToolsUnified:
         
         # 中文目录
         ttk.Label(dir_frame, text="中文:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.field_zh_dir_var = tk.StringVar()
         self.field_zh_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_zh_dir_var, 
                                            font=("Microsoft YaHei", 9))
         self.field_zh_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -1968,7 +2088,6 @@ class GameToolsUnified:
         
         # 越南语目录
         ttk.Label(dir_frame, text="越南语:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.field_vn_dir_var = tk.StringVar()
         self.field_vn_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_vn_dir_var, 
                                            font=("Microsoft YaHei", 9))
         self.field_vn_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -1982,7 +2101,6 @@ class GameToolsUnified:
         
         # 泰语目录
         ttk.Label(dir_frame, text="泰语:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.field_th_dir_var = tk.StringVar()
         self.field_th_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_th_dir_var, 
                                            font=("Microsoft YaHei", 9))
         self.field_th_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -1996,7 +2114,6 @@ class GameToolsUnified:
         
         # 英语目录
         ttk.Label(dir_frame, text="英语:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.field_en_dir_var = tk.StringVar()
         self.field_en_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_en_dir_var,
                                            font=("Microsoft YaHei", 9))
         self.field_en_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -2010,7 +2127,6 @@ class GameToolsUnified:
         
         # 输出文件夹
         ttk.Label(dir_frame, text="输出:").grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
-        self.field_output_dir_var = tk.StringVar()
         self.field_output_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_output_dir_var, 
                                                font=("Microsoft YaHei", 9))
         self.field_output_dir_entry.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
@@ -2048,12 +2164,21 @@ class GameToolsUnified:
                        value="excel").pack(side=tk.LEFT)
         
         action_panel = self._create_action_panel(right_column, 1)
-        self._decorate_action_panel(action_panel, '3. 执行与结果', '提取后可复制结果、查看日志或打开结果。')
+        self._decorate_action_panel(action_panel, '3. 执行与结果', 'JSON 导出成功后可一键带入「多语言提取」页；亦可复制结果或查看日志。')
 
         self.field_extract_button = ttk.Button(action_panel, text=BUTTON_LABELS['start_extraction'], 
                                               command=self.start_field_extraction, 
                                               style='Accent.TButton')
         self.field_extract_button.pack(fill=tk.X)
+
+        self.field_use_for_trt_button = ttk.Button(
+            action_panel,
+            text=BUTTON_LABELS['use_field_for_trt'],
+            command=self._on_use_field_export_for_trt,
+            state='disabled',
+            style='Quiet.TButton',
+        )
+        self.field_use_for_trt_button.pack(fill=tk.X, pady=(8, 0))
         
         self.field_copy_button = ttk.Button(action_panel, text=BUTTON_LABELS['copy_results'], 
                                     command=self.copy_field_json_result, style='Quiet.TButton')
@@ -2091,7 +2216,6 @@ class GameToolsUnified:
         
         # 合并JSON配置文件
         ttk.Label(json_frame, text="JSON:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_merged_json_var = tk.StringVar()
         self.trt_merged_json_entry = ttk.Entry(json_frame, textvariable=self.trt_merged_json_var, 
                                                font=("Microsoft YaHei", 9))
         self.trt_merged_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -2111,7 +2235,6 @@ class GameToolsUnified:
         
         # 中文目录
         ttk.Label(dir_frame, text="中文:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_zh_dir_var = tk.StringVar()
         self.trt_zh_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_zh_dir_var, 
                                          font=("Microsoft YaHei", 9))
         self.trt_zh_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -2122,7 +2245,6 @@ class GameToolsUnified:
         
         # 越南文目录
         ttk.Label(dir_frame, text="越南语:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_vn_dir_var = tk.StringVar()
         self.trt_vn_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_vn_dir_var, 
                                          font=("Microsoft YaHei", 9))
         self.trt_vn_dir_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -2133,7 +2255,6 @@ class GameToolsUnified:
         
         # 泰文目录
         ttk.Label(dir_frame, text="泰语:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_th_dir_var = tk.StringVar()
         self.trt_th_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_th_dir_var, 
                                          font=("Microsoft YaHei", 9))
         self.trt_th_dir_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -2144,7 +2265,6 @@ class GameToolsUnified:
         
         # 英语目录
         ttk.Label(dir_frame, text="英语:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.trt_en_dir_var = tk.StringVar()
         self.trt_en_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_en_dir_var,
                                          font=("Microsoft YaHei", 9))
         self.trt_en_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
@@ -2159,7 +2279,6 @@ class GameToolsUnified:
         output_frame.columnconfigure(1, weight=1)
         
         ttk.Label(output_frame, text="输出目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        self.trt_output_dir_var = tk.StringVar()
         self.trt_output_dir_entry = ttk.Entry(output_frame, textvariable=self.trt_output_dir_var, 
                                               font=("Microsoft YaHei", 9))
         self.trt_output_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
@@ -2211,7 +2330,6 @@ class GameToolsUnified:
         basic_frame.columnconfigure(1, weight=1)
 
         ttk.Label(basic_frame, text="JSON 配置:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.batch_json_var = tk.StringVar()
         self.batch_json_entry = ttk.Entry(basic_frame, textvariable=self.batch_json_var, font=("Microsoft YaHei", 9))
         self.batch_json_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         self.batch_json_browse_button = ttk.Button(
@@ -2226,7 +2344,6 @@ class GameToolsUnified:
         self.batch_json_lang_label.grid(row=1, column=1, columnspan=2, sticky=tk.W, pady=(0, 10))
 
         ttk.Label(basic_frame, text="映射表:").grid(row=2, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.batch_mapping_var = tk.StringVar()
         self.batch_mapping_entry = ttk.Entry(basic_frame, textvariable=self.batch_mapping_var, font=("Microsoft YaHei", 9))
         self.batch_mapping_entry.grid(row=2, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         self.batch_mapping_browse_button = ttk.Button(
@@ -2274,7 +2391,6 @@ class GameToolsUnified:
         target_frame.columnconfigure(1, weight=1)
 
         ttk.Label(target_frame, text="Excel 目录:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.batch_excel_dir_var = tk.StringVar()
         self.batch_excel_dir_entry = ttk.Entry(target_frame, textvariable=self.batch_excel_dir_var, font=("Microsoft YaHei", 9))
         self.batch_excel_dir_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         self.batch_excel_dir_browse_button = ttk.Button(
@@ -2286,7 +2402,6 @@ class GameToolsUnified:
         self.batch_excel_dir_browse_button.grid(row=0, column=2, pady=(0, 8))
 
         ttk.Label(target_frame, text="报告文件:").grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
-        self.batch_report_var = tk.StringVar()
         self.batch_report_entry = ttk.Entry(target_frame, textvariable=self.batch_report_var, font=("Microsoft YaHei", 9))
         self.batch_report_entry.grid(row=1, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
         self.batch_report_browse_button = ttk.Button(
@@ -2679,12 +2794,13 @@ class GameToolsUnified:
         """显示设置对话框"""
         # 页签配置信息：(配置键, 显示名称, 描述)
         TAB_CONFIGS = [
-            ('cross_project_translator', '跨项目翻译'),
-            ('json_detector', 'JSON检测'),
-            ('excel_data_processor', '数据处理'),
+            ('home', '工作台'),
             ('field_extractor', '字段导出'),
             ('table_range_translator', '多语言提取'),
             ('batch_modifier', '批量改表'),
+            ('cross_project_translator', '跨项目翻译'),
+            ('json_detector', 'JSON检测'),
+            ('excel_data_processor', '数据处理'),
         ]
         
         # 创建对话框
@@ -3530,6 +3646,109 @@ class GameToolsUnified:
         dir_path = filedialog.askdirectory(title="选择输出目录")
         if dir_path:
             self.field_output_dir_var.set(dir_path)
+
+    def _resolve_field_merged_json_path(self, output_dir, output_format, all_stats):
+        """解析字段导出合并 JSON 的绝对路径；非 JSON 或未生成时返回 None。"""
+        if output_format != 'json':
+            return None
+        cand = Path(output_dir) / FIELD_EXTRACTION_MERGED_JSON_NAME
+        if cand.is_file():
+            return str(cand.resolve())
+        for p in all_stats.get('output_files', []):
+            try:
+                if Path(p).name == FIELD_EXTRACTION_MERGED_JSON_NAME and Path(p).is_file():
+                    return str(Path(p).resolve())
+            except (OSError, TypeError, ValueError):
+                continue
+        return None
+
+    def _after_field_extraction_for_trt_handoff(self, merged_path):
+        """字段导出结束后更新「用于多语言提取」按钮可用状态。"""
+        self._field_last_merged_json_path = merged_path if merged_path else None
+        btn = getattr(self, 'field_use_for_trt_button', None)
+        if not btn:
+            return
+        if merged_path and os.path.isfile(merged_path):
+            btn.config(state='normal')
+        else:
+            btn.config(state='disabled')
+
+    def _apply_field_export_to_trt(self, merged_json_path):
+        """将字段导出结果写入多语言提取页并切换页签。"""
+        if 'table_range_translator' not in self.tab_lookup:
+            messagebox.showwarning(
+                '多语言提取未启用',
+                '当前界面未启用「多语言提取」页签，请在「关于」→「界面与模块设置」中开启。',
+            )
+            return
+        merged_json_path = str(Path(merged_json_path).resolve())
+        self.trt_merged_json_var.set(merged_json_path)
+        self._detect_merged_json_languages(merged_json_path)
+        pairs = [
+            (self.field_zh_dir_var, self.trt_zh_dir_var),
+            (self.field_vn_dir_var, self.trt_vn_dir_var),
+            (self.field_th_dir_var, self.trt_th_dir_var),
+            (self.field_en_dir_var, self.trt_en_dir_var),
+        ]
+        for fv, tv in pairs:
+            v = fv.get().strip()
+            if v:
+                tv.set(v)
+        out = self.field_output_dir_var.get().strip()
+        if out:
+            self.trt_output_dir_var.set(out)
+        self.select_tab('table_range_translator')
+        try:
+            self._save_ui_preferences()
+        except Exception:
+            logging.exception('保存衔接后的表单状态失败')
+
+    def _on_use_field_export_for_trt(self):
+        """用户点击「用于多语言提取」：校验合并 JSON 后执行衔接。"""
+        path = self._field_last_merged_json_path
+        if not path or not os.path.isfile(path):
+            messagebox.showwarning(
+                '无法衔接',
+                f'未找到有效的合并 JSON「{FIELD_EXTRACTION_MERGED_JSON_NAME}」。\n'
+                '请使用「JSON」输出格式重新执行字段导出。',
+            )
+            return
+        self._apply_field_export_to_trt(path)
+
+    def _finish_field_extraction_success_on_ui(self, merged_path, all_stats, output_files_str):
+        """字段导出成功后在主线程收尾：衔接按钮、任务面板、弹窗。"""
+        self._after_field_extraction_for_trt_handoff(merged_path)
+        self._complete_task_tracking(
+            'field_extractor',
+            'success',
+            '字段导出完成',
+            [
+                ('语言数', len(all_stats['languages'])),
+                ('字段数', all_stats['total_fields']),
+                ('输出文件', len(all_stats.get('output_files', []))),
+            ],
+            '输出文件和详细统计已生成。',
+        )
+        hint = ''
+        if merged_path:
+            hint = (
+                f"\n\n合并 JSON 已生成，可点击「{BUTTON_LABELS['use_field_for_trt']}」"
+                '\n自动填好多语言提取页的配置。'
+            )
+        self._finish_background_task_async(
+            widgets_to_enable=(self.field_extract_button,),
+            status_message='字段提取完成',
+            dialog_kind='info',
+            dialog_title='完成',
+            dialog_message=(
+                f'多语言字段提取完成!\n\n'
+                f"处理语言数: {len(all_stats['languages'])}\n"
+                f"总文件数: {all_stats['total_files']}\n"
+                f"总工作表数: {all_stats['total_sheets']}\n"
+                f"总字段数: {all_stats['total_fields']}\n\n"
+                f'输出文件:\n{output_files_str}{hint}'
+            ),
+        )
     
     def start_field_extraction(self):
         """开始字段提取"""
@@ -3559,6 +3778,15 @@ class GameToolsUnified:
         output_format = self.field_output_format_var.get()
         recursive = self.field_recursive_var.get()
 
+        handoff = getattr(self, 'field_use_for_trt_button', None)
+        if handoff:
+            handoff.config(state='disabled')
+        self._field_last_merged_json_path = None
+
+        extract_widgets = [self.field_extract_button]
+        if handoff:
+            extract_widgets.append(handoff)
+
         self._begin_task_tracking(
             'field_extractor',
             '正在提取多语言字段...',
@@ -3582,7 +3810,7 @@ class GameToolsUnified:
             self._field_extraction_thread,
             args=(directories, output_dir, output_format, recursive),
             status_message="正在提取表字段...",
-            widgets_to_disable=(self.field_extract_button,),
+            widgets_to_disable=tuple(extract_widgets),
         )
     
     def _field_extraction_thread(self, directories, output_dir, output_format, recursive):
@@ -3656,33 +3884,13 @@ class GameToolsUnified:
                 self._format_prefixed_lines(all_stats.get('output_files', [])),
             )
 
-            self._call_on_ui_thread(
-                self._complete_task_tracking,
-                'field_extractor',
-                'success',
-                '字段导出完成',
-                [
-                    ('语言数', len(all_stats['languages'])),
-                    ('字段数', all_stats['total_fields']),
-                    ('输出文件', len(all_stats.get('output_files', []))),
-                ],
-                '输出文件和详细统计已生成。',
-            )
-            
+            merged_path = self._resolve_field_merged_json_path(output_dir, output_format, all_stats)
             output_files_str = '\n'.join(all_stats.get('output_files', []))
-            self._finish_background_task_async(
-                widgets_to_enable=(self.field_extract_button,),
-                status_message="字段提取完成",
-                dialog_kind='info',
-                dialog_title="完成",
-                dialog_message=(
-                    f"多语言字段提取完成!\n\n"
-                    f"处理语言数: {len(all_stats['languages'])}\n"
-                    f"总文件数: {all_stats['total_files']}\n"
-                    f"总工作表数: {all_stats['total_sheets']}\n"
-                    f"总字段数: {all_stats['total_fields']}\n\n"
-                    f"输出文件:\n{output_files_str}"
-                ),
+            self._call_on_ui_thread(
+                self._finish_field_extraction_success_on_ui,
+                merged_path,
+                all_stats,
+                output_files_str,
             )
             return
             
@@ -3691,6 +3899,7 @@ class GameToolsUnified:
             error_msg = traceback.format_exc()
             self._append_result_async('field_extractor', f"\n错误: {str(e)}\n")
             self._append_result_async('field_extractor', error_msg + "\n")
+            self._call_on_ui_thread(self._after_field_extraction_for_trt_handoff, None)
             self._call_on_ui_thread(
                 self._complete_task_tracking,
                 'field_extractor',
@@ -3715,6 +3924,10 @@ class GameToolsUnified:
         """清空字段提取结果"""
         self.clear_result('field_extractor')
         self.field_extraction_results = None
+        self._field_last_merged_json_path = None
+        handoff = getattr(self, 'field_use_for_trt_button', None)
+        if handoff:
+            handoff.config(state='disabled')
         # 清除提取器的日志
         self.field_extractor.clear_logs()
         self._set_task_panel_state(

@@ -47,7 +47,8 @@ class JsonDetectorPage:
             padx=(0, 10),
             pady=(0, 5),
         )
-        self.app.json_path_var = tk.StringVar()
+        if not hasattr(self.app, 'json_path_var') or self.app.json_path_var is None:
+            self.app.json_path_var = tk.StringVar()
         self.app.json_path_entry = ttk.Entry(
             path_frame,
             textvariable=self.app.json_path_var,

@@ -125,6 +125,7 @@ class DetectionConfig:
 @dataclass
 class TabVisibilityConfig:
     """页签可见性配置"""
+    home: bool = True  # 工作台（统一路径入口）
     cross_project_translator: bool = True  # 跨项目翻译
     json_detector: bool = True  # JSON检测
     excel_data_processor: bool = True  # Excel数据处理

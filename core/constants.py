@@ -46,3 +46,7 @@ CONFIG_KEYWORDS = ('null', 'None', 'true', 'false', 'True', 'False')
 
 # ============ 列标记 ============
 COLUMN_MARKER = "c_"  # 用于标记列范围的标识符
+
+# ============ 字段导出 ============
+# 多语言 JSON 导出时写入输出目录的合并配置文件名（与多语言提取页衔接）
+FIELD_EXTRACTION_MERGED_JSON_NAME = "field_extraction_result_merged.json"

@@ -18,7 +18,12 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # 导入统一的常量和模式
-from core.constants import SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, COLUMN_MARKER
+from core.constants import (
+    SUPPORTED_LANGUAGES,
+    SUPPORTED_EXCEL_EXTENSIONS,
+    COLUMN_MARKER,
+    FIELD_EXTRACTION_MERGED_JSON_NAME,
+)
 from core.text_patterns import (
     TEXT_PATTERN, is_filterable_content, contains_localized_text
 )
@@ -904,7 +909,7 @@ class ExcelFieldExtractor:
         
         # 如果是JSON格式，写入合并后的文件
         if output_format == 'json' and merged_json_data:
-            merged_output_file = output_dir_path / "field_extraction_result_merged.json"
+            merged_output_file = output_dir_path / FIELD_EXTRACTION_MERGED_JSON_NAME
             try:
                 with open(merged_output_file, 'w', encoding='utf-8') as f:
                     json.dump(merged_json_data, f, ensure_ascii=False, indent=2)

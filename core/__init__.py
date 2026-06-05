@@ -76,6 +76,7 @@ from core.constants import (
     FIELD_TYPE_ROW,
     DATA_START_ROW,
     COLUMN_MARKER,
+    FIELD_EXTRACTION_MERGED_JSON_NAME,
 )
 
 from core.text_patterns import (
@@ -107,6 +108,7 @@ __all__ = [
     'FIELD_TYPE_ROW',
     'DATA_START_ROW',
     'COLUMN_MARKER',
+    'FIELD_EXTRACTION_MERGED_JSON_NAME',
     # 文本模式
     'CHINESE_PATTERN',
     'VIETNAMESE_PATTERN',
