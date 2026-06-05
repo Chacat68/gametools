@@ -8,7 +8,7 @@
 
 - 左侧导航切换功能模块
 - 右侧工作区专注当前任务
-- **「工作台」页签**：在 `create_widgets` 早期调用 `_init_workspace_path_vars()` 创建各路径型 `StringVar`，工作台与各功能页共用同一变量；功能页路径以只读 `Entry` 展示，不提供本页浏览按钮
+- **「工作台」页签**：在 `create_widgets` 早期调用 `_init_workspace_path_vars()` 创建各路径型 `StringVar`，工作台与各功能页共用同一变量；功能页路径由 `_workspace_path_display()` 以纯文本 `Label` 展示（无输入框边框，空路径显示「暂无」），不提供本页浏览按钮
 - 统一样式、减少多套 UI 并存带来的维护成本
 - 延迟加载处理器，优先保证启动速度和响应性
 - 历史上的拆分页签方案和 modern 打包入口已移除，避免继续分叉
@@ -36,6 +36,9 @@ gui/
 ├── task_runner.py          # 后台任务与 UI 主线程回调封装
 ├── run_unified.py          # 统一界面启动脚本
 ├── build_unified.py        # 统一界面打包脚本
+├── assets/                 # 图标等资源（见 assets/README.md）
+│   ├── gametools.ico       # 默认应用图标（打包 exe + 窗口图标）
+│   └── build_gametools_icon.py  # 用标准库重新生成 .ico
 ├── ui_theme.py             # 公共主题配置
 ├── gametools_unified.spec  # PyInstaller 配置文件
 └── ...

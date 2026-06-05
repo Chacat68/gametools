@@ -1888,15 +1888,23 @@ class GameToolsUnified:
         ).grid(row=row, column=2, pady=(0, 6))
 
     def _workspace_path_display(self, parent, textvariable, **grid_kw):
-        """各功能页只读路径展示（与工作台共用 StringVar，不可在本页修改路径）。"""
-        entry = ttk.Entry(
+        """各功能页只读路径展示（与工作台共用 StringVar，纯文本无输入框样式）。"""
+        lbl = ttk.Label(
             parent,
-            textvariable=textvariable,
             font=('Microsoft YaHei', 9),
-            state='readonly',
+            anchor=tk.W,
+            justify=tk.LEFT,
         )
-        entry.grid(**grid_kw)
-        return entry
+
+        def _sync(*_args):
+            raw = textvariable.get()
+            v = (raw or '').strip()
+            lbl.configure(text=v if v else '暂无')
+
+        textvariable.trace_add('write', _sync)
+        _sync()
+        lbl.grid(**grid_kw)
+        return lbl
 
     def create_home_tab(self):
         """工作台：集中选择目录与常用文件路径，与各功能页输入框绑定同一变量。"""
@@ -1910,7 +1918,7 @@ class GameToolsUnified:
         intro = ttk.Label(
             body,
             text=(
-                '以下路径与各功能页中的只读路径框绑定同一变量：在此用「选择」修改后，各页立即同步；'
+                '以下路径与各功能页中的只读路径展示绑定同一变量：在此用「选择」修改后，各页立即同步；'
                 '功能页不再提供浏览按钮，请在本页完成路径配置。可按当日任务只填需要的项。'
             ),
             style='Info.TLabel',

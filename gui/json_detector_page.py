@@ -49,13 +49,9 @@ class JsonDetectorPage:
         )
         if not hasattr(self.app, 'json_path_var') or self.app.json_path_var is None:
             self.app.json_path_var = tk.StringVar()
-        self.app.json_path_entry = ttk.Entry(
+        self.app._workspace_path_display(
             path_frame,
-            textvariable=self.app.json_path_var,
-            font=("Microsoft YaHei", 9),
-            state='readonly',
-        )
-        self.app.json_path_entry.grid(
+            self.app.json_path_var,
             row=0,
             column=1,
             sticky=(tk.W, tk.E),
