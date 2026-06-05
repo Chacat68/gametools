@@ -22,10 +22,16 @@ import logging
 if hasattr(sys, 'frozen') and hasattr(sys, '_MEIPASS'):
     # PyInstaller 环境使用绝对导入
     from gui.import_helper import fix_pyinstaller_imports
+    from gui.json_detector_page import JsonDetectorPage
+    from gui.result_store import ResultStore
+    from gui.task_runner import TaskRunner
     from gui.ui_theme import apply_ui_theme
 else:
     # 开发环境使用相对导入
     from .import_helper import fix_pyinstaller_imports
+    from .json_detector_page import JsonDetectorPage
+    from .result_store import ResultStore
+    from .task_runner import TaskRunner
     from .ui_theme import apply_ui_theme
 fix_pyinstaller_imports()
 
@@ -142,14 +148,14 @@ class GameToolsUnified:
         self._is_restoring_state = False
         self._sidebar_hidden = False
         self._last_saved_form_state = None
-        self.results_storage = {
-            'cross_project_translator': '',
-            'json_detector': '',
-            'excel_processor': '',
-            'field_extractor': '',
-            'table_range_translator': '',
-            'batch_modifier': ''
-        }
+        self.result_store = ResultStore(TASK_RESULT_KEYS.values())
+        self.results_storage = self.result_store.storage
+        self.task_runner = TaskRunner(
+            self.root,
+            lambda: getattr(self, 'status_var', None),
+            lambda kind, title, message: self._show_message(kind, title, message),
+            threading,
+        )
         self.field_extraction_results = None
 
         self._apply_saved_window_geometry()
@@ -206,6 +212,12 @@ class GameToolsUnified:
         processor = factory()
         self._processors[name] = processor
         return processor
+
+    def _get_json_detector_page(self):
+        """获取 JSON 检测页签控制器。"""
+        if not hasattr(self, 'json_detector_page'):
+            self.json_detector_page = JsonDetectorPage(self, TAB_DESCRIPTIONS, BUTTON_LABELS)
+        return self.json_detector_page
     
     # ==================== 懒加载处理器属性 结束 ====================
     
@@ -1811,54 +1823,7 @@ class GameToolsUnified:
     
     def create_json_detector_tab(self):
         """创建JSON错误检测工具页签"""
-        # JSON检测工具框架
-        json_frame = self._register_tab(
-            'json_detector',
-            'JSON检测',
-            TAB_DESCRIPTIONS['json_detector']
-        )
-
-        left_column, right_column = self._build_tab_columns(json_frame, left_weight=5, right_weight=2)
-        
-        # 路径选择区域
-        path_frame = ttk.LabelFrame(left_column, text=self._format_section_title(1, "检测目标"), padding="10")
-        path_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 8))
-        path_frame.columnconfigure(1, weight=1)
-        
-        # 路径输入
-        ttk.Label(path_frame, text="路径:").grid(row=0, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 5))
-        self.json_path_var = tk.StringVar()
-        self.json_path_entry = ttk.Entry(path_frame, textvariable=self.json_path_var, 
-                                       font=("Microsoft YaHei", 9))
-        self.json_path_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 5))
-        
-        self.json_browse_button = ttk.Button(path_frame, text="选择", 
-                            command=self.browse_json_folder, style='Subtle.TButton')
-        self.json_browse_button.grid(row=0, column=2, pady=(0, 5))
-
-        self.inline_messages['json_detector'] = self._create_inline_message(path_frame, row=1)
-        
-        action_panel = self._create_action_panel(right_column, 0)
-        self._decorate_action_panel(action_panel, '2. 执行与结果', '检测后可直接保存报告或查看问题结果。')
-
-        self.json_detect_button = ttk.Button(action_panel, text=BUTTON_LABELS['start_detection'], 
-                                            command=self.start_json_detection, 
-                                            style='Accent.TButton')
-        self.json_detect_button.pack(fill=tk.X)
-        
-        self.json_clear_button = ttk.Button(action_panel, text=BUTTON_LABELS['clear_results'], 
-                           command=self.clear_json_results, style='Danger.TButton')
-        self.json_clear_button.pack(fill=tk.X, pady=(8, 0))
-        
-        self.json_save_button = ttk.Button(action_panel, text=BUTTON_LABELS['save_report'], 
-                                          command=self.save_json_report, 
-                          state="disabled", style='Quiet.TButton')
-        self.json_save_button.pack(fill=tk.X, pady=(8, 0))
-        
-        self.json_view_results_button = ttk.Button(action_panel, text=BUTTON_LABELS['view_results'], 
-                              command=lambda: self.show_results_dialog('json_detector'), style='Quiet.TButton')
-        self.json_view_results_button.pack(fill=tk.X, pady=(8, 0))
-        self._create_task_panel(action_panel, 'json_detector')
+        self._get_json_detector_page().build()
     
     def create_excel_data_processor_tab(self):
         """创建Excel数据处理工具页签"""
@@ -2825,19 +2790,19 @@ class GameToolsUnified:
     # 结果存储辅助函数
     def append_result(self, result_type, text):
         """追加文本到结果存储（所有结果只在查看结果弹窗中显示）"""
-        self.results_storage[result_type] += text
+        self.result_store.append(result_type, text)
     
     def clear_result(self, result_type):
         """清空结果存储"""
-        self.results_storage[result_type] = ''
+        self.result_store.clear(result_type)
     
     def get_result(self, result_type):
         """获取结果存储内容"""
-        return self.results_storage.get(result_type, '')
+        return self.result_store.get(result_type)
 
     def _call_on_ui_thread(self, callback, *args, **kwargs):
         """确保UI更新总是在主线程执行。"""
-        self.root.after(0, lambda: callback(*args, **kwargs))
+        self.task_runner.call_on_ui_thread(callback, *args, **kwargs)
 
     def _append_result_async(self, result_type, text):
         """在线程中安全地追加结果文本。"""
@@ -2892,36 +2857,33 @@ class GameToolsUnified:
 
     def _start_background_task(self, target, args=(), status_message=None, widgets_to_disable=()):
         """统一启动后台线程，并在启动前冻结按钮与状态。"""
-        for widget in widgets_to_disable:
-            widget.config(state="disabled")
-        if status_message:
-            self.status_var.set(status_message)
-
-        thread = threading.Thread(target=target, args=args)
-        thread.daemon = True
-        thread.start()
-        return thread
+        return self.task_runner.start_background_task(
+            target,
+            args=args,
+            status_message=status_message,
+            widgets_to_disable=widgets_to_disable,
+        )
 
     def _finish_background_task(self, widgets_to_enable=(), status_message=None,
                                 dialog_kind=None, dialog_title=None, dialog_message=None):
         """统一后台任务完成时的按钮恢复、状态更新与消息提示。"""
-        for widget in widgets_to_enable:
-            widget.config(state="normal")
-        if status_message:
-            self.status_var.set(status_message)
-        if dialog_kind and dialog_message:
-            self._show_message(dialog_kind, dialog_title or "提示", dialog_message)
+        self.task_runner.finish_background_task(
+            widgets_to_enable=widgets_to_enable,
+            status_message=status_message,
+            dialog_kind=dialog_kind,
+            dialog_title=dialog_title,
+            dialog_message=dialog_message,
+        )
 
     def _finish_background_task_async(self, widgets_to_enable=(), status_message=None,
                                       dialog_kind=None, dialog_title=None, dialog_message=None):
         """在线程中安全地执行统一收尾。"""
-        self._call_on_ui_thread(
-            self._finish_background_task,
-            widgets_to_enable,
-            status_message,
-            dialog_kind,
-            dialog_title,
-            dialog_message,
+        self.task_runner.finish_background_task_async(
+            widgets_to_enable=widgets_to_enable,
+            status_message=status_message,
+            dialog_kind=dialog_kind,
+            dialog_title=dialog_title,
+            dialog_message=dialog_message,
         )
     
     # 统一的结果查看对话框
@@ -3061,132 +3023,31 @@ class GameToolsUnified:
     # JSON格式检测工具相关方法
     def browse_json_folder(self):
         """浏览JSON文件夹"""
-        folder_path = filedialog.askdirectory(
-            title="选择包含JSON文件的文件夹"
-        )
-        if folder_path:
-            self.json_path_var.set(folder_path)
+        self._get_json_detector_page().browse_folder()
     
     def start_json_detection(self):
         """开始JSON错误检测"""
-        path = self.json_path_var.get().strip()
-
-        valid, message, tone = self._validate_json_inputs(strict=True)
-        self._set_inline_message('json_detector', message, tone)
-        if not valid:
-            return
-
-        self._begin_task_tracking(
-            'json_detector',
-            '正在扫描 JSON 文件...',
-            {'json_detector.path': path},
-        )
-        
-        # 在新线程中执行检测
-        self._start_background_task(
-            self._json_detection,
-            args=(path,),
-            status_message="正在检测...",
-            widgets_to_disable=(self.json_detect_button,),
-        )
+        self._get_json_detector_page().start_detection()
     
     def _json_detection(self, path):
         """JSON错误检测（后台线程）"""
-        try:
-            self._call_on_ui_thread(
-                self._update_task_progress,
-                'json_detector',
-                f"正在检查: {os.path.basename(path) or path}",
-                30,
-            )
-            # 自动检测：如果是文件夹则检测文件夹，如果是文件则检测单个文件
-            if os.path.isdir(path):
-                report = self.json_detector.detect_errors_in_folder(path)
-            else:
-                report = self.json_detector.detect_errors(path)
-            
-            self._call_on_ui_thread(self._update_json_results, report)
-        except Exception as e:
-            error_msg = f"检测过程中发生错误: {str(e)}"
-            self._call_on_ui_thread(self._show_json_error, error_msg)
+        self._get_json_detector_page()._run_detection(path)
     
     def _update_json_results(self, report):
         """更新JSON错误检测结果"""
-        self.clear_result('json_detector')
-        self.append_result('json_detector', report)
-
-        self._complete_task_tracking(
-            'json_detector',
-            'success',
-            'JSON 检测完成',
-            metrics=[('报告行数', len([line for line in report.splitlines() if line.strip()]))],
-            detail='详细报告可在结果窗口中查看或导出。',
-        )
-        
-        self.json_save_button.config(state="normal")
-        self._finish_background_task(
-            widgets_to_enable=(self.json_detect_button,),
-            status_message="检测完成",
-            dialog_kind='info',
-            dialog_title="完成",
-            dialog_message="JSON检测完成！请点击查看结果按钮查看详细报告",
-        )
+        self._get_json_detector_page()._update_results(report)
     
     def _show_json_error(self, error_msg):
         """显示JSON错误检测错误"""
-        self.clear_result('json_detector')
-        self.append_result('json_detector', error_msg)
-
-        self._complete_task_tracking(
-            'json_detector',
-            'error',
-            'JSON 检测失败',
-            metrics=[('错误', 1)],
-            detail=error_msg,
-        )
-        
-        self._finish_background_task(
-            widgets_to_enable=(self.json_detect_button,),
-            status_message="检测失败",
-            dialog_kind='error',
-            dialog_title="错误",
-            dialog_message=error_msg,
-        )
+        self._get_json_detector_page()._show_error(error_msg)
     
     def clear_json_results(self):
         """清空JSON检测结果"""
-        self.clear_result('json_detector')
-        self.json_save_button.config(state="disabled")
-        self._set_task_panel_state(
-            'json_detector',
-            '尚未开始',
-            message='结果已清空',
-            progress=0,
-            summary='最近结果已清空。',
-            tone='muted',
-        )
+        self._get_json_detector_page().clear_results()
     
     def save_json_report(self):
         """保存JSON检测报告"""
-        content = self.get_result('json_detector').strip()
-        if not content:
-            messagebox.showwarning("警告", "没有可保存的内容")
-            return
-        
-        file_path = filedialog.asksaveasfilename(
-            title="保存检测报告",
-            defaultextension=".txt",
-            filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")]
-        )
-        
-        if file_path:
-            try:
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                messagebox.showinfo("成功", f"报告已保存到: {file_path}")
-                self.status_var.set(f"报告已保存: {os.path.basename(file_path)}")
-            except Exception as e:
-                messagebox.showerror("错误", f"保存失败: {str(e)}")
+        self._get_json_detector_page().save_report()
     
     # Excel数据处理工具相关方法
     def browse_excel_input_file(self):

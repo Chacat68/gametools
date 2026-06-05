@@ -29,13 +29,20 @@ python gametools_unified.py
 
 ```
 gui/
-├── gametools_unified.py    # 统一界面主程序
+├── gametools_unified.py    # 统一界面主程序与功能装配
+├── json_detector_page.py   # JSON 检测页签控制器
+├── result_store.py         # 各功能页结果文本存储
+├── task_runner.py          # 后台任务与 UI 主线程回调封装
 ├── run_unified.py          # 统一界面启动脚本
 ├── build_unified.py        # 统一界面打包脚本
 ├── ui_theme.py             # 公共主题配置
 ├── gametools_unified.spec  # PyInstaller 配置文件
 └── ...
 ```
+
+### 拆分约定
+
+`gametools_unified.py` 负责窗口、导航和功能页装配；单个功能页的 UI 与动作逻辑逐步迁移到独立 `*_page.py` 模块。公共的结果缓存和后台线程调度分别放在 `result_store.py` 与 `task_runner.py`，功能页应通过主界面提供的兼容方法访问这些能力。
 
 ## 功能页签
 
