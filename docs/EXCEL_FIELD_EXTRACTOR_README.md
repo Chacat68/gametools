@@ -1,13 +1,15 @@
 # Excel表字段导出工具使用说明
 
+行号、列范围标记（`COLUMN_MARKER`，默认 `c_`）、数据区行下限（`ROW_BOUNDARY_KEYWORD`，默认 `over`）等与全项目统一，详见 **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)**；默认数值定义在 **`core/constants.py`**。
+
 ## 功能概述
 
-Excel表字段导出工具用于扫描指定目录下的所有Excel文件，检测表格中包含文本内容的列，并从物理行第5行提取字段名，输出格式为：`表名,字段1,字段2,...`
+Excel表字段导出工具用于扫描指定目录下的所有 Excel 文件，检测表格中包含文本内容的列，并从 **`FIELD_NAME_ROW`（默认第 5 行）** 读取字段名、从 **`FIELD_TYPE_ROW`（默认第 6 行）** 读取字段类型，输出格式为：`表名,字段1,字段2,...`
 
 ## 主要特性
 
 - ✅ 自动检测包含文本内容的列（跳过纯数字列）
-- ✅ 从物理行第5行提取字段名
+- ✅ 从 **`FIELD_NAME_ROW`** 读取字段名，从 **`FIELD_TYPE_ROW`** 读取字段类型（与 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md) 一致）
 - ✅ 支持递归扫描子目录
 - ✅ 支持多个工作表
 - ✅ 支持中文、英文、越南文等多语言字段名
@@ -91,7 +93,7 @@ print(f"输出文件: {stats['output_file']}")
 
 1. **扫描目录**：遍历指定目录下的所有.xlsx和.xls文件
 2. **检测文本列**：检查每一列是否包含文本内容（中文、英文、越南文等）
-3. **提取字段名**：从物理行第5行提取包含文本列的单元格值作为字段名
+3. **提取字段名与类型**：在 **`FIELD_NAME_ROW`** 行提取字段名；字段类型在 **`FIELD_TYPE_ROW`** 行（详见布局规范文档）
 4. **输出结果**：将结果导出为CSV或Excel格式
 
 ## 文本检测规则
@@ -139,10 +141,11 @@ python test/test_field_extractor.py
 
 ## 注意事项
 
-1. **物理行第5行**：工具固定从Excel文件的物理行第5行提取字段名
+1. **`FIELD_NAME_ROW`（默认第 5 行）**：从该行读取字段名；若表行数不足，会退化为「列1、列2」等形式
 2. **文本检测**：只有包含文本内容的列才会被提取字段名
 3. **多工作表**：每个工作表会单独提取字段信息
-4. **输出文件名**：
+4. **数据区下限**：从 **`DATA_START_ROW`** 起向下扫描时，遇 **`ROW_BOUNDARY_KEYWORD`**（默认 `over`）即停止，该行及以下不参与统计（见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)）
+5. **输出文件名**：
    - CSV格式：`字段导出结果.csv`
    - Excel格式：`字段导出结果.xlsx`
 
@@ -155,8 +158,8 @@ python test/test_field_extractor.py
 
 ## 常见问题
 
-### Q: 如果表格没有第5行怎么办？
-A: 工具会使用列号作为字段名（如"列1"、"列2"）
+### Q: 如果表格没有字段名行（默认第 5 行）怎么办？
+A: 工具会使用列号作为字段名（如「列1」「列2」）
 
 ### Q: 纯数字列会被提取吗？
 A: 不会。工具只提取包含文本内容的列
@@ -164,8 +167,8 @@ A: 不会。工具只提取包含文本内容的列
 ### Q: 支持.csv文件吗？
 A: 目前只支持.xlsx和.xls格式的Excel文件
 
-### Q: 可以自定义字段行号吗？
-A: 当前版本固定为第5行，如需自定义请修改`core/excel_field_extractor.py`中的`field_row`变量
+### Q: 可以自定义字段名/类型所在行吗？
+A: 全项目默认值在 **`core/constants.py`** 中的 `FIELD_NAME_ROW`、`FIELD_TYPE_ROW`、`DATA_START_ROW`；修改后字段导出与多语言提取等会一并受影响，请先阅读 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md) 并做回归验证。批量改表在 GUI 中另有可配置的「字段行」「数据起始行」，与上述常量默认对齐。
 
 ## 版本历史
 
@@ -182,6 +185,7 @@ A: 当前版本固定为第5行，如需自定义请修改`core/excel_field_extr
 
 ## 相关文件
 
+- **布局与常量**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)，`core/constants.py`
 - 核心模块：`core/excel_field_extractor.py`
 - 命令行工具：`tools/excel_field_extractor.py`
 - GUI界面：`gui/excel_field_extractor_gui.py`

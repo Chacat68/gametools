@@ -2,9 +2,12 @@
 
 > 游戏工具集文档导航，当前程序版本请以 [../version.py](../version.py) 和 GUI 显示为准。
 
+**策划 Excel 统一约定**（表头行、`COLUMN_MARKER` / `c_` 列范围、`ROW_BOUNDARY_KEYWORD` 行下限等）以 **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)** 为准，代码常量见 `../core/constants.py`。下文各功能文档中与行号相关的描述均与该规范对齐。
+
 ## 📚 文档导航
 
 ### 🚀 快速入门
+- **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)** - 策划 Excel 表头、列标记与行边界统一规范（**推荐先读**）
 - **[BATCH_MODIFIER_GUIDE.md](BATCH_MODIFIER_GUIDE.md)** - 批量改表工具使用指南
 - **[EXCEL_FIELD_EXTRACTOR_README.md](EXCEL_FIELD_EXTRACTOR_README.md)** - 表字段导出工具说明
 - **[FIELD_FILTER_GUIDE.md](FIELD_FILTER_GUIDE.md)** - 字段过滤规则指南
@@ -38,6 +41,7 @@
 用途：从Excel表格中提取字段名和类型信息
 
 **相关文档：**
+- **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)** - 表头行、列标记与行边界统一规范
 - EXCEL_FIELD_EXTRACTOR_README.md - 完整使用指南
 - BATCH_MODIFIER_GUIDE.md - 批量改表配置
 
@@ -53,6 +57,7 @@ python gui/gametools_unified.py
 用途：按指定字段范围提取多语言翻译内容（中文、越南文、泰文等）
 
 **相关文档：**
+- **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)** - 与提取器共用的 Excel 行号与边界约定
 - TABLE_RANGE_TRANSLATOR_GUIDE.md - 完整功能指南
 - MULTILANG_JSON_GUIDE.md - JSON配置格式说明
 - MULTI_LANGUAGE_TEXT_EXTRACTOR.md - 文本提取详解
@@ -69,6 +74,7 @@ python gui/gametools_unified.py
 用途：批量修改多个Excel文件，支持映射表翻译
 
 **相关文档：**
+- **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)** - 目标策划表布局约定
 - BATCH_MODIFIER_GUIDE.md - 完整使用指南
 
 **快速开始：**
@@ -143,6 +149,6 @@ python gui/gametools_unified.py
 ---
 
 ## 📞 更新日期
-- 文档最后更新：2026-04-18
+- 文档最后更新：2026-06-05（补充 Excel 表布局统一规范索引）
 - 对应程序版本：请以 [../version.py](../version.py) 为准
 

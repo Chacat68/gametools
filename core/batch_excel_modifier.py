@@ -16,7 +16,8 @@ import logging
 
 # 导入统一的常量
 from core.constants import (
-    SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, SUPPORTED_MAPPING_FORMATS
+    SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, SUPPORTED_MAPPING_FORMATS,
+    FIELD_NAME_ROW, DATA_START_ROW,
 )
 from core.text_patterns import parse_cell_reference
 
@@ -915,8 +916,8 @@ class BatchExcelModifier:
     def modify_excel_file(self, excel_path: str, modifications: List[Dict], 
                          field_mapping: Dict[str, str] = None,
                          id_col: int = 1, 
-                         field_row: int = 5,
-                         data_start_row: int = 7,
+                         field_row: int = FIELD_NAME_ROW,
+                         data_start_row: int = DATA_START_ROW,
                          use_position: bool = False,
                          sheet_name: str = None) -> Tuple[int, List[str], int]:
         """
@@ -949,8 +950,8 @@ class BatchExcelModifier:
     def _modify_excel_file_xlwings(self, excel_path: str, modifications: List[Dict], 
                                    field_mapping: Dict[str, str] = None,
                                    id_col: int = 1, 
-                                   field_row: int = 5,
-                                   data_start_row: int = 7,
+                                   field_row: int = FIELD_NAME_ROW,
+                                   data_start_row: int = DATA_START_ROW,
                                    use_position: bool = False,
                                    sheet_name: str = None) -> Tuple[int, List[str], int]:
         """
@@ -1384,7 +1385,7 @@ class BatchExcelModifier:
                 excel_path, 
                 modifications, 
                 field_mapping=None,  # 字段名已经是正确的
-                data_start_row=7,  # 默认数据起始行，保护表头
+                data_start_row=DATA_START_ROW,  # 默认数据起始行，保护表头
                 use_position=use_position_mode,  # 使用检测到的模式
                 sheet_name=sheet_name  # 三维表支持
             )
@@ -1741,7 +1742,7 @@ class BatchExcelModifier:
                 excel_path, 
                 modifications, 
                 field_mapping=None,
-                data_start_row=7,  # 默认数据起始行，保护表头
+                data_start_row=DATA_START_ROW,  # 默认数据起始行，保护表头
                 use_position=use_position_mode  # 使用检测到的模式
             )
             
@@ -1864,7 +1865,7 @@ class BatchExcelModifier:
                 excel_path, 
                 modifications, 
                 field_mapping,
-                data_start_row=7  # 默认数据起始行，保护表头
+                data_start_row=DATA_START_ROW  # 默认数据起始行，保护表头
             )
             
             if modified_count > 0:
@@ -2083,8 +2084,8 @@ class BatchExcelModifier:
                                                target_language: str,
                                                field_col: str = None,
                                                backup: bool = True,
-                                               field_row: int = 5,
-                                               data_start_row: int = 7) -> Dict:
+                                               field_row: int = FIELD_NAME_ROW,
+                                               data_start_row: int = DATA_START_ROW) -> Dict:
         """
         按语言执行批量修改（每个工作表对应一个Excel文件）
         
@@ -2101,8 +2102,8 @@ class BatchExcelModifier:
             target_language: 目标语言列名（如 'VN', 'EN', 'TH'）
             field_col: 字段名列名（如 'Classification'），可选
             backup: 是否创建备份
-            field_row: 目标Excel的字段名所在行（默认5）
-            data_start_row: 数据起始行，小于此行号的将被跳过（默认7，保护表头）
+            field_row: 目标Excel的字段名所在行（默认 FIELD_NAME_ROW）
+            data_start_row: 数据起始行，小于此行号的将被跳过（默认 DATA_START_ROW，保护表头）
             
         Returns:
             Dict: 处理结果统计

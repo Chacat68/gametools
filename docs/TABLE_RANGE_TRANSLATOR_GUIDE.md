@@ -1,5 +1,7 @@
 # 多语言翻译提取器 - 功能说明
 
+与字段导出、批量改表共用的 **Excel 行号与列标记约定** 见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)（代码常量：`core/constants.py`）。
+
 ## 📋 功能概述
 
 多语言翻译提取器是一个智能的多语言内容提取工具，根据字段导出的JSON配置文件，自动识别和提取Excel表格中需要翻译的内容，并生成统一的翻译总表。
@@ -261,18 +263,21 @@ graph LR
 
 ### Excel表格要求
 
-1. **标准格式**
-   - 第5行必须是字段名行
-   - 第6行必须是字段类型行
-   - 第7行开始是数据内容
+1. **标准格式**（默认值见 `core/constants.py`，说明见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)）
+   - **`FIELD_NAME_ROW`**：字段名行（默认第 5 行）
+   - **`FIELD_TYPE_ROW`**：字段类型行（默认第 6 行）
+   - **`DATA_START_ROW` 起**：数据内容；向下遇 **`ROW_BOUNDARY_KEYWORD`**（默认 `over`）为行遍历下限，该行及以下不再提取
 
 2. **字段类型标记**
-   - 必须使用标准类型: 策划、前端、后端、前后端
+   - 必须使用标准类型: 策划、前端、后端、前后端（与 `EXPORTABLE_FIELD_TYPES` / `SKIP_FIELD_TYPE` 一致）
    - 类型错误或缺失会导致字段被跳过
 
 3. **列范围标记**
-   - 使用c_标记列范围（可选）
+   - 使用 **`COLUMN_MARKER`**（默认 `c_`）标记列范围（可选）
    - 未标记则处理所有列
+
+4. **数据区行下限（结束遍历）**
+   - 从数据首行向下扫描时，若某行任意单元格为 `ROW_BOUNDARY_KEYWORD`（默认 `over`，不区分大小写），则该行视为数据区下限：**该行及下方所有行不再参与提取**，遍历应立即结束。详见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md) 中「数据区行下限边界」一节。
 
 ### 文件路径
 
@@ -319,7 +324,7 @@ python core/table_range_translator.py test_table_range\field_config.json test_ta
 
 ### 1. 规范Excel格式
 
-- 统一使用标准的5行表头格式
+- 表头与数据区约定见 **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)**（`FIELD_NAME_ROW` / `FIELD_TYPE_ROW` / `DATA_START_ROW`、`COLUMN_MARKER`、`ROW_BOUNDARY_KEYWORD`）
 - 明确标注字段类型
 - 保持字段名称一致性
 
@@ -347,18 +352,18 @@ python core/table_range_translator.py test_table_range\field_config.json test_ta
 
 ### 问题1: 字段未找到
 
-**原因**: 字段名在第5行不匹配  
-**解决**: 检查Excel第5行字段名是否正确
+**原因**: 字段名在 **`FIELD_NAME_ROW`**（默认第 5 行）不匹配  
+**解决**: 检查该行的字段名是否与 JSON 配置一致
 
 ### 问题2: 数据行不足
 
-**原因**: Excel数据少于7行  
-**解决**: 确保至少有第7行数据
+**原因**: 表未达到 **`DATA_START_ROW`**（默认第 7 行）及后续数据区  
+**解决**: 确保至少存在从 `DATA_START_ROW` 开始的数据行；并确认未在上方误放 `ROW_BOUNDARY_KEYWORD`
 
 ### 问题3: 没有提取到数据
 
 **原因**: 所有字段都是策划类型  
-**解决**: 检查第6行字段类型标注
+**解决**: 检查 **`FIELD_TYPE_ROW`**（默认第 6 行）字段类型标注
 
 ### 问题4: JSON配置错误
 
@@ -370,6 +375,7 @@ python core/table_range_translator.py test_table_range\field_config.json test_ta
 ## 📞 技术支持
 
 如有问题或建议，请查看：
+- **Excel 表布局统一规范**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)
 - 项目文档：`docs/`目录
 - 源代码：`core/table_range_translator.py`
 - GUI代码：`gui/gametools_unified.py`
@@ -378,4 +384,4 @@ python core/table_range_translator.py test_table_range\field_config.json test_ta
 ---
 
 **版本**: v1.0.0  
-**最后更新**: 2025-11-20
+**最后更新**: 2026-06-05

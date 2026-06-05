@@ -91,11 +91,11 @@ gametools/
 
 ### 📑 表字段导出工具
 
-- **智能提取**：自动检测包含本地化文本的列，从第 5 行提取字段名
+- **智能提取**：自动检测包含本地化文本的列，从 **`FIELD_NAME_ROW`（默认第 5 行）** 读取字段名
 - **字段过滤**：自动过滤 `name`、`model`、`id`、`code`、`type` 等代码字段
 - **多语言目录**：在「表字段导出」页签可为中文、越南语、泰语、英语分别指定目录并独立勾选是否导出
 - **精准识别**：只保留真正需要翻译的文本字段（如 `des_cn`、`des_vcn`）
-- **c_ 标记支持**：自动识别两个 `c_` 标记之间的列范围
+- **列范围标记**：识别两个 **`COLUMN_MARKER`**（默认 `c_`）之间的列；数据区遇 **`ROW_BOUNDARY_KEYWORD`**（默认 `over`）即停止向下扫描（详见 [docs/EXCEL_TABLE_LAYOUT.md](docs/EXCEL_TABLE_LAYOUT.md)）
 - **多格式输出**：支持 CSV、Excel、JSON 三种输出格式
 - **递归扫描**：支持批量处理目录下所有 Excel 文件
 - **详细报告**：包含字段列表、示例数据、统计信息
@@ -104,9 +104,9 @@ gametools/
 ### 🌐 多语言翻译提取工具
 
 - **智能配置**：根据字段导出的 JSON 配置，自动提取多语言翻译内容
-- **字段类型筛选**：只导出前端、后端、前后端字段，过滤无关字段
+- **字段类型筛选**：只导出 `EXPORTABLE_FIELD_TYPES` 所含类型，跳过 `SKIP_FIELD_TYPE`（约定见 [docs/EXCEL_TABLE_LAYOUT.md](docs/EXCEL_TABLE_LAYOUT.md)）
 - **多语言支持**：合并 JSON 可含 `ZH`/`VN`/`TH`/`EN` 等顶层键；GUI 为各语言配置 Excel 目录；导出 CSV/总表列为 `ZH`、`VN`、`TH`、`EN`
-- **精确定位**：记录 Excel 物理位置和字段名
+- **精确定位**：记录 Excel 物理位置和字段名；数据区行下限遵循 **`ROW_BOUNDARY_KEYWORD`**
 - **批量处理**：支持批量处理多个目录的 Excel 文件
 - **灵活配置**：JSON 格式配置，易于扩展和维护
 - **详细报告**：生成包含所有提取结果的 Excel 文件
@@ -115,6 +115,7 @@ gametools/
 ### 📝 批量改表工具
 
 - **映射表驱动**：根据映射表（如分页 Excel）批量修改多个 Excel 文件
+- **目标表格式**：与字段导出/多语言提取共用布局，见 [docs/EXCEL_TABLE_LAYOUT.md](docs/EXCEL_TABLE_LAYOUT.md)
 - **xlwings 引擎**：支持使用 Excel 原生引擎，完全保留文件结构
 - **灵活配置**：支持自定义表名列、ID 列、修改列
 - **JSON 配置**：可选配合 JSON 配置文件定义字段映射
@@ -124,6 +125,10 @@ gametools/
 - **详细报告**：生成包含修改记录、统计信息、错误日志的报告
 - **预览功能**：支持预览映射表内容
 - **已集成**：已合并到统一界面的「批量改表」页签
+
+## Excel 表布局规范
+
+字段导出、多语言提取、批量改表、配置同步等工具共用同一套表头行（字段名 / 字段类型 / 数据起始行）与可选列范围标记；数据区向下遇到 `ROW_BOUNDARY_KEYWORD`（默认 `over`）即视为行遍历下限并停止。约定说明见 [docs/EXCEL_TABLE_LAYOUT.md](docs/EXCEL_TABLE_LAYOUT.md)；默认数值集中在 `core/constants.py`，避免各处硬编码。
 
 ## 快速开始
 

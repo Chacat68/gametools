@@ -24,6 +24,12 @@ gametools/
 | `cross_project_translator.py` | 跨项目翻译对应 | 支持缓存版 `*_cached.py` |
 | `cache_manager.py` | LRU缓存+文件缓存 | `MemoryCache`, `FileCache` |
 
+### 策划 Excel 表布局（统一约定）
+
+- **规范文档**：`docs/EXCEL_TABLE_LAYOUT.md`
+- **代码常量**：`core/constants.py`（`FIELD_NAME_ROW`、`FIELD_TYPE_ROW`、`DATA_START_ROW`、`FIELD_*_INDEX`、`COLUMN_MARKER`、`ROW_BOUNDARY_KEYWORD`、`EXPORTABLE_FIELD_TYPES` 等）
+- 新增或修改「读第几行 / 列边界 / 数据区下限」逻辑时，应优先使用上述常量并在规范文档中补充说明，避免在业务代码中再写与表布局绑定的魔法数字。
+
 ## 关键开发模式
 
 ### 1. 核心类标准结构

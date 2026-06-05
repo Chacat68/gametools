@@ -3,14 +3,14 @@
 """
 Excel表字段导出器
 扫描Excel文件，检测包含本地化文本内容（中文、越南文、泰文）的列，
-从第5行提取字段名，从第6行提取字段类型（策划、前端、后端、前后端）。
+从 FIELD_NAME_ROW 提取字段名，从 FIELD_TYPE_ROW 提取字段类型（策划、前端、后端、前后端）。
 忽略纯数字、英文代码和配置项。
 """
 
 import os
 import json
 from pathlib import Path
-from typing import List, Dict, Set, Tuple
+from typing import List, Dict, Set, Tuple, Optional
 import pandas as pd
 import openpyxl
 from openpyxl import Workbook
@@ -23,6 +23,10 @@ from core.constants import (
     SUPPORTED_EXCEL_EXTENSIONS,
     COLUMN_MARKER,
     FIELD_EXTRACTION_MERGED_JSON_NAME,
+    FIELD_NAME_ROW,
+    FIELD_TYPE_ROW,
+    DATA_START_ROW,
+    ROW_BOUNDARY_KEYWORD,
 )
 from core.text_patterns import (
     TEXT_PATTERN, is_filterable_content, contains_localized_text
@@ -46,8 +50,8 @@ class ExcelFieldExtractor:
         self.error_logs = []
         self.extraction_warnings = []  # 提取警告（例如第6行数据为空）
         
-        # 边界检测关键字（检测到此关键字后停止导出）
-        self.boundary_keyword = 'over'        
+        # 行下限边界关键字（与 core.constants.ROW_BOUNDARY_KEYWORD 一致）
+        self.boundary_keyword = ROW_BOUNDARY_KEYWORD        
         # 进度回调函数
         self.progress_callback = None        
         # 警告输出控制：避免大量警告导致卡顿
@@ -98,15 +102,16 @@ class ExcelFieldExtractor:
             self.progress_callback(message, percentage)    
     def _check_row_boundary(self, sheet, row_idx: int) -> bool:
         """
-        检查某一行是否包含边界关键字（over）
-        如果该行任意单元格包含边界关键字，则返回True表示到达边界
+        检查当前行是否为「数据区下限边界行」。
+        若该行任意单元格 strip 后小写等于 ``self.boundary_keyword``（默认 ``ROW_BOUNDARY_KEYWORD``），
+        则本行及以下不再作为数据遍历，调用方应立即 ``break`` 结束行循环。
         
         Args:
             sheet: openpyxl工作表对象
             row_idx: 行号（从1开始）
             
         Returns:
-            bool: True表示到达边界，应停止处理
+            bool: True 表示已到达边界行，应停止向下遍历
         """
         if row_idx > sheet.max_row:
             return False
@@ -118,16 +123,18 @@ class ExcelFieldExtractor:
                     return True
         return False
     
-    def _find_boundary_row(self, sheet, start_row: int = 7) -> int:
+    def _find_boundary_row(self, sheet, start_row: int = DATA_START_ROW) -> int:
         """
-        在工作表中查找边界行（包含'over'关键字的行）
+        从 start_row 起向下查找第一个边界行（任意格等于行边界关键字）。
+        返回该行的物理行号；未找到则返回 ``sheet.max_row + 1``。
+        数据区遍历应使用 ``range(data_start_row, 返回值)``，不包含边界行本身。
         
         Args:
             sheet: openpyxl工作表对象
-            start_row: 开始搜索的行号（默认从第7行开始）
+            start_row: 开始搜索的行号（默认从 DATA_START_ROW 开始）
             
         Returns:
-            int: 边界行号，如果未找到返回sheet.max_row + 1
+            int: 边界行的物理行号；未找到则为 sheet.max_row + 1
         """
         for row_idx in range(start_row, sheet.max_row + 1):
             if self._check_row_boundary(sheet, row_idx):
@@ -169,21 +176,23 @@ class ExcelFieldExtractor:
         # 检查是否包含中文、越南文或泰文字符
         return contains_localized_text(value_str)
     
-    def find_column_range_between_markers(self, sheet, marker: str = "c_"):
+    def find_column_range_between_markers(self, sheet, marker: Optional[str] = None):
         """
         查找两个标记之间的列范围（不包含标记本身）
         
         Args:
             sheet: openpyxl工作表对象
-            marker: 要查找的标记文本（默认为 "c_"）
+            marker: 要查找的标记文本（默认 COLUMN_MARKER）
             
         Returns:
             Tuple[int, int] or None: (起始列号, 结束列号)，如果未找到2个标记返回 None
         """
+        if marker is None:
+            marker = COLUMN_MARKER
         marker_columns = []
         
-        # 在第5行查找标记（字段名行）
-        field_row = 5
+        # 在字段名行查找标记
+        field_row = FIELD_NAME_ROW
         if sheet.max_row >= field_row:
             for cell in sheet[field_row]:
                 if cell.value is None:
@@ -226,7 +235,7 @@ class ExcelFieldExtractor:
             for sheet_name in wb.sheetnames:
                 try:
                     sheet = wb[sheet_name]
-                    data_start_row = 7  # 第7行开始是数据
+                    data_start_row = DATA_START_ROW
                     boundary_row = self._find_boundary_row(sheet, data_start_row)
 
                     def scan_text_columns_in_range(start_col: int, end_col: int) -> Tuple[Set[int], Dict[int, int], int]:
@@ -306,8 +315,8 @@ class ExcelFieldExtractor:
                     fields = []
                     field_with_types = []  # 字段名+字段类型+列字母的组合列表
                     field_column_letters = []  # 列字母列表
-                    field_row = 5  # 物理行第5行（字段名）
-                    type_row = 6   # 物理行第6行（字段类型：策划、前端、后端、前后端）
+                    field_row = FIELD_NAME_ROW
+                    type_row = FIELD_TYPE_ROW
                     
                     if sheet.max_row >= field_row:
                         for col_num in sorted(text_columns):
@@ -351,7 +360,7 @@ class ExcelFieldExtractor:
                             fields.append(field_name)
                             field_column_letters.append(col_letter)
                             
-                            # 提取第6行的字段类型
+                            # 提取字段类型行的单元格
                             if sheet.max_row >= type_row:
                                 type_cell = sheet.cell(row=type_row, column=col_num)
                                 field_type = str(type_cell.value) if type_cell.value is not None else ""
@@ -363,20 +372,20 @@ class ExcelFieldExtractor:
                                         f"文件: {file_path.name} | "
                                         f"工作表: {sheet_name} | "
                                         f"字段: {field_name} | "
-                                        f"位置: 第6行,第{col_num}列({col_letter}6)"
+                                        f"位置: 第{type_row}行,第{col_num}列({col_letter}{type_row})"
                                     )
                                     self._add_warning(warning_msg)
                                 
                                 # 格式：字段名,字段类型,列字母
                                 field_with_type = f"{field_name},{field_type},{col_letter}"
                             else:
-                                # 表格行数不足6行
+                                # 表格行数不足 FIELD_TYPE_ROW
                                 warning_msg = (
                                     f"⚠️ 表格行数不足 | "
                                     f"文件: {file_path.name} | "
                                     f"工作表: {sheet_name} | "
                                     f"字段: {field_name} | "
-                                    f"当前行数: {sheet.max_row} (需要至少6行)"
+                                    f"当前行数: {sheet.max_row} (需要至少{FIELD_TYPE_ROW}行)"
                                 )
                                 self._add_warning(warning_msg)
                                 field_with_type = f"{field_name},,{col_letter}"

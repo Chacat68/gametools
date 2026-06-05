@@ -16,6 +16,8 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import logging
 
+from core.constants import FIELD_NAME_ROW
+
 logger = logging.getLogger(__name__)
 
 
@@ -306,8 +308,8 @@ class ExcelConfigSync:
                 # 如果有过滤字段，构建字段行到列索引的映射
                 skip_cols = set()
                 if skip_fields:
-                    # 假设字段名在第5行（可配置）
-                    field_row = 5
+                    # 字段名行与 core.constants.FIELD_NAME_ROW 对齐（可后续改为可配置）
+                    field_row = FIELD_NAME_ROW
                     for col in range(1, source_ws.max_column + 1):
                         cell_value = source_ws.cell(row=field_row, column=col).value
                         if cell_value and str(cell_value).strip() in skip_fields:

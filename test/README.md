@@ -4,7 +4,8 @@
 
 ## 📋 概述
 
-本文件夹包含 GameTools 项目的所有**功能测试**和**测试数据生成工具**。
+本文件夹包含 GameTools 项目的所有**功能测试**和**测试数据生成工具**。  
+涉及 Excel 的用例默认遵循策划表布局约定，见 [../docs/EXCEL_TABLE_LAYOUT.md](../docs/EXCEL_TABLE_LAYOUT.md)。
 
 ## 📁 目录结构
 

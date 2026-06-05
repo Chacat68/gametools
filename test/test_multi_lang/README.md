@@ -5,6 +5,8 @@
 本目录位于 `test/` 下，只保存最小配置夹具，供测试脚本或人工复制参考。
 真正运行 `test_multi_lang_folders.py` 时，会在项目根目录动态创建 `test_multi_lang/` 工作目录，并在其中生成 Excel 样例和导出文件。
 
+生成的 Excel 样例行布局与 **[EXCEL_TABLE_LAYOUT.md](../docs/EXCEL_TABLE_LAYOUT.md)**（`FIELD_NAME_ROW` / `FIELD_TYPE_ROW` / `DATA_START_ROW`）一致，便于与字段导出、多语言提取联调。
+
 ## 当前目录结构
 
 ```

@@ -62,6 +62,8 @@ gui/
 | 配置同步 | Excel配置一致性检查 | `excel_config_sync.py` |
 | Excel转CSV | 批量转换格式 | `excel_to_csv_converter.py` |
 
+涉及「表字段导出」「多语言翻译提取」「批量改表」「配置同步」等页的策划表，默认行号与列/行边界约定见 **`../docs/EXCEL_TABLE_LAYOUT.md`** 与 **`../core/constants.py`**。
+
 ## 模块可见性设置
 
 用户可以在「关于」页面中点击「界面设置」按钮来自定义显示哪些功能模块：

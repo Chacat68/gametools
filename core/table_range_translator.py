@@ -44,6 +44,11 @@ from core.constants import (
     TRANSLATION_LANGUAGE_CODES,
     MERGED_JSON_LANGUAGE_KEYS,
     TRANSLATION_ROW_VALUE_KEYS,
+    FIELD_NAME_ROW,
+    DATA_START_ROW,
+    FIELD_NAME_ROW_INDEX,
+    DATA_START_ROW_INDEX,
+    ROW_BOUNDARY_KEYWORD,
 )
 from core.text_patterns import (
     is_filterable_content, contains_chinese, contains_vietnamese, contains_thai,
@@ -87,8 +92,8 @@ class TableRangeTranslator:
         self._language_type_cache: Dict[str, str] = {}
         self._language_type_cache_max_size = 4096
         
-        # 边界检测关键字（检测到此关键字后停止导出）
-        self.boundary_keyword = 'over'
+        # 行下限边界：任意格为该关键字（见 _check_row_boundary）则停止向下遍历
+        self.boundary_keyword = ROW_BOUNDARY_KEYWORD
 
     def reset_runtime_state(self):
         """重置一次提取任务的运行态，避免多次执行之间相互污染。"""
@@ -141,8 +146,10 @@ class TableRangeTranslator:
         return message
 
     def _load_excel_sheet(self, excel_path: str, sheet_name: str,
-                          minimum_rows: int = 7) -> Tuple[Optional[DataFrameType], Optional[str]]:
+                          minimum_rows: Optional[int] = None) -> Tuple[Optional[DataFrameType], Optional[str]]:
         """统一读取 Excel 工作表，并返回标准化错误信息。"""
+        if minimum_rows is None:
+            minimum_rows = DATA_START_ROW
         dependency_error = self._record_missing_dependency(
             "读取Excel工作表",
             require_pandas=True,
@@ -186,21 +193,23 @@ class TableRangeTranslator:
                 continue
 
             table_data_by_lang[lang] = df
-            log_progress(f"      ✓ {lang_name}: {len(df) - 6} 行数据")
+            log_progress(f"      ✓ {lang_name}: {len(df) - DATA_START_ROW_INDEX} 行数据")
 
         return table_data_by_lang
     
     def _check_row_boundary(self, df: DataFrameType, row_idx: int) -> bool:
         """
-        检查某一行是否包含边界关键字（over）
-        如果该行任意单元格包含边界关键字，则返回True表示到达边界
+        检查当前行是否为「数据区下限边界行」。
+        若该行任意单元格 strip 后小写等于 ``self.boundary_keyword``（默认与
+        ``ROW_BOUNDARY_KEYWORD`` 一致），则本行及以下不再作为数据遍历，调用方应立即
+        ``break`` 结束行循环。
         
         Args:
             df: pandas DataFrame
-            row_idx: 行索引
+            row_idx: 行索引（0-based）
             
         Returns:
-            bool: True表示到达边界，应停止处理
+            bool: True 表示已到达边界行，应停止向下遍历
         """
         if row_idx >= len(df):
             return False
@@ -213,16 +222,18 @@ class TableRangeTranslator:
                     return True
         return False
     
-    def _find_boundary_row(self, df: DataFrameType, start_row: int = 6) -> Optional[int]:
+    def _find_boundary_row(self, df: DataFrameType, start_row: int = DATA_START_ROW_INDEX) -> Optional[int]:
         """
-        在DataFrame中查找边界行（包含'over'关键字的行）
+        从 start_row 起向下查找第一个边界行（任意格等于行边界关键字）。
+        返回值用作行遍历上界：数据只应处理 ``range(..., 返回索引)``，不包含边界行本身。
+        若未找到边界行则返回 None，表示可一直扫到 DataFrame 末尾（循环内仍应防御性检测边界）。
         
         Args:
             df: pandas DataFrame
-            start_row: 开始搜索的行索引（默认从第7行/索引6开始）
+            start_row: 开始搜索的行索引（默认从 DATA_START_ROW / DATA_START_ROW_INDEX 起）
             
         Returns:
-            Optional[int]: 边界行索引，如果未找到返回None
+            Optional[int]: 边界行的 0-based 行索引；未找到返回 None
         """
         for row_idx in range(start_row, len(df)):
             if self._check_row_boundary(df, row_idx):
@@ -542,9 +553,9 @@ class TableRangeTranslator:
                                 if col_idx >= len(df.columns):
                                     col_idx = None
                                 else:
-                                    # 交叉验证：检查第5行的字段名是否匹配
-                                    if len(df) >= 5:
-                                        actual_field = df.iloc[4, col_idx]
+                                    # 交叉验证：检查字段名行的字段名是否匹配
+                                    if len(df) >= FIELD_NAME_ROW:
+                                        actual_field = df.iloc[FIELD_NAME_ROW_INDEX, col_idx]
                                         if pd.notna(actual_field) and str(actual_field).strip() != field_name:
                                             log_progress(f"      ⚠️ {lang_names.get(lang)}: 列{col_letter}字段名不匹配 (期望:{field_name}, 实际:{actual_field})")
                                             # 回退到按名称查找
@@ -577,12 +588,14 @@ class TableRangeTranslator:
                     
                     excel_col = self.column_index_to_letter(anchor_col_idx)
                     
-                    # 查找边界行（包含'over'关键字的行）
+                    # 行下限边界：见 _find_boundary_row / ROW_BOUNDARY_KEYWORD；循环内再防御性检测
                     boundary_row = self._find_boundary_row(anchor_df)
                     end_row = boundary_row if boundary_row is not None else len(anchor_df)
                     
                     # 遍历数据行（到边界行或表格末尾为止）
-                    for anchor_row_idx in range(6, end_row):
+                    for anchor_row_idx in range(DATA_START_ROW_INDEX, end_row):
+                        if self._check_row_boundary(anchor_df, anchor_row_idx):
+                            break
                         anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
                         
                         lang_contents: Dict[str, str] = {}
@@ -806,21 +819,21 @@ class TableRangeTranslator:
         return value_str
 
     def _build_id_to_row_index(self, df: DataFrameType, boundary_row: Optional[int] = None) -> Dict[str, int]:
-        """为一个语言版本的表构建 ID -> 行索引 映射（数据区从第7行开始，索引6）。
+        """为一个语言版本的表构建 ID -> 行索引 映射（数据区从 DATA_START_ROW 开始）。
         
         Args:
             df: pandas DataFrame
             boundary_row: 可选的边界行索引，如果提供则只处理到该行之前
         """
         id_to_row: Dict[str, int] = {}
-        if df is None or len(df) < 7 or len(df.columns) == 0:
+        if df is None or len(df) < DATA_START_ROW or len(df.columns) == 0:
             return id_to_row
         
         # 确定结束行
         end_row = boundary_row if boundary_row is not None else len(df)
 
-        for row_idx in range(6, end_row):
-            # 检查是否到达边界行（包含'over'关键字）
+        for row_idx in range(DATA_START_ROW_INDEX, end_row):
+            # 行下限边界：任意格为 ROW_BOUNDARY_KEYWORD 则停止向下遍历
             if self._check_row_boundary(df, row_idx):
                 break
             
@@ -835,7 +848,7 @@ class TableRangeTranslator:
     
     def find_column_index_by_name(self, df: DataFrameType, field_name: str) -> Optional[int]:
         """
-        在DataFrame的第5行（索引4）中查找字段名对应的列索引
+        在DataFrame的字段名行（FIELD_NAME_ROW / FIELD_NAME_ROW_INDEX）中查找字段名对应的列索引
         
         Args:
             df: pandas DataFrame
@@ -844,7 +857,7 @@ class TableRangeTranslator:
         Returns:
             Optional[int]: 列索引，未找到返回None
         """
-        if len(df) < 5:
+        if len(df) < FIELD_NAME_ROW:
             return None
 
         cache_key = id(df)
@@ -852,8 +865,8 @@ class TableRangeTranslator:
         cached_entry = self._field_index_cache.get(cache_key)
 
         if cached_entry is None or cached_entry[0] != df_shape:
-            # 第5行是字段名行（索引为4）
-            field_row = df.iloc[4]
+            # 字段名行（pandas 中为 FIELD_NAME_ROW_INDEX）
+            field_row = df.iloc[FIELD_NAME_ROW_INDEX]
             field_index_map: Dict[str, int] = {}
 
             for col_idx, cell_value in enumerate(field_row):
@@ -906,6 +919,7 @@ class TableRangeTranslator:
 
             extracted_rows = []
 
+            # 行下限边界：先缩小 end_row；按行遍历时仍防御性检测 ROW_BOUNDARY_KEYWORD 并 break
             boundary_row = self._find_boundary_row(df)
             end_row = boundary_row if boundary_row is not None else len(df)
             localized_language_types = {
@@ -946,8 +960,10 @@ class TableRangeTranslator:
 
             # 遍历每个需要导出的字段
             for field_name, field_type, col_idx, current_col_letter in resolved_fields:
-                # 从第7行开始提取数据（到边界行或表格末尾为止）
-                for row_idx in range(6, end_row):  # 从索引6开始（第7行）
+                # 从 DATA_START_ROW 起提取数据（到边界行或表格末尾为止）
+                for row_idx in range(DATA_START_ROW_INDEX, end_row):
+                    if self._check_row_boundary(df, row_idx):
+                        break
                     cell_value = df.iloc[row_idx, col_idx]
                     
                     # 跳过空值
@@ -1337,7 +1353,7 @@ class TableRangeTranslator:
 
                     excel_col = self.column_index_to_letter(anchor_col_idx)
 
-                    # 查找边界行（包含'over'关键字的行）
+                    # 行下限边界：见 _find_boundary_row / ROW_BOUNDARY_KEYWORD；循环内再防御性检测
                     boundary_row = self._find_boundary_row(anchor_df)
                     end_row = boundary_row if boundary_row is not None else len(anchor_df)
 
@@ -1345,7 +1361,9 @@ class TableRangeTranslator:
                     id_to_row_by_lang = {lang: self._build_id_to_row_index(df, self._find_boundary_row(df)) for lang, df in table_data_by_lang.items()}
 
                     # 遍历数据行（到边界行或表格末尾为止）
-                    for anchor_row_idx in range(6, end_row):
+                    for anchor_row_idx in range(DATA_START_ROW_INDEX, end_row):
+                        if self._check_row_boundary(anchor_df, anchor_row_idx):
+                            break
                         anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
 
                         lang_contents: Dict[str, str] = {}
@@ -1540,14 +1558,16 @@ class TableRangeTranslator:
 
                     excel_col = self.column_index_to_letter(anchor_col_idx)
                     
-                    # 查找边界行（包含'over'关键字的行）
+                    # 行下限边界：见 _find_boundary_row / ROW_BOUNDARY_KEYWORD；循环内再防御性检测
                     boundary_row = self._find_boundary_row(anchor_df)
                     end_row = boundary_row if boundary_row is not None else len(anchor_df)
                     
                     id_to_row_by_lang = {lang: self._build_id_to_row_index(df, self._find_boundary_row(df)) for lang, df in table_data_by_lang.items()}
 
                     # 遍历数据行（到边界行或表格末尾为止）
-                    for anchor_row_idx in range(6, end_row):
+                    for anchor_row_idx in range(DATA_START_ROW_INDEX, end_row):
+                        if self._check_row_boundary(anchor_df, anchor_row_idx):
+                            break
                         anchor_id = self._normalize_id_value(anchor_df.iloc[anchor_row_idx, 0])
 
                         lang_contents: Dict[str, str] = {}

@@ -50,6 +50,8 @@ from core.constants import (
     SUPPORTED_LANGUAGES,
     MERGED_JSON_LANGUAGE_KEYS,
     FIELD_EXTRACTION_MERGED_JSON_NAME,
+    FIELD_NAME_ROW,
+    DATA_START_ROW,
 )
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
@@ -2459,8 +2461,8 @@ class GameToolsUnified:
         ).grid(row=0, column=1, sticky=tk.W, padx=(12, 0))
 
         self.batch_backup_var = tk.BooleanVar(value=True)
-        self.batch_data_start_row_var = tk.StringVar(value="7")
-        self.batch_field_row_var = tk.StringVar(value="5")
+        self.batch_data_start_row_var = tk.StringVar(value=str(DATA_START_ROW))
+        self.batch_field_row_var = tk.StringVar(value=str(FIELD_NAME_ROW))
 
         self.batch_advanced_body = ttk.Frame(advanced_frame)
         self.batch_advanced_body.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(12, 0))
@@ -4628,12 +4630,12 @@ class GameToolsUnified:
         try:
             field_row = int(self.batch_field_row_var.get().strip())
         except ValueError:
-            field_row = 5
+            field_row = FIELD_NAME_ROW
 
         try:
             data_start_row = int(self.batch_data_start_row_var.get().strip())
         except ValueError:
-            data_start_row = 7
+            data_start_row = DATA_START_ROW
 
         # 确认操作
         confirm_msg = f"""确认开始批量修改？

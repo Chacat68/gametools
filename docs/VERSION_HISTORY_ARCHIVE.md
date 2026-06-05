@@ -1,6 +1,6 @@
 # GameTools 版本历史归档
 
-本文档记录 v1.30.0 之前的历史版本更新记录。
+本文档记录 v1.30.0 之前的历史版本更新记录。文中「第 5/6/7 行」等与当前代码常量 **`FIELD_NAME_ROW` / `FIELD_TYPE_ROW` / `DATA_START_ROW`** 对应，详见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)。
 
 ## v1.29.0 (2025-11-20)
 - ✨ 新功能：多语言翻译提取器
