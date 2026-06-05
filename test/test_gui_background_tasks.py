@@ -192,18 +192,18 @@ def test_batch_modifier_layout_keeps_critical_widgets():
 
 
 def test_default_tab_prefers_first_feature_and_about_page_renamed():
-    """启动时应优先选中首个功能页，关于页使用新的命名。"""
+    """启动时应优先选中工作台页，关于页使用新的命名。"""
     original_last_active_tab = unified_module.config_manager.config.ui.last_active_tab
     unified_module.config_manager.config.ui.last_active_tab = 'about'
 
     try:
         root, app = _create_app()
         try:
-            if app._get_current_tab_key() != 'batch_modifier':
+            if app._get_current_tab_key() != 'home':
                 print(f"❌ 默认页签不正确: {app._get_current_tab_key()}")
                 return False
 
-            if app.page_title_var.get() != '批量改表':
+            if app.page_title_var.get() != '工作台':
                 print(f"❌ 启动后头部标题不正确: {app.page_title_var.get()}")
                 return False
 

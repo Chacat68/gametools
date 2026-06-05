@@ -34,7 +34,7 @@ class JsonDetectorPage:
 
         path_frame = ttk.LabelFrame(
             left_column,
-            text=self.app._format_section_title(1, "检测目标"),
+            text=self.app._format_section_title(1, "检测路径显示"),
             padding="10",
         )
         path_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N), pady=(0, 8))
@@ -53,6 +53,7 @@ class JsonDetectorPage:
             path_frame,
             textvariable=self.app.json_path_var,
             font=("Microsoft YaHei", 9),
+            state='readonly',
         )
         self.app.json_path_entry.grid(
             row=0,
@@ -62,21 +63,13 @@ class JsonDetectorPage:
             pady=(0, 5),
         )
 
-        self.app.json_browse_button = ttk.Button(
-            path_frame,
-            text="选择",
-            command=self.browse_folder,
-            style='Subtle.TButton',
-        )
-        self.app.json_browse_button.grid(row=0, column=2, pady=(0, 5))
-
         self.app.inline_messages['json_detector'] = self.app._create_inline_message(path_frame, row=1)
 
         action_panel = self.app._create_action_panel(right_column, 0)
         self.app._decorate_action_panel(
             action_panel,
             '2. 执行与结果',
-            '检测后可直接保存报告或查看问题结果。',
+            '检测目录请在「工作台」选择；此处仅展示路径。',
         )
 
         self.app.json_detect_button = ttk.Button(
