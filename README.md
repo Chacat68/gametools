@@ -46,7 +46,7 @@ gametools/
 │   ├── test_config_sync/         # 随仓库提交的最小配置夹具
 │   ├── test_multi_lang/          # 随仓库提交的最小配置夹具
 │   └── README.md                 # 测试文档
-├── test_config_sync/        # 配置同步测试运行时工作目录（按需生成）
+├── test_config_sync/        # 配置同步测试运行目录（仅本地，已 .gitignore，不入库）
 ├── test_multi_lang/         # 多语言测试运行时工作目录（按需生成）
 ├── test_output/             # 测试运行输出目录（按需生成）
 ├── docs/                    # 文档目录
@@ -245,7 +245,7 @@ test/
 └── README.md                    # 详细测试文档
 ```
 
-另外，项目根目录下的 `test_config_sync/`、`test_multi_lang/`、`test_output/` 属于测试运行时工作目录或输出目录，都会按需自动生成，不需要长期保留样例 Excel 和导出文件。
+另外，项目根目录下的 `test_multi_lang/`、`test_output/` 等为测试运行时工作目录或输出目录，会按需自动生成。根目录 **`test_config_sync/`** 同样为运行产物目录，已写入 **`.gitignore`**，不再纳入版本库；随仓库提交的夹具在 **`test/test_config_sync/`**。
 
 ### 🧪 运行测试
 

@@ -138,7 +138,9 @@ test/test_config_sync/*.bak
 test/test_config_sync/*/*.bak
 test/test_config_sync/sync_report.xlsx
 test/test_config_sync/*/*.xlsx
-test/test_multi_lang/*/*.xlsx
+
+# 仓库根目录：配置同步测试运行时生成（勿提交；夹具见 test/test_config_sync/）
+/test_config_sync/
 
 # 构建目录
 gui/build/
