@@ -40,6 +40,7 @@ def test_translation_csv_format():
                     'ZH': '长剑',
                     'VN': 'Kiếm',
                     'TH': 'ดาบ',
+                    'EN': 'Sword',
                 },
                 {
                     'Table': 'items.xlsx',
@@ -50,6 +51,7 @@ def test_translation_csv_format():
                     'ZH': '描述',
                     'VN': 'Mô tả',
                     'TH': 'คำอธิบาย',
+                    'EN': 'Description',
                 },
             ]
         )

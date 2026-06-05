@@ -66,6 +66,9 @@ except ImportError:
 # ============ 常量导出 ============
 from core.constants import (
     SUPPORTED_LANGUAGES,
+    TRANSLATION_LANGUAGE_CODES,
+    MERGED_JSON_LANGUAGE_KEYS,
+    TRANSLATION_ROW_VALUE_KEYS,
     SUPPORTED_EXCEL_EXTENSIONS,
     SUPPORTED_MAPPING_FORMATS,
     EXPORTABLE_FIELD_TYPES,
@@ -83,6 +86,7 @@ from core.text_patterns import (
     contains_chinese,
     contains_vietnamese,
     contains_thai,
+    contains_latin_letters,
     contains_localized_text,
     is_filterable_content,
     parse_cell_reference,
@@ -93,6 +97,9 @@ __all__ = [
     'setup_logging',
     # 常量
     'SUPPORTED_LANGUAGES',
+    'TRANSLATION_LANGUAGE_CODES',
+    'MERGED_JSON_LANGUAGE_KEYS',
+    'TRANSLATION_ROW_VALUE_KEYS',
     'SUPPORTED_EXCEL_EXTENSIONS',
     'SUPPORTED_MAPPING_FORMATS',
     'EXPORTABLE_FIELD_TYPES',
@@ -108,6 +115,7 @@ __all__ = [
     'contains_chinese',
     'contains_vietnamese',
     'contains_thai',
+    'contains_latin_letters',
     'contains_localized_text',
     'is_filterable_content',
     'parse_cell_reference',

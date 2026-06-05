@@ -46,6 +46,7 @@ from core.excel_field_extractor import ExcelFieldExtractor
 from core.table_range_translator import TableRangeTranslator
 from core.batch_excel_modifier import BatchExcelModifier
 from core.config_manager import config_manager
+from core.constants import SUPPORTED_LANGUAGES, MERGED_JSON_LANGUAGE_KEYS
 from tools.json_error_detector.json_error_detector import JSONErrorDetector
 from tools.excel_data_processor import ExcelDataProcessor
 from version import get_version, format_version_string, get_build_date
@@ -342,16 +343,19 @@ class GameToolsUnified:
             ('field.zh_dir', 'field_zh_dir_var'),
             ('field.vn_dir', 'field_vn_dir_var'),
             ('field.th_dir', 'field_th_dir_var'),
+            ('field.en_dir', 'field_en_dir_var'),
             ('field.output_dir', 'field_output_dir_var'),
             ('field.recursive', 'field_recursive_var'),
             ('field.output_format', 'field_output_format_var'),
             ('field.zh_enabled', 'field_zh_check_var'),
             ('field.vn_enabled', 'field_vn_check_var'),
             ('field.th_enabled', 'field_th_check_var'),
+            ('field.en_enabled', 'field_en_check_var'),
             ('trt.merged_json', 'trt_merged_json_var'),
             ('trt.zh_dir', 'trt_zh_dir_var'),
             ('trt.vn_dir', 'trt_vn_dir_var'),
             ('trt.th_dir', 'trt_th_dir_var'),
+            ('trt.en_dir', 'trt_en_dir_var'),
             ('trt.output_dir', 'trt_output_dir_var'),
             ('batch.json', 'batch_json_var'),
             ('batch.mapping', 'batch_mapping_var'),
@@ -961,10 +965,12 @@ class GameToolsUnified:
             self.field_zh_dir_var,
             self.field_vn_dir_var,
             self.field_th_dir_var,
+            self.field_en_dir_var,
             self.field_output_dir_var,
             self.field_zh_check_var,
             self.field_vn_check_var,
             self.field_th_check_var,
+            self.field_en_check_var,
         )
         self._watch_vars(
             self._refresh_trt_validation,
@@ -972,6 +978,7 @@ class GameToolsUnified:
             self.trt_zh_dir_var,
             self.trt_vn_dir_var,
             self.trt_th_dir_var,
+            self.trt_en_dir_var,
             self.trt_output_dir_var,
         )
         self._watch_vars(
@@ -1040,10 +1047,12 @@ class GameToolsUnified:
         return True, f'将基于映射表输出到: {output_file}', 'success'
 
     def _validate_field_inputs(self, strict=False):
+        lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in SUPPORTED_LANGUAGES}
         selections = [
-            ('中文', self.field_zh_check_var.get(), self.field_zh_dir_var.get().strip()),
-            ('越南语', self.field_vn_check_var.get(), self.field_vn_dir_var.get().strip()),
-            ('泰语', self.field_th_check_var.get(), self.field_th_dir_var.get().strip()),
+            (lang_names['zh'], self.field_zh_check_var.get(), self.field_zh_dir_var.get().strip()),
+            (lang_names['vn'], self.field_vn_check_var.get(), self.field_vn_dir_var.get().strip()),
+            (lang_names['th'], self.field_th_check_var.get(), self.field_th_dir_var.get().strip()),
+            (lang_names['en'], self.field_en_check_var.get(), self.field_en_dir_var.get().strip()),
         ]
         active = [(label, path) for label, enabled, path in selections if enabled]
 
@@ -1070,10 +1079,12 @@ class GameToolsUnified:
         if not os.path.exists(merged_json):
             return False, 'JSON 配置文件不存在，请重新选择。', 'error'
 
+        lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in SUPPORTED_LANGUAGES}
         lang_dirs = [
-            ('中文', self.trt_zh_dir_var.get().strip()),
-            ('越南语', self.trt_vn_dir_var.get().strip()),
-            ('泰语', self.trt_th_dir_var.get().strip()),
+            (lang_names['zh'], self.trt_zh_dir_var.get().strip()),
+            (lang_names['vn'], self.trt_vn_dir_var.get().strip()),
+            (lang_names['th'], self.trt_th_dir_var.get().strip()),
+            (lang_names['en'], self.trt_en_dir_var.get().strip()),
         ]
         valid_dirs = [(label, path) for label, path in lang_dirs if path]
         if not valid_dirs:
@@ -1983,18 +1994,32 @@ class GameToolsUnified:
         self.field_th_check_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(dir_frame, text="导出", variable=self.field_th_check_var).grid(row=2, column=3, padx=(5, 0), pady=(0, 8))
         
+        # 英语目录
+        ttk.Label(dir_frame, text="英语:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.field_en_dir_var = tk.StringVar()
+        self.field_en_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_en_dir_var,
+                                           font=("Microsoft YaHei", 9))
+        self.field_en_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.field_en_browse_button = ttk.Button(dir_frame, text="选择",
+                            command=lambda: self.browse_field_language_dir('en'), style='Subtle.TButton')
+        self.field_en_browse_button.grid(row=3, column=2, pady=(0, 8))
+        
+        self.field_en_check_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(dir_frame, text="导出", variable=self.field_en_check_var).grid(row=3, column=3, padx=(5, 0), pady=(0, 8))
+        
         # 输出文件夹
-        ttk.Label(dir_frame, text="输出:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10))
+        ttk.Label(dir_frame, text="输出:").grid(row=4, column=0, sticky=tk.W, padx=(0, 10))
         self.field_output_dir_var = tk.StringVar()
         self.field_output_dir_entry = ttk.Entry(dir_frame, textvariable=self.field_output_dir_var, 
                                                font=("Microsoft YaHei", 9))
-        self.field_output_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
+        self.field_output_dir_entry.grid(row=4, column=1, sticky=(tk.W, tk.E), padx=(0, 10))
         
         self.field_output_browse_button = ttk.Button(dir_frame, text="选择", 
                                 command=self.browse_field_output_directory, style='Subtle.TButton')
-        self.field_output_browse_button.grid(row=3, column=2)
+        self.field_output_browse_button.grid(row=4, column=2)
 
-        self.inline_messages['field_extractor'] = self._create_inline_message(dir_frame, row=4, columnspan=4)
+        self.inline_messages['field_extractor'] = self._create_inline_message(dir_frame, row=5, columnspan=4)
         
         # 选项设置区域
         options_frame = ttk.LabelFrame(right_column, text=self._format_section_title(2, "导出选项"), padding="10")
@@ -2117,6 +2142,17 @@ class GameToolsUnified:
                               command=self.browse_trt_th_directory, style='Subtle.TButton')
         self.trt_th_browse_button.grid(row=2, column=2, pady=(0, 8))
         
+        # 英语目录
+        ttk.Label(dir_frame, text="英语:").grid(row=3, column=0, sticky=tk.W, padx=(0, 10), pady=(0, 8))
+        self.trt_en_dir_var = tk.StringVar()
+        self.trt_en_dir_entry = ttk.Entry(dir_frame, textvariable=self.trt_en_dir_var,
+                                         font=("Microsoft YaHei", 9))
+        self.trt_en_dir_entry.grid(row=3, column=1, sticky=(tk.W, tk.E), padx=(0, 10), pady=(0, 8))
+        
+        self.trt_en_browse_button = ttk.Button(dir_frame, text="选择",
+                              command=self.browse_trt_en_directory, style='Subtle.TButton')
+        self.trt_en_browse_button.grid(row=3, column=2, pady=(0, 8))
+        
         # 输出设置
         output_frame = ttk.LabelFrame(left_column, text=self._format_section_title(3, "输出设置"), padding="10")
         output_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N))
@@ -2139,6 +2175,7 @@ class GameToolsUnified:
         self.trt_zh_json_var = tk.StringVar()
         self.trt_vn_json_var = tk.StringVar()
         self.trt_th_json_var = tk.StringVar()
+        self.trt_en_json_var = tk.StringVar()
         self.trt_json_var = self.trt_merged_json_var
         
         action_panel = self._create_action_panel(right_column, 1)
@@ -3464,7 +3501,7 @@ class GameToolsUnified:
     
     def browse_field_language_dir(self, lang_code):
         """浏览特定语言的目录"""
-        lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+        lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in SUPPORTED_LANGUAGES}
         dir_path = filedialog.askdirectory(title=f"选择{lang_names.get(lang_code, '')}目录")
         if dir_path:
             if lang_code == 'zh':
@@ -3473,6 +3510,8 @@ class GameToolsUnified:
                 self.field_vn_dir_var.set(dir_path)
             elif lang_code == 'th':
                 self.field_th_dir_var.set(dir_path)
+            elif lang_code == 'en':
+                self.field_en_dir_var.set(dir_path)
             # 如果输出目录为空，自动设置为该目录的父目录
             if not self.field_output_dir_var.get():
                 self.field_output_dir_var.set(dir_path)
@@ -3502,6 +3541,8 @@ class GameToolsUnified:
             directories['vn'] = self.field_vn_dir_var.get().strip()
         if self.field_th_check_var.get() and self.field_th_dir_var.get().strip():
             directories['th'] = self.field_th_dir_var.get().strip()
+        if self.field_en_check_var.get() and self.field_en_dir_var.get().strip():
+            directories['en'] = self.field_en_dir_var.get().strip()
         
         output_dir = self.field_output_dir_var.get().strip()
 
@@ -3525,12 +3566,14 @@ class GameToolsUnified:
                 'field.zh_dir': self.field_zh_dir_var.get().strip(),
                 'field.vn_dir': self.field_vn_dir_var.get().strip(),
                 'field.th_dir': self.field_th_dir_var.get().strip(),
+                'field.en_dir': self.field_en_dir_var.get().strip(),
                 'field.output_dir': output_dir,
                 'field.output_format': output_format,
                 'field.recursive': recursive,
                 'field.zh_enabled': self.field_zh_check_var.get(),
                 'field.vn_enabled': self.field_vn_check_var.get(),
                 'field.th_enabled': self.field_th_check_var.get(),
+                'field.en_enabled': self.field_en_check_var.get(),
             },
         )
         
@@ -3558,9 +3601,9 @@ class GameToolsUnified:
                 self._format_banner_block("开始提取多语言表字段信息...", width=60),
             )
             
-            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in SUPPORTED_LANGUAGES}
             for lang, dir_path in directories.items():
-                self._append_result_async('field_extractor', f"{lang_names[lang]}目录: {dir_path}\n")
+                self._append_result_async('field_extractor', f"{lang_names.get(lang, lang)}目录: {dir_path}\n")
             
             self._append_result_batch_async(
                 'field_extractor',
@@ -3795,7 +3838,7 @@ class GameToolsUnified:
     def browse_trt_merged_json(self):
         """浏览合并的JSON配置文件"""
         file_path = filedialog.askopenfilename(
-            title="选择合并的JSON配置文件（包含ZH/VN/TH）",
+            title="选择合并的JSON配置文件（可含 ZH/VN/TH/EN 等）",
             filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
         )
         if file_path:
@@ -3810,23 +3853,23 @@ class GameToolsUnified:
                 config = json.load(f)
             
             detected_langs = []
-            lang_names = {'ZH': '中文', 'VN': '越南语', 'TH': '泰语'}
-            
-            for lang_key in ['ZH', 'VN', 'TH']:
+            for lang_key in MERGED_JSON_LANGUAGE_KEYS:
                 if lang_key in config:
                     text_count = len(config[lang_key].get('text_tables', []))
-                    detected_langs.append(f"{lang_names.get(lang_key, lang_key)}({text_count}表)")
+                    name = SUPPORTED_LANGUAGES.get(lang_key.lower(), {}).get('name', lang_key)
+                    detected_langs.append(f"{name}({text_count}表)")
             
             if detected_langs:
                 self.trt_json_lang_label.config(text=f"✓ 检测到: {', '.join(detected_langs)}")
             else:
-                self.trt_json_lang_label.config(text="⚠️ 未检测到有效语言配置（ZH/VN/TH）")
+                keys_hint = '/'.join(MERGED_JSON_LANGUAGE_KEYS)
+                self.trt_json_lang_label.config(text=f"⚠️ 未检测到有效语言配置（期望顶层键之一: {keys_hint}）")
         except Exception as e:
             self.trt_json_lang_label.config(text=f"⚠️ 读取失败: {str(e)[:50]}")
     
     def browse_trt_lang_json(self, lang_code):
         """浏览特定语言的JSON配置文件（兼容旧方法）"""
-        lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+        lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in SUPPORTED_LANGUAGES}
         file_path = filedialog.askopenfilename(
             title=f"选择{lang_names.get(lang_code, '')}JSON配置文件",
             filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")]
@@ -3838,6 +3881,8 @@ class GameToolsUnified:
                 self.trt_vn_json_var.set(file_path)
             elif lang_code == 'th':
                 self.trt_th_json_var.set(file_path)
+            elif lang_code == 'en':
+                self.trt_en_json_var.set(file_path)
     
     def browse_trt_json_file(self):
         """浏览JSON配置文件（兼容旧方法）"""
@@ -3866,6 +3911,12 @@ class GameToolsUnified:
         if dir_path:
             self.trt_th_dir_var.set(dir_path)
     
+    def browse_trt_en_directory(self):
+        """浏览英语文件目录"""
+        dir_path = filedialog.askdirectory(title="选择英语Excel文件目录（_en后缀）")
+        if dir_path:
+            self.trt_en_dir_var.set(dir_path)
+    
     def browse_trt_output_directory(self):
         """浏览输出目录"""
         dir_path = filedialog.askdirectory(title="选择CSV输出目录")
@@ -3891,6 +3942,7 @@ class GameToolsUnified:
         zh_dir = self.trt_zh_dir_var.get().strip()
         vn_dir = self.trt_vn_dir_var.get().strip()
         th_dir = self.trt_th_dir_var.get().strip()
+        en_dir = self.trt_en_dir_var.get().strip()
         output_dir = self.trt_output_dir_var.get().strip()
 
         valid, message, tone = self._validate_trt_inputs(strict=True)
@@ -3906,6 +3958,8 @@ class GameToolsUnified:
             lang_dirs['vn'] = vn_dir
         if th_dir:
             lang_dirs['th'] = th_dir
+        if en_dir:
+            lang_dirs['en'] = en_dir
         
         # 如果未指定输出目录，使用第一个语言目录
         if not output_dir:
@@ -3923,6 +3977,7 @@ class GameToolsUnified:
                 'trt.zh_dir': zh_dir,
                 'trt.vn_dir': vn_dir,
                 'trt.th_dir': th_dir,
+                'trt.en_dir': en_dir,
                 'trt.output_dir': output_dir,
                 'trt.output_file': output_file,
             },
@@ -3948,7 +4003,7 @@ class GameToolsUnified:
                 self._format_banner_block("开始多语言翻译提取（合并JSON配置）...", width=70),
             )
             
-            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in SUPPORTED_LANGUAGES}
             
             # 显示JSON配置
             self._append_result_async('table_range_translator', f"合并JSON: {merged_json}\n")

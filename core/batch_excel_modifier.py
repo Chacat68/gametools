@@ -122,7 +122,7 @@ class BatchExcelModifier:
         
         支持两种格式：
         1. 标准格式：Table,Classification,ID,VN,TH...
-        2. 翻译提取格式：Table,Sheet,Field,Type,Position,ZH,VN,TH...
+        2. 翻译提取格式：Table,Sheet,Field,Type,Position,ZH,VN,TH,EN...
         
         如果是翻译提取格式，自动转换为标准格式
         
@@ -517,6 +517,9 @@ class BatchExcelModifier:
             elif ('CH' in col_upper or 'ZH' in col_upper or 'CN' in col_upper) and 'CLASSIFICATION' not in col_upper:
                 logger.info(f"  - 从映射表列名模糊匹配到语言: zh (列名: {col})")
                 return 'zh'
+            elif col_upper == 'EN' or 'ENGLISH' in col_upper:
+                logger.info(f"  - 从映射表列名模糊匹配到语言: en (列名: {col})")
+                return 'en'
         
         logger.warning("  - 未能从映射表列名检测到语言")
         return None
@@ -682,7 +685,7 @@ class BatchExcelModifier:
         1. 标准批量改表格式：
            Table,Classification,ID,VN,TH,EN...
         2. 翻译提取格式（自动转换）：
-           Table,Sheet,Field,Type,Position,ZH,VN,TH...
+           Table,Sheet,Field,Type,Position,ZH,VN,TH,EN...
         
         Args:
             mapping_path: 映射表文件路径（.xlsx/.xls/.csv）

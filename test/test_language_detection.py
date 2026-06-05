@@ -58,6 +58,11 @@ def test_detect_language():
             'expected': 'th'
         },
         {
+            'name': '英语映射表（EN列）',
+            'columns': ['表名', 'Classification', 'ID', 'EN'],
+            'expected': 'en'
+        },
+        {
             'name': '混合列名',
             'columns': ['表名', 'Classification', 'ID', 'VN', 'TH', 'CH'],
             'expected': 'vn'  # 优先检测VN

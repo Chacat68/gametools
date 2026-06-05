@@ -22,5 +22,13 @@
                 "fields": ["des_th", "name_th", "title_th"]
             }
         ]
+    },
+    "EN": {
+        "text_tables": [
+            {
+                "table_name": "armor.xlsx",
+                "fields": ["des_en", "name_en", "title_en"]
+            }
+        ]
     }
 }

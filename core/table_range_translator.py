@@ -4,7 +4,7 @@
 多语言翻译提取器
 根据字段导出的JSON配置文件，智能提取多语言翻译内容
 只提取前端、后端、前后端的字段，忽略策划字段
-生成多语言翻译总表，支持中文、越南文、泰文
+生成多语言翻译总表，支持中文、越南文、泰文、英文等配置语言
 """
 
 import os
@@ -38,11 +38,16 @@ import logging
 
 # 导入统一的常量和模式
 from core.constants import (
-    SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, EXPORTABLE_FIELD_TYPES
+    SUPPORTED_LANGUAGES,
+    SUPPORTED_EXCEL_EXTENSIONS,
+    EXPORTABLE_FIELD_TYPES,
+    TRANSLATION_LANGUAGE_CODES,
+    MERGED_JSON_LANGUAGE_KEYS,
+    TRANSLATION_ROW_VALUE_KEYS,
 )
 from core.text_patterns import (
-    CHINESE_PATTERN, VIETNAMESE_PATTERN, THAI_PATTERN,
-    is_filterable_content, contains_chinese, contains_vietnamese, contains_thai
+    is_filterable_content, contains_chinese, contains_vietnamese, contains_thai,
+    contains_latin_letters,
 )
 
 logger = logging.getLogger(__name__)
@@ -230,7 +235,7 @@ class TableRangeTranslator:
         
         Args:
             json_path: JSON配置文件路径
-            target_language: 目标语言代码 ('zh', 'vn', 'th')，用于从合并的JSON中提取对应语言配置
+            target_language: 目标语言代码 ('zh', 'vn', 'th', 'en' 等)，用于从合并的JSON中提取对应语言配置
             
         Returns:
             Dict: JSON配置内容（包含language字段信息）
@@ -276,7 +281,7 @@ class TableRangeTranslator:
             config: JSON配置字典
             
         Returns:
-            str or None: 语言代码 ('zh', 'vn', 'th') 或 None
+            str or None: 语言代码（如 'zh', 'vn', 'th', 'en'）或 None
         """
         if 'language' in config and isinstance(config['language'], dict):
             return config['language'].get('code')
@@ -324,7 +329,7 @@ class TableRangeTranslator:
             json_path: 合并的JSON配置文件路径
             
         Returns:
-            Dict: 完整的JSON配置（包含ZH/VN/TH等语言键）
+            Dict: 完整的JSON配置（包含 ZH/VN/TH/EN 等语言键）
         """
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -334,7 +339,7 @@ class TableRangeTranslator:
             
             # 检测包含的语言
             detected_langs = []
-            for lang_key in ['ZH', 'VN', 'TH']:
+            for lang_key in MERGED_JSON_LANGUAGE_KEYS:
                 if lang_key in config:
                     lang_data = config[lang_key]
                     text_count = len(lang_data.get('text_tables', []))
@@ -360,12 +365,12 @@ class TableRangeTranslator:
                                  progress_callback=None) -> List[Dict]:
         """
         根据合并的JSON配置文件处理多语言Excel文件
-        JSON结构: {"ZH": {...}, "VN": {...}, "TH": {...}}
+        JSON结构: {"ZH": {...}, "VN": {...}, "TH": {...}, "EN": {...}}
         每个语言配置包含 text_tables 列表，其中有 field_column_letters 用于精确定位
         
         Args:
             json_path: 合并的JSON配置文件路径
-            lang_dirs: 语言目录字典 {'zh': 'path', 'vn': 'path', 'th': 'path'}
+            lang_dirs: 语言目录字典 {'zh': 'path', 'vn': 'path', 'th': 'path', 'en': 'path'}
             progress_callback: 进度回调函数
             
         Returns:
@@ -385,7 +390,7 @@ class TableRangeTranslator:
             self._raise_processing_error(dependency_error)
 
         try:
-            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in TRANSLATION_LANGUAGE_CODES}
             
             # 加载合并的JSON配置
             merged_config = self.load_merged_json_config(json_path)
@@ -396,14 +401,15 @@ class TableRangeTranslator:
             
             # 识别JSON中的语言配置
             lang_configs = {}
-            for lang_key in ['ZH', 'VN', 'TH']:
+            for lang_key in MERGED_JSON_LANGUAGE_KEYS:
                 if lang_key in merged_config:
                     lang_code = lang_key.lower()
                     lang_configs[lang_code] = merged_config[lang_key]
                     log_progress(f"✓ 检测到{lang_names.get(lang_code, lang_code)}配置")
             
             if not lang_configs:
-                error_msg = "JSON中未找到有效的语言配置（ZH/VN/TH）"
+                keys_hint = '/'.join(MERGED_JSON_LANGUAGE_KEYS)
+                error_msg = f"JSON中未找到有效的语言配置（期望顶层键之一: {keys_hint}）"
                 log_progress(f"✗ {error_msg}")
                 self._raise_processing_error(error_msg)
             
@@ -461,7 +467,7 @@ class TableRangeTranslator:
                 base_lang = None
                 base_fields = []
                 base_columns = []
-                for lang in ['zh', 'vn', 'th']:
+                for lang in TRANSLATION_LANGUAGE_CODES:
                     if lang in fields_by_lang and fields_by_lang[lang]:
                         base_lang = lang
                         base_fields = fields_by_lang[lang]
@@ -619,10 +625,9 @@ class TableRangeTranslator:
                             'field_name': field_name,
                             'field_type': field_type,
                             'excel_position': excel_position,
-                            'chinese': lang_contents.get('zh', ''),
-                            'vietnamese': lang_contents.get('vn', ''),
-                            'thai': lang_contents.get('th', '')
                         }
+                        for code in TRANSLATION_LANGUAGE_CODES:
+                            row_data[TRANSLATION_ROW_VALUE_KEYS[code]] = lang_contents.get(code, '')
                         
                         all_data.append(row_data)
                         self.processing_stats['total_rows'] += 1
@@ -687,7 +692,7 @@ class TableRangeTranslator:
         过滤语言内容字典，移除非文本值
         
         Args:
-            lang_contents: 语言内容字典 {'zh': 'xxx', 'vn': 'xxx', 'th': 'xxx'}
+            lang_contents: 语言内容字典（键为语言代码，如 'zh'、'vn'、'th'、'en'）
             
         Returns:
             Dict[str, str]: 过滤后的语言内容字典
@@ -703,7 +708,7 @@ class TableRangeTranslator:
             text: 待检测文本
             
         Returns:
-            str: 语言类型（中文、越南文、泰文、中越混合等）
+            str: 语言类型（中文、越南文、泰文、英文、中越混合等）
         """
         if pd.isna(text) or not str(text).strip():
             return "空"
@@ -717,6 +722,7 @@ class TableRangeTranslator:
         has_chinese = contains_chinese(text_str)
         has_vietnamese = contains_vietnamese(text_str)
         has_thai = contains_thai(text_str)
+        has_latin = contains_latin_letters(text_str)
         
         # 判断语言类型
         if has_chinese and has_vietnamese:
@@ -731,6 +737,8 @@ class TableRangeTranslator:
             language_type = "越南文"
         elif has_thai:
             language_type = "泰文"
+        elif has_latin:
+            language_type = "英文"
         else:
             language_type = "其他"
 
@@ -900,7 +908,10 @@ class TableRangeTranslator:
 
             boundary_row = self._find_boundary_row(df)
             end_row = boundary_row if boundary_row is not None else len(df)
-            localized_language_types = {"中文", "越南文", "泰文", "中越混合", "中泰混合", "越泰混合"}
+            localized_language_types = {
+                "中文", "越南文", "泰文", "英文",
+                "中越混合", "中泰混合", "越泰混合",
+            }
             resolved_fields = []
 
             for field_name, field_type, col_letter_hint in exportable_fields:
@@ -946,7 +957,7 @@ class TableRangeTranslator:
                     # 检测语言类型
                     lang_type = self.detect_language_type(cell_value)
                     
-                    # 只提取包含中文、越南文、泰文的内容
+                    # 只提取包含中文、越南文、泰文或英文（拉丁字母）等可本地化内容
                     if lang_type not in localized_language_types:
                         continue
                     
@@ -1046,7 +1057,7 @@ class TableRangeTranslator:
         """
         生成多语言翻译总表
         每个表格文件对应一个工作表标签
-        列格式: 字段名 | 字段类型 | Excel位置 | ZH | VN | TH
+        列格式: 字段名 | 字段类型 | Excel位置 | ZH | VN | TH | EN
         
         Args:
             output_path: 输出Excel文件路径
@@ -1067,6 +1078,8 @@ class TableRangeTranslator:
                 return False
             
             logger.info(f"开始生成翻译总表: {output_path}")
+            
+            lang_headers = [code.upper() for code in TRANSLATION_LANGUAGE_CODES]
             
             # 按表格名称分组
             tables_data = {}
@@ -1094,7 +1107,7 @@ class TableRangeTranslator:
                 ws = wb.create_sheet(title=sheet_name)
                 
                 # 设置表头
-                headers = ['Field', 'Type', 'Position', 'ZH', 'VN', 'TH']
+                headers = ['Field', 'Type', 'Position'] + lang_headers
                 ws.append(headers)
                 
                 # 设置表头样式
@@ -1110,17 +1123,21 @@ class TableRangeTranslator:
                 
                 # 写入数据行
                 for row_data in rows:
+                    lt = row_data.get('language_type', '')
+                    content = row_data.get('content', '')
+                    zh = content if lt in ('中文', '中越混合', '中泰混合') else ''
+                    vn = content if lt in ('越南文', '中越混合', '越泰混合') else ''
+                    th = content if lt in ('泰文', '中泰混合', '越泰混合') else ''
+                    en = content if lt == '英文' else ''
                     ws.append([
                         row_data.get('field_name', ''),
                         row_data.get('field_type', ''),
-                        row_data.get('excel_position', ''),  # Excel物理位置
-                        row_data.get('content', '') if row_data.get('language_type', '') in ['中文', '中越混合', '中泰混合'] else '',
-                        '',  # 越南文列（待填充）
-                        ''   # 泰文列（待填充）
+                        row_data.get('excel_position', ''),
+                        zh, vn, th, en,
                     ])
                 
                 # 设置列宽
-                column_widths = [20, 12, 12, 40, 40, 40]
+                column_widths = [20, 12, 12] + [40] * len(lang_headers)
                 for col_idx, width in enumerate(column_widths, 1):
                     ws.column_dimensions[get_column_letter(col_idx)].width = width
                 
@@ -1160,8 +1177,8 @@ class TableRangeTranslator:
         每个JSON配置中包含language字段，自动匹配对应的目录
         
         Args:
-            json_configs: 语言JSON配置字典 {'zh': 'path/to/zh.json', 'vn': 'path/to/vn.json', 'th': 'path/to/th.json'}
-            lang_dirs: 语言目录字典 {'zh': 'path', 'vn': 'path', 'th': 'path'}
+            json_configs: 语言JSON配置字典 {'zh': 'path/to/zh.json', 'vn': '...', 'th': '...', 'en': '...'}
+            lang_dirs: 语言目录字典 {'zh': 'path', 'vn': 'path', 'th': 'path', 'en': 'path'}
             progress_callback: 进度回调函数，接收进度消息字符串
             
         Returns:
@@ -1182,7 +1199,7 @@ class TableRangeTranslator:
             self._raise_processing_error(dependency_error)
 
         try:
-            lang_names = {'zh': '中文', 'vn': '越南语', 'th': '泰语'}
+            lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in TRANSLATION_LANGUAGE_CODES}
             
             # 加载所有JSON配置
             all_configs = {}
@@ -1371,10 +1388,9 @@ class TableRangeTranslator:
                             'field_name': field_name,
                             'field_type': field_type,
                             'excel_position': excel_position,
-                            'chinese': lang_contents.get('zh', ''),
-                            'vietnamese': lang_contents.get('vn', ''),
-                            'thai': lang_contents.get('th', '')
                         }
+                        for code in TRANSLATION_LANGUAGE_CODES:
+                            row_data[TRANSLATION_ROW_VALUE_KEYS[code]] = lang_contents.get(code, '')
 
                         all_data.append(row_data)
                         self.processing_stats['total_rows'] += 1
@@ -1408,7 +1424,7 @@ class TableRangeTranslator:
         
         Args:
             json_path: JSON配置文件路径
-            lang_dirs: 语言目录字典 {'vn': 'path', 'zh': 'path', 'th': 'path'}
+            lang_dirs: 语言目录字典 {'vn': 'path', 'zh': 'path', 'th': 'path', 'en': 'path'}
             progress_callback: 进度回调函数，接收进度消息字符串
             
         Returns:
@@ -1438,7 +1454,7 @@ class TableRangeTranslator:
             text_tables = config.get('text_tables', [])
             self.processing_stats['total_tables'] = len(text_tables)
             
-            lang_names = {'vn': '越南文', 'zh': '中文', 'th': '泰文'}
+            lang_names = {code: SUPPORTED_LANGUAGES[code]['name'] for code in TRANSLATION_LANGUAGE_CODES}
             lang_list = ', '.join([lang_names.get(k, k) for k in lang_dirs.keys()])
             
             log_progress(f"📊 开始处理 {len(text_tables)} 个表格")
@@ -1573,10 +1589,9 @@ class TableRangeTranslator:
                             'field_name': field_name,
                             'field_type': field_type,
                             'excel_position': excel_position,
-                            'chinese': lang_contents.get('zh', ''),
-                            'vietnamese': lang_contents.get('vn', ''),
-                            'thai': lang_contents.get('th', '')
                         }
+                        for code in TRANSLATION_LANGUAGE_CODES:
+                            row_data[TRANSLATION_ROW_VALUE_KEYS[code]] = lang_contents.get(code, '')
 
                         all_data.append(row_data)
                         self.processing_stats['total_rows'] += 1
@@ -1607,7 +1622,7 @@ class TableRangeTranslator:
         """
         生成多语言翻译总表（基于多语言目录提取的数据）
         每个表格文件对应一个工作表标签
-        列格式: 字段名 | 字段类型 | Excel位置 | ZH | VN | TH
+        列格式: 字段名 | 字段类型 | Excel位置 | ZH | VN | TH | EN
         
         Args:
             output_path: 输出Excel文件路径
@@ -1628,6 +1643,9 @@ class TableRangeTranslator:
                 return False
             
             logger.info(f"开始生成翻译总表: {output_path}")
+            
+            lang_headers = [code.upper() for code in TRANSLATION_LANGUAGE_CODES]
+            value_keys = [TRANSLATION_ROW_VALUE_KEYS[code] for code in TRANSLATION_LANGUAGE_CODES]
             
             # 按表格名称分组
             tables_data = {}
@@ -1655,7 +1673,7 @@ class TableRangeTranslator:
                 ws = wb.create_sheet(title=sheet_name)
                 
                 # 设置表头
-                headers = ['Field', 'Type', 'Position', 'ZH', 'VN', 'TH']
+                headers = ['Field', 'Type', 'Position'] + lang_headers
                 ws.append(headers)
                 
                 # 设置表头样式
@@ -1671,17 +1689,16 @@ class TableRangeTranslator:
                 
                 # 写入数据行
                 for row_data in rows:
+                    lang_cells = [row_data.get(vk, '') for vk in value_keys]
                     ws.append([
                         row_data.get('field_name', ''),
                         row_data.get('field_type', ''),
                         row_data.get('excel_position', ''),
-                        row_data.get('chinese', ''),
-                        row_data.get('vietnamese', ''),
-                        row_data.get('thai', '')
+                        *lang_cells,
                     ])
                 
                 # 设置列宽
-                column_widths = [20, 12, 12, 40, 40, 40]
+                column_widths = [20, 12, 12] + [40] * len(lang_headers)
                 for col_idx, width in enumerate(column_widths, 1):
                     ws.column_dimensions[get_column_letter(col_idx)].width = width
                 
@@ -1717,7 +1734,7 @@ class TableRangeTranslator:
     def generate_translation_csv(self, output_path: str) -> bool:
         """
         生成多语言翻译CSV文件
-        列格式: 表名 | 工作表 | 字段名 | 字段类型 | Excel位置 | ZH | VN | TH
+        列格式: 表名 | 工作表 | 字段名 | 字段类型 | Excel位置 | ZH | VN | TH | EN
         
         Args:
             output_path: 输出CSV文件路径
@@ -1742,9 +1759,12 @@ class TableRangeTranslator:
             # 创建DataFrame
             df = pd.DataFrame(self.translation_results)
             
+            value_keys = [TRANSLATION_ROW_VALUE_KEYS[code] for code in TRANSLATION_LANGUAGE_CODES]
+            display_headers = [code.upper() for code in TRANSLATION_LANGUAGE_CODES]
+            
             # 重新排列列顺序
             columns = ['table_name', 'sheet_name', 'field_name', 'field_type', 
-                      'excel_position', 'chinese', 'vietnamese', 'thai']
+                      'excel_position'] + value_keys
             
             # 确保所有列都存在
             for col in columns:
@@ -1754,7 +1774,7 @@ class TableRangeTranslator:
             df = df[columns]
             
             # 重命名列标题
-            df.columns = ['Table', 'Sheet', 'Field', 'Type', 'Position', 'ZH', 'VN', 'TH']
+            df.columns = ['Table', 'Sheet', 'Field', 'Type', 'Position'] + display_headers
             
             # 保存CSV（使用UTF-8 BOM编码以便Excel正确识别中文）
             df.to_csv(output_path, index=False, encoding='utf-8-sig')

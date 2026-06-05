@@ -36,7 +36,7 @@ def test_get_available_languages():
         print(f"  - {lang['name']} ({lang['code']}) [Key: {lang['key']}]")
     
     # 验证是否包含期望的语言
-    expected_codes = {'zh', 'vn', 'th'}
+    expected_codes = {'zh', 'vn', 'th', 'en'}
     actual_codes = {lang['code'] for lang in languages}
     
     if expected_codes == actual_codes:
@@ -105,16 +105,39 @@ def test_load_json_with_target_lang():
             print(f"❌ 未找到泰语字段")
             return False
     
-    # 测试加载不存在的语言
-    print("\n--- 测试加载不存在的语言 (en) ---")
-    config_en = modifier.load_json_config(json_path, target_lang_code='en')
+    # 测试加载不存在的语言（应回退到 JSON 中第一个可用语言）
+    print("\n--- 测试加载不存在的语言 (ja) ---")
+    config_ja = modifier.load_json_config(json_path, target_lang_code='ja')
     
-    if not config_en:
+    if not config_ja:
         print("❌ 加载失败（应该使用默认语言）")
         return False
     
     print(f"✅ 使用默认语言加载成功")
     print(f"  - JSON语言: {modifier.json_language}")
+    
+    # 测试加载英语配置
+    print("\n--- 测试加载英语 (en) ---")
+    config_en = modifier.load_json_config(json_path, target_lang_code='en')
+    
+    if not config_en:
+        print("❌ 加载英语配置失败")
+        return False
+    
+    print(f"✅ 成功加载配置")
+    print(f"  - JSON语言: {modifier.json_language}")
+    
+    if 'armor.xlsx' in config_en:
+        table_info = config_en['armor.xlsx']
+        fields = table_info.get('fields', [])
+        print(f"  - armor.xlsx 字段: {fields}")
+        
+        en_fields = [f for f in fields if '_en' in f]
+        if en_fields:
+            print(f"✅ 正确加载了英语字段: {en_fields}")
+        else:
+            print(f"❌ 未找到英语字段")
+            return False
     
     return True
 

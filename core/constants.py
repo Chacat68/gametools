@@ -6,10 +6,26 @@
 """
 
 # ============ 支持的语言配置 ============
+# 键的顺序决定合并 JSON、翻译总表/CSV 等导出列的先后（zh → vn → th → en）
 SUPPORTED_LANGUAGES = {
     'zh': {'name': '中文', 'code': 'zh', 'suffix': '_zh'},
     'vn': {'name': '越南语', 'code': 'vn', 'suffix': '_vn'},
-    'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'}
+    'th': {'name': '泰语', 'code': 'th', 'suffix': '_th'},
+    'en': {'name': '英语', 'code': 'en', 'suffix': '_en'},
+}
+
+# 有序语言代码，供遍历与列对齐（与 SUPPORTED_LANGUAGES 的键一致）
+TRANSLATION_LANGUAGE_CODES = tuple(SUPPORTED_LANGUAGES.keys())
+
+# 合并字段导出 JSON 等使用的顶层大写键（如 "ZH", "EN"）
+MERGED_JSON_LANGUAGE_KEYS = tuple(code.upper() for code in TRANSLATION_LANGUAGE_CODES)
+
+# 翻译提取结果行里各语言对应的内部字段名（写入 Excel/CSV 时再映射为 ZH/VN/TH/EN 表头）
+TRANSLATION_ROW_VALUE_KEYS = {
+    'zh': 'chinese',
+    'vn': 'vietnamese',
+    'th': 'thai',
+    'en': 'english',
 }
 
 # ============ 支持的文件扩展名 ============

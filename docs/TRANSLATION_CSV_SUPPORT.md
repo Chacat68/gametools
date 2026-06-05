@@ -15,7 +15,7 @@ armor_ancient.xlsx,name,1001,越南文名称,泰文名称,English Name
 
 ### 格式2：翻译提取格式（新增支持）✨
 ```csv
-Table,Sheet,Field,Type,Position,ZH,VN,TH
+Table,Sheet,Field,Type,Position,ZH,VN,TH,EN
 amazing_book_open.xlsx,amazing_book_open,name,前端,B7,低级残卷,Tàn Quyển Cấp Thấp,เศษซากม้วนกระดาษระดับต่ำ
 artifact.xlsx,artifact,desc,前端,H7,对敌方随机敌人造成绝对伤害,Tạo sát thương tuyệt đối,สร้างดาเมจสัมบูรณ์
 ```

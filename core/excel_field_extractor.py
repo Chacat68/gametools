@@ -524,7 +524,7 @@ class ExcelFieldExtractor:
         Args:
             results: 字段信息列表（已按 has_text 排序）
             output_file: 输出文件路径
-            language: 语言代码 ('zh', 'vn', 'th')，如果指定则添加语言标记
+            language: 语言代码（如 'zh', 'vn', 'th', 'en'），如果指定则添加语言标记
         """
         try:
             # 构建JSON结构
@@ -712,7 +712,7 @@ class ExcelFieldExtractor:
             output_folder: 输出文件夹（如果为None，使用扫描目录）
             output_format: 输出格式 ('json', 'csv' 或 'excel')
             recursive: 是否递归扫描
-            language: 语言代码 ('zh', 'vn', 'th')，用于输出文件命名和JSON语言标记
+            language: 语言代码（如 'zh', 'vn', 'th', 'en'），用于输出文件命名和JSON语言标记
             write_output: 是否写入输出文件
             lang_progress_base: 当前语言的进度基准值
             lang_progress_range: 当前语言的进度范围
@@ -810,7 +810,7 @@ class ExcelFieldExtractor:
         批量处理多语言目录
         
         Args:
-            directories: 语言目录映射，格式为 {'zh': '/path/to/zh', 'vn': '/path/to/vn', 'th': '/path/to/th'}
+            directories: 语言目录映射，格式为 {'zh': '...', 'vn': '...', 'th': '...', 'en': '...'} 等
             output_folder: 输出文件夹（如果为None，使用第一个有效目录）
             output_format: 输出格式 ('json', 'csv' 或 'excel')
             recursive: 是否递归扫描

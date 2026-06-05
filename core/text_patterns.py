@@ -25,9 +25,12 @@ CHINESE_PATTERN = re.compile(rf'[{CHINESE_UNICODE_RANGE}]')
 VIETNAMESE_PATTERN = re.compile(rf'[{VIETNAMESE_UNICODE_RANGE}]')
 THAI_PATTERN = re.compile(rf'[{THAI_UNICODE_RANGE}]')
 
-# 综合文本模式：匹配中文、越南文、泰文
+# 拉丁字母（用于识别英语等拉丁文案）
+LATIN_LETTERS_PATTERN = re.compile(r'[A-Za-z]')
+
+# 综合文本模式：匹配中文、越南文、泰文或拉丁字母
 TEXT_PATTERN = re.compile(
-    rf'[{CHINESE_UNICODE_RANGE}{VIETNAMESE_UNICODE_RANGE}{THAI_UNICODE_RANGE}]'
+    rf'[{CHINESE_UNICODE_RANGE}{VIETNAMESE_UNICODE_RANGE}{THAI_UNICODE_RANGE}]|[A-Za-z]'
 )
 
 # ============ 内容过滤模式 ============
@@ -65,8 +68,13 @@ def contains_thai(text: str) -> bool:
     return bool(THAI_PATTERN.search(text))
 
 
+def contains_latin_letters(text: str) -> bool:
+    """检查文本是否包含拉丁字母（常用于识别英文文案）"""
+    return bool(LATIN_LETTERS_PATTERN.search(text))
+
+
 def contains_localized_text(text: str) -> bool:
-    """检查文本是否包含需要本地化的字符（中文、越南文、泰文）"""
+    """检查文本是否包含需要本地化的字符（中文、越南文、泰文、拉丁字母）"""
     return bool(TEXT_PATTERN.search(text))
 
 
