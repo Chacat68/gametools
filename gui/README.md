@@ -95,6 +95,8 @@ dist/gametools_v{版本号}.exe
 
 `--skip-unchanged` 会校验源码、打包参数和构建环境版本，完全一致时直接复用已有 exe，并保持当前版本号不变。
 
+`gui/.build_cache.json` 为 `build_unified.py` 写入的本地增量缓存（含本机路径与文件哈希），已在仓库根目录 `.gitignore` 中忽略，勿提交。
+
 构建期间如果 PyInstaller 长时间没有输出，脚本会按 `--progress-interval` 打印心跳提示；需要强制限制构建耗时可设置 `--build-timeout`。
 
 ---

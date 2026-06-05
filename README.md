@@ -274,6 +274,8 @@ exe 与主窗口默认使用 `gui/assets/gametools.ico` 作为图标。若要换
 
 `--skip-unchanged` 会同时检查源码、打包参数和当前打包环境版本；只有这些输入都未变化时才直接复用已有产物。
 
+`gui/.build_cache.json` 为本地增量缓存，已加入 `.gitignore`，无需提交。
+
 构建脚本会在 PyInstaller 长时间无输出时定时打印心跳提示；可用 `--progress-interval 10` 调整提示间隔，或用 `--build-timeout 1800` 为构建设置超时。
 
 ## 系统要求

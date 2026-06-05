@@ -142,3 +142,6 @@ test/test_multi_lang/*/*.xlsx
 
 # 构建目录
 gui/build/
+
+# GUI 打包增量缓存（含本机绝对路径与哈希，仅本地使用）
+gui/.build_cache.json
