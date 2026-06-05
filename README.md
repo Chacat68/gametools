@@ -220,11 +220,19 @@ python gui/build_unified.py
 
 # 未变化时跳过重打包（不会额外递增版本号）
 python gui/build_unified.py --skip-unchanged
+
+# 开发测试快速打包（禁用UPX，减少优化）
+python gui/build_unified.py --fast
+
+# 打包过程长时间无输出时查看详细阶段
+python gui/build_unified.py --pyinstaller-log-level INFO
 ```
 
 构建完成后会在 `dist/` 目录生成 `gametools_vX.X.X.exe`
 
 `--skip-unchanged` 会同时检查源码、打包参数和当前打包环境版本；只有这些输入都未变化时才直接复用已有产物。
+
+构建脚本会在 PyInstaller 长时间无输出时定时打印心跳提示；可用 `--progress-interval 10` 调整提示间隔，或用 `--build-timeout 1800` 为构建设置超时。
 
 ## 系统要求
 

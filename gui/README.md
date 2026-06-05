@@ -79,11 +79,19 @@ python build_unified.py
 # 未变化时跳过重打包
 python build_unified.py --skip-unchanged
 
+# 快速构建（开发测试）
+python build_unified.py --fast
+
+# 查看更详细的 PyInstaller 阶段日志
+python build_unified.py --pyinstaller-log-level INFO
+
 # 输出位置
 dist/gametools_v{版本号}.exe
 ```
 
 `--skip-unchanged` 会校验源码、打包参数和构建环境版本，完全一致时直接复用已有 exe，并保持当前版本号不变。
+
+构建期间如果 PyInstaller 长时间没有输出，脚本会按 `--progress-interval` 打印心跳提示；需要强制限制构建耗时可设置 `--build-timeout`。
 
 ---
 

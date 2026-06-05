@@ -18,8 +18,10 @@ import shutil
 import argparse
 import hashlib
 import json
+import queue
 import time
 import importlib
+import threading
 from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -116,12 +118,13 @@ def save_build_cache(cache: dict):
         pass
 
 
-def get_build_options_signature(console: bool, upx: bool, optimize: int) -> dict:
+def get_build_options_signature(console: bool, upx: bool, optimize: int, log_level: str) -> dict:
     """生成构建参数签名。"""
     return {
         "console": bool(console),
         "upx": bool(upx),
         "optimize": int(optimize),
+        "pyinstaller_log_level": str(log_level).upper(),
     }
 
 
@@ -266,11 +269,18 @@ def check_rebuild_needed(build_options: dict) -> tuple[bool, list]:
     return len(changed_files) > 0, changed_files
 
 
-def run_command(command, description, capture_output=False):
-    """运行命令并处理错误（流式输出，避免长时间无响应与大输出缓存）"""
+def run_command(command, description, capture_output=False, progress_interval: int = 30,
+                timeout: Optional[int] = None):
+    """运行命令并处理错误。
+
+    使用后台线程读取子进程输出，主线程定时打印心跳，避免 PyInstaller
+    长时间没有日志时看起来像卡住。
+    """
     print(f"\n{'='*50}")
     print(f"正在执行: {description}")
     print(f"命令: {command}")
+    if timeout:
+        print(f"超时限制: {timeout}秒")
     print('='*50)
 
     start_time = time.time()
@@ -287,13 +297,58 @@ def run_command(command, description, capture_output=False):
         )
 
         output_lines = []
-        assert process.stdout is not None
-        for line in process.stdout:
+        output_queue = queue.Queue()
+
+        def read_output():
+            assert process.stdout is not None
+            for output_line in process.stdout:
+                output_queue.put(output_line)
+
+        reader = threading.Thread(target=read_output, daemon=True)
+        reader.start()
+
+        last_output_time = start_time
+        last_progress_time = start_time
+
+        while process.poll() is None:
+            try:
+                line = output_queue.get(timeout=0.5)
+            except queue.Empty:
+                now = time.time()
+                if timeout and now - start_time > timeout:
+                    print(f"\n[TIMEOUT] {description} 超过 {timeout} 秒，正在终止进程...")
+                    process.terminate()
+                    try:
+                        process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    return False if not capture_output else (False, output_lines)
+
+                if progress_interval > 0 and now - last_progress_time >= progress_interval:
+                    elapsed = now - start_time
+                    idle = now - last_output_time
+                    print(f"[BUILD] {description} 仍在执行... 已耗时 {elapsed:.0f}秒，"
+                          f"距离上次输出 {idle:.0f}秒")
+                    last_progress_time = now
+                continue
+
+            if capture_output:
+                output_lines.append(line)
+            print(line, end='')
+            last_output_time = time.time()
+            last_progress_time = last_output_time
+
+        return_code = process.wait()
+        reader.join(timeout=2)
+        while True:
+            try:
+                line = output_queue.get_nowait()
+            except queue.Empty:
+                break
             if capture_output:
                 output_lines.append(line)
             print(line, end='')
 
-        return_code = process.wait()
         elapsed = time.time() - start_time
         
         if return_code == 0:
@@ -540,7 +595,8 @@ minimal_hiddenimports = [
     'tkinter', 'tkinter.ttk', 'tkinter.filedialog',
     'tkinter.messagebox', 'tkinter.scrolledtext',
     # 项目模块
-    'gui.import_helper', 'core',
+    'gui.import_helper', 'gui.json_detector_page',
+    'gui.result_store', 'gui.task_runner', 'core',
     'core.cross_project_translator', 'core.excel_field_extractor',
     'core.table_range_translator', 'core.excel_sheet_splitter',
     'core.batch_excel_modifier', 'core.excel_config_sync',
@@ -643,7 +699,7 @@ exe = EXE(
         print("[OK] spec未变化，跳过重写")
 
 
-def build_exe(build_options: dict):
+def build_exe(build_options: dict, progress_interval: int = 30, build_timeout: Optional[int] = None):
     """构建exe文件。"""
     global LAST_BUILT_EXE
     LAST_BUILT_EXE = None
@@ -662,11 +718,16 @@ def build_exe(build_options: dict):
     pyinstaller_cmd = [
         sys.executable, '-m', 'PyInstaller',
         '--noconfirm',
-        '--log-level=WARN',  # 减少日志输出加速构建
+        f"--log-level={build_options['pyinstaller_log_level']}",
         'gametools_unified.spec'
     ]
     
-    if not run_command(pyinstaller_cmd, "构建exe文件"):
+    if not run_command(
+        pyinstaller_cmd,
+        "构建exe文件",
+        progress_interval=progress_interval,
+        timeout=build_timeout,
+    ):
         return False
     
     build_elapsed = time.time() - build_start_time
@@ -804,6 +865,7 @@ def main():
   完整构建（发布版本）:    python build_unified.py --clean
   增量构建（默认）:        python build_unified.py
   跳过未变化（CI/CD）:     python build_unified.py --skip-unchanged
+  查看详细打包过程:        python build_unified.py --pyinstaller-log-level INFO
         """
     )
     parser.add_argument('--clean', action='store_true', 
@@ -822,6 +884,13 @@ def main():
                        help='如果源文件未变化则跳过构建（适合CI/CD）')
     parser.add_argument('--optimize', type=int, choices=[0, 1, 2], default=2,
                        help='Python优化级别 (0=无, 1=移除assert, 2=移除assert+docstring，默认2)')
+    parser.add_argument('--pyinstaller-log-level', choices=['TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'],
+                       default='WARN',
+                       help='PyInstaller日志级别，INFO可用于观察详细构建阶段（默认WARN）')
+    parser.add_argument('--progress-interval', type=int, default=30,
+                       help='子命令无输出时的心跳提示间隔秒数，0表示关闭（默认30）')
+    parser.add_argument('--build-timeout', type=int, default=0,
+                       help='PyInstaller构建超时秒数，0表示不限制（默认0）')
     args = parser.parse_args()
 
     # 无论从哪里调用，都切到 gui/ 目录，避免相对路径导致打包到错误目录或漏打文件
@@ -853,7 +922,15 @@ def main():
             console=bool(args.with_console),
             upx=not bool(args.no_upx),
             optimize=args.optimize,
+            log_level=args.pyinstaller_log_level,
         )
+        print("[构建选项]")
+        print(f"  console: {build_options['console']}")
+        print(f"  upx: {build_options['upx']}")
+        print(f"  optimize: {build_options['optimize']}")
+        print(f"  pyinstaller_log_level: {build_options['pyinstaller_log_level']}")
+        print(f"  progress_interval: {max(0, args.progress_interval)}秒")
+        print(f"  build_timeout: {args.build_timeout or '不限制'}")
         
         print("=" * 60)
         
@@ -917,7 +994,11 @@ def main():
         )
         
         # 构建exe
-        if not build_exe(build_options=build_options):
+        if not build_exe(
+            build_options=build_options,
+            progress_interval=max(0, args.progress_interval),
+            build_timeout=args.build_timeout or None,
+        ):
             print("[ERROR] 构建失败")
             return False
         
