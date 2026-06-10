@@ -6,6 +6,10 @@
 
 批量改表工具用于根据映射表（如分页Excel）批量修改多个Excel文件中的内容。通过配置表名列、ID列，结合JSON配置文件自动匹配需要修改的字段，可以精确地将映射表中的新值更新到目标Excel文件中。
 
+## 图形界面
+
+统一 GUI 中「批量改表」页签由 `gui/batch_modifier_page.py` 承载（工作台与各页共用路径型变量）；批量写入与 xlwings 编排仍由 `core/batch_excel_modifier.py` 实现。
+
 ## 使用场景
 
 1. **多语言内容更新**: 根据翻译对照表批量更新游戏配置表中的多语言文本
@@ -18,6 +22,7 @@
 
 - **自动字段匹配**: 根据JSON配置文件中定义的 `fields` 和 `fields_with_examples` 自动确定需要修改的字段
 - **智能过滤**: 只修改JSON配置中定义的字段，映射表中的其他列会被忽略
+- **内容过滤**: 映射表语言列中的资源标识符（如 `ass_icon_001`）等非文案值会被跳过，规则见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md) 与 `core/text_patterns.py`
 - **配置复用**: 使用与其他工具（如字段提取器）相同的JSON配置文件
 
 ## 文件格式说明

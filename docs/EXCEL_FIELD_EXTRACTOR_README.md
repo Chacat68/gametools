@@ -114,6 +114,7 @@ print(f"输出文件: {stats['output_file']}")
 
 - 纯数字（123, 45.67等）
 - 空单元格
+- 游戏资源/配置标识符（「英文/数字 + 下划线」片段，如 `ass_sss_`、`ass_icon_001`）
 
 ## 字段名过滤规则
 
@@ -200,9 +201,17 @@ A: 全项目默认值在 **`core/constants.py`** 中的 `FIELD_NAME_ROW`、`FIEL
   - 支持递归扫描
   - 支持多语言字段名
 
+## 并行扫描与配置
+
+目录内多 Excel 文件的扫描会使用 `core/parallel_utils.py`，读取 `config.json` → `scan.enable_parallel`（默认 `true`）与 `scan.max_workers`（默认 `4`）。关闭并行时将回退为单线程顺序处理。
+
+行边界检测与 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md) 一致，实现位于 `core/excel_layout_utils.py`。
+
+首次使用请复制根目录 `config.example.json` 为 `config.json`（该文件已加入 `.gitignore`，不会提交本机窗口位置等偏好）。
+
 ## 相关文件
 
-- **布局与常量**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)，`core/constants.py`
+- **布局与常量**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)，`core/constants.py`，`core/excel_layout_utils.py`
 - 核心模块：`core/excel_field_extractor.py`
 - 命令行工具：`tools/excel_field_extractor.py`
 - GUI界面：`gui/excel_field_extractor_gui.py`

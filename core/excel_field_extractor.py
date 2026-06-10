@@ -29,11 +29,15 @@ from core.constants import (
     ROW_BOUNDARY_KEYWORD,
 )
 from core.text_patterns import (
-    TEXT_PATTERN,
     is_filterable_content,
-    contains_localized_text,
+    is_translatable_text,
     contains_cjk_vietnamese_or_thai,
 )
+from core.excel_layout_utils import (
+    check_row_boundary_openpyxl_sheet,
+    find_boundary_row_openpyxl_sheet,
+)
+from core.parallel_utils import map_parallel_items
 
 
 class ExcelFieldExtractor:
@@ -104,45 +108,12 @@ class ExcelFieldExtractor:
         if self.progress_callback:
             self.progress_callback(message, percentage)    
     def _check_row_boundary(self, sheet, row_idx: int) -> bool:
-        """
-        检查当前行是否为「数据区下限边界行」。
-        若该行任意单元格 strip 后小写等于 ``self.boundary_keyword``（默认 ``ROW_BOUNDARY_KEYWORD``），
-        则本行及以下不再作为数据遍历，调用方应立即 ``break`` 结束行循环。
-        
-        Args:
-            sheet: openpyxl工作表对象
-            row_idx: 行号（从1开始）
-            
-        Returns:
-            bool: True 表示已到达边界行，应停止向下遍历
-        """
-        if row_idx > sheet.max_row:
-            return False
-        
-        for cell in sheet[row_idx]:
-            if cell.value is not None:
-                cell_str = str(cell.value).strip().lower()
-                if cell_str == self.boundary_keyword:
-                    return True
-        return False
-    
+        """检查 openpyxl 工作表行是否为数据区下限边界行。"""
+        return check_row_boundary_openpyxl_sheet(sheet, row_idx, self.boundary_keyword)
+
     def _find_boundary_row(self, sheet, start_row: int = DATA_START_ROW) -> int:
-        """
-        从 start_row 起向下查找第一个边界行（任意格等于行边界关键字）。
-        返回该行的物理行号；未找到则返回 ``sheet.max_row + 1``。
-        数据区遍历应使用 ``range(data_start_row, 返回值)``，不包含边界行本身。
-        
-        Args:
-            sheet: openpyxl工作表对象
-            start_row: 开始搜索的行号（默认从 DATA_START_ROW 开始）
-            
-        Returns:
-            int: 边界行的物理行号；未找到则为 sheet.max_row + 1
-        """
-        for row_idx in range(start_row, sheet.max_row + 1):
-            if self._check_row_boundary(sheet, row_idx):
-                return row_idx
-        return sheet.max_row + 1
+        """查找第一个边界行；未找到则返回 sheet.max_row + 1。"""
+        return find_boundary_row_openpyxl_sheet(sheet, start_row, self.boundary_keyword)
     
     def is_excel_file(self, file_path: Path) -> bool:
         """
@@ -158,26 +129,12 @@ class ExcelFieldExtractor:
     
     def contains_text(self, value) -> bool:
         """
-        检查值是否包含本地化文本内容（仅限中文、越南文、泰文）
-        排除：纯数字、英文代码、配置项、数组、对象等
-        
-        Args:
-            value: 要检查的值
-            
-        Returns:
-            bool: 包含本地化文本返回True
+        检查值是否包含本地化文本内容。
+        排除：纯数字、资源标识符、数组/对象占位、配置关键字等（见 is_translatable_text）。
         """
         if pd.isna(value):
             return False
-        
-        value_str = str(value).strip()
-        
-        # 排除空值和应被过滤的内容
-        if not value_str or is_filterable_content(value_str):
-            return False
-        
-        # 检查是否包含中文、越南文或泰文字符
-        return contains_localized_text(value_str)
+        return is_translatable_text(value)
     
     def find_column_range_between_markers(self, sheet, marker: Optional[str] = None):
         """
@@ -479,20 +436,35 @@ class ExcelFieldExtractor:
         print(f"找到 {total_files} 个Excel文件")
         self._report_progress(f"{lang_prefix}找到 {total_files} 个Excel文件", lang_progress_base)
         
-        for idx, file_path in enumerate(excel_files, 1):
-            # 计算当前进度
-            file_progress = lang_progress_base + (idx / total_files) * lang_progress_range if total_files > 0 else lang_progress_base
-            
-            # 报告文件处理进度
-            self._report_progress(
-                f"{lang_prefix}处理 ({idx}/{total_files}): {file_path.name}", 
-                file_progress
+        def _extract_single_file(file_path: Path):
+            worker = ExcelFieldExtractor()
+            worker.verbose_warnings = False
+            worker.warn_empty_field_type = self.warn_empty_field_type
+            worker.warn_missing_c_marker = self.warn_missing_c_marker
+            worker.max_printed_warnings = 0
+            results = worker.extract_fields_from_excel(file_path)
+            return results, worker.error_logs, worker.extraction_warnings
+
+        def _on_file_complete(completed: int, total: int, file_path: Path):
+            file_progress = (
+                lang_progress_base + (completed / total) * lang_progress_range
+                if total > 0 else lang_progress_base
             )
-            print(f"处理文件 {idx}/{total_files}: {file_path.name}")
-            
-            results = self.extract_fields_from_excel(file_path)
+            self._report_progress(
+                f"{lang_prefix}处理 ({completed}/{total}): {file_path.name}",
+                file_progress,
+            )
+            print(f"处理文件 {completed}/{total}: {file_path.name}")
+
+        for results, errors, warnings in map_parallel_items(
+            excel_files,
+            _extract_single_file,
+            on_complete=_on_file_complete,
+        ):
             all_results.extend(results)
-        
+            self.error_logs.extend(errors)
+            self.extraction_warnings.extend(warnings)
+
         return all_results
     
     def _format_json_data(self, results: List[Dict], language: str = None) -> Dict:

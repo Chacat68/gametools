@@ -52,7 +52,18 @@ def setup_logging(level=logging.INFO, log_to_console=True, log_to_file=False, lo
 # 默认日志配置（在模块首次导入时执行）
 # 检查是否已经配置过日志，避免重复配置
 if not logging.getLogger().handlers:
-    setup_logging()
+    try:
+        from core.config_manager import get_config
+        log_cfg = get_config().log
+        level = getattr(logging, str(log_cfg.level).upper(), logging.INFO)
+        setup_logging(
+            level=level,
+            log_to_console=log_cfg.log_to_console,
+            log_to_file=log_cfg.log_to_file,
+            log_dir=Path(__file__).resolve().parent.parent / 'logs',
+        )
+    except Exception:
+        setup_logging()
 
 
 # ============ 版本信息 ============
@@ -93,7 +104,9 @@ from core.text_patterns import (
     contains_thai,
     contains_latin_letters,
     contains_localized_text,
+    is_asset_identifier,
     is_filterable_content,
+    is_translatable_text,
     parse_cell_reference,
 )
 
@@ -127,7 +140,9 @@ __all__ = [
     'contains_thai',
     'contains_latin_letters',
     'contains_localized_text',
+    'is_asset_identifier',
     'is_filterable_content',
+    'is_translatable_text',
     'parse_cell_reference',
     # 版本
     '__version__',

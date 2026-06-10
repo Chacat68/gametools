@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 统一文本模式模块
-集中管理项目中使用的正则表达式，避免重复定义
+集中管理项目中使用的正则表达式与单元格内容过滤规则，避免重复定义。
+
+各工具（字段导出、多语言提取、批量改表等）判断「是否为待翻译文本」时，
+应统一使用 is_translatable_text() 或 is_filterable_content()，勿在各模块重复实现。
 """
 
 import re
@@ -47,6 +50,10 @@ OBJECT_ARRAY_PATTERN = re.compile(r'^\s*\[\s*(\{\s*[\d\s,\.\-]*\s*\}\s*,?\s*)+\]
 # 纯数字（包括负数和小数）
 PURE_NUMBER_PATTERN = re.compile(r'^\s*[\-]?[\d\.]+\s*$')
 
+# 游戏资源/配置标识符: 由「英文/数字 + 下划线」片段组成
+# 示例: ass_icon_001, ass_sss_, npc104_ui
+ASSET_IDENTIFIER_PATTERN = re.compile(r'^(?:[A-Za-z0-9]+_)+[A-Za-z0-9]*$')
+
 # Excel单元格引用: A1, B5, AA100 等
 CELL_REFERENCE_PATTERN = re.compile(r'^([A-Z]+)(\d+)$')
 
@@ -74,8 +81,32 @@ def contains_latin_letters(text: str) -> bool:
 
 
 def contains_localized_text(text: str) -> bool:
-    """检查文本是否包含需要本地化的字符（中文、越南文、泰文、拉丁字母）"""
-    return bool(TEXT_PATTERN.search(text))
+    """
+    检查文本是否包含需要本地化的字符（中文、越南文、泰文、拉丁字母）。
+
+    会先排除 is_filterable_content 判定为配置/占位的内容（含资源标识符）。
+    """
+    if not text:
+        return False
+    value_str = str(text).strip()
+    if not value_str or is_filterable_content(value_str):
+        return False
+    return bool(TEXT_PATTERN.search(value_str))
+
+
+def is_translatable_text(value) -> bool:
+    """
+    判断单元格值是否应视为待翻译/本地化文本（全项目统一入口）。
+
+    字段导出、多语言提取、批量改表等工具均应通过此函数或 is_filterable_content
+    过滤纯数字、数组占位、游戏资源标识符（英文/数字 + 下划线片段）等非文案内容。
+    """
+    if value is None:
+        return False
+    value_str = str(value).strip()
+    if not value_str or value_str.lower() == 'nan':
+        return False
+    return contains_localized_text(value_str)
 
 
 def contains_cjk_vietnamese_or_thai(text: str) -> bool:
@@ -92,6 +123,18 @@ def contains_cjk_vietnamese_or_thai(text: str) -> bool:
     )
 
 
+def is_asset_identifier(value_str: str) -> bool:
+    """
+    检查是否为游戏资源/配置标识符。
+
+    格式：由一个或多个「英文/数字 + 下划线」片段组成，末尾可再接一段英文/数字。
+    示例: ass_sss_, ass_icon_001, npc104_ui
+    """
+    if not value_str:
+        return False
+    return bool(ASSET_IDENTIFIER_PATTERN.match(value_str))
+
+
 def is_filterable_content(value_str: str) -> bool:
     """
     检查内容是否应该被过滤（不需要处理的内容）
@@ -102,6 +145,7 @@ def is_filterable_content(value_str: str) -> bool:
     - 对象数组 [{},{}]
     - 纯数字
     - 配置关键字 null, None, true, false 等
+    - 游戏资源/配置标识符（英文/数字 + 下划线片段，如 ass_sss_、ass_icon_001）
     
     Args:
         value_str: 要检查的字符串（已经strip过的）
@@ -130,6 +174,10 @@ def is_filterable_content(value_str: str) -> bool:
     
     # 配置关键字
     if value_str in ('null', 'None', 'true', 'false', 'True', 'False'):
+        return True
+
+    # 游戏资源/配置标识符（英文导出时易被误判为待翻译文案）
+    if is_asset_identifier(value_str):
         return True
     
     return False

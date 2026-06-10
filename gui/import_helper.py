@@ -30,6 +30,7 @@ def fix_pyinstaller_imports():
             import core.excel_field_extractor
             import core.table_range_translator
             import core.cross_project_translator
+            import core.cross_project_translator_cached
             import tools.json_error_detector
         except ImportError as e:
             print(f"预导入核心模块失败: {e}")

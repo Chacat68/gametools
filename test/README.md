@@ -1,11 +1,22 @@
 # GameTools 测试文件夹
 
-> 版本: v1.42.0 | 最后更新: 2026-01-10
+> 版本: 以 [../version.py](../version.py) 为准 | 最后更新: 2026-06
 
 ## 📋 概述
 
 本文件夹包含 GameTools 项目的所有**功能测试**和**测试数据生成工具**。  
 涉及 Excel 的用例默认遵循策划表布局约定，见 [../docs/EXCEL_TABLE_LAYOUT.md](../docs/EXCEL_TABLE_LAYOUT.md)。
+
+## 🧪 运行测试
+
+```bash
+# 推荐：pytest（CI 同样使用此方式）
+pip install -r requirements-dev.txt
+pytest
+
+# 兼容：子进程串联全部 test_*.py
+python run_all_tests.py
+```
 
 ## 📁 目录结构
 

@@ -52,7 +52,7 @@ from core.constants import (
 )
 from core.text_patterns import (
     is_filterable_content, contains_chinese, contains_vietnamese, contains_thai,
-    contains_latin_letters,
+    contains_latin_letters, is_translatable_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -198,47 +198,14 @@ class TableRangeTranslator:
         return table_data_by_lang
     
     def _check_row_boundary(self, df: DataFrameType, row_idx: int) -> bool:
-        """
-        检查当前行是否为「数据区下限边界行」。
-        若该行任意单元格 strip 后小写等于 ``self.boundary_keyword``（默认与
-        ``ROW_BOUNDARY_KEYWORD`` 一致），则本行及以下不再作为数据遍历，调用方应立即
-        ``break`` 结束行循环。
-        
-        Args:
-            df: pandas DataFrame
-            row_idx: 行索引（0-based）
-            
-        Returns:
-            bool: True 表示已到达边界行，应停止向下遍历
-        """
-        if row_idx >= len(df):
-            return False
-        
-        row_data = df.iloc[row_idx]
-        for cell_value in row_data:
-            if pd.notna(cell_value):
-                cell_str = str(cell_value).strip().lower()
-                if cell_str == self.boundary_keyword:
-                    return True
-        return False
-    
+        """检查 DataFrame 行是否为数据区下限边界行。"""
+        from core.excel_layout_utils import check_row_boundary_dataframe
+        return check_row_boundary_dataframe(df, row_idx, self.boundary_keyword)
+
     def _find_boundary_row(self, df: DataFrameType, start_row: int = DATA_START_ROW_INDEX) -> Optional[int]:
-        """
-        从 start_row 起向下查找第一个边界行（任意格等于行边界关键字）。
-        返回值用作行遍历上界：数据只应处理 ``range(..., 返回索引)``，不包含边界行本身。
-        若未找到边界行则返回 None，表示可一直扫到 DataFrame 末尾（循环内仍应防御性检测边界）。
-        
-        Args:
-            df: pandas DataFrame
-            start_row: 开始搜索的行索引（默认从 DATA_START_ROW / DATA_START_ROW_INDEX 起）
-            
-        Returns:
-            Optional[int]: 边界行的 0-based 行索引；未找到返回 None
-        """
-        for row_idx in range(start_row, len(df)):
-            if self._check_row_boundary(df, row_idx):
-                return row_idx
-        return None
+        """查找第一个边界行；未找到返回 None。"""
+        from core.excel_layout_utils import find_boundary_row_dataframe
+        return find_boundary_row_dataframe(df, start_row, self.boundary_keyword)
     
     def load_json_config(self, json_path: str, target_language: str = None) -> Dict:
         """
@@ -682,7 +649,7 @@ class TableRangeTranslator:
     def is_valid_translation_text(self, text: str) -> bool:
         """
         判断文本是否为有效的翻译文本（非结构化数据）
-        过滤掉：空花括号{}、数组格式[2,99]/{2,99}、纯数字
+        过滤掉：空花括号{}、数组格式[2,99]/{2,99}、纯数字、资源标识符（ass_xxx 等）
         
         Args:
             text: 待检测文本
@@ -694,11 +661,9 @@ class TableRangeTranslator:
             return False
         
         text_str = str(text).strip()
-        if not text_str:
+        if is_filterable_content(text_str):
             return False
-        
-        # 使用统一的过滤函数
-        return not is_filterable_content(text_str)
+        return is_translatable_text(text_str)
     
     def filter_lang_contents(self, lang_contents: Dict[str, str]) -> Dict[str, str]:
         """
@@ -730,6 +695,13 @@ class TableRangeTranslator:
         cached_language_type = self._language_type_cache.get(text_str)
         if cached_language_type is not None:
             return cached_language_type
+
+        if is_filterable_content(text_str):
+            language_type = "其他"
+            if len(self._language_type_cache) >= self._language_type_cache_max_size:
+                self._language_type_cache.clear()
+            self._language_type_cache[text_str] = language_type
+            return language_type
         
         # 使用统一的语言检测函数
         has_chinese = contains_chinese(text_str)
@@ -966,8 +938,10 @@ class TableRangeTranslator:
                         break
                     cell_value = df.iloc[row_idx, col_idx]
                     
-                    # 跳过空值
+                    # 跳过空值与非翻译内容（数组、纯数字、资源标识符等）
                     if pd.isna(cell_value) or not str(cell_value).strip():
+                        continue
+                    if not self.is_valid_translation_text(cell_value):
                         continue
                     
                     # 检测语言类型

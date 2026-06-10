@@ -51,7 +51,26 @@
 2. **边界行以下的所有行**均不再遍历：一旦检测到边界行，当前「按行向下」的循环应立即 **`break`**，结束遍历。
 3. 实现上通常先用 `_find_boundary_row` 将 `range` 上界缩到边界行索引之前，再在循环首部用 `_check_row_boundary` 做一次防御性判断，避免上界计算与表内容不一致时越过边界。
 
+**公共实现**：openpyxl 与 pandas 两套边界检测已统一到 `core/excel_layout_utils.py`，字段导出与多语言提取通过该模块调用，避免逻辑漂移。
+
 该约定与 `FIELD_NAME_ROW`、列标记 `COLUMN_MARKER` 相互独立。
+
+## 单元格内容过滤（全工具统一）
+
+策划表数据区中，下列内容**不应**视为待翻译文案。规则由 `core/text_patterns.py` 统一定义，各工具通过 `is_translatable_text()` / `is_filterable_content()` 调用，**勿在业务模块重复实现**。
+
+| 类型 | 示例 | 说明 |
+|------|------|------|
+| 纯数字 | `1001`, `0.5` | 配置数值 |
+| 空括号/数组占位 | `{}`, `[2,99]` | 结构化占位 |
+| 配置关键字 | `null`, `true` | 非文案 |
+| 游戏资源标识符 | `ass_sss_`, `ass_icon_001`, `npc104_ui` | 「英文/数字 + 下划线」片段 |
+
+**已接入的工具：**
+
+- 字段导出（`excel_field_extractor.py`）：列文本检测、排除名字段抽样
+- 多语言翻译提取（`table_range_translator.py`）：提取与语言分类
+- 批量改表（`batch_excel_modifier.py`）：映射表写入时跳过非文案值
 
 ## 相关文档与代码
 
@@ -66,4 +85,4 @@
 - 批量改表：`docs/BATCH_MODIFIER_GUIDE.md`
 - 字段导出说明：`docs/EXCEL_FIELD_EXTRACTOR_README.md`
 - 字段过滤：`docs/FIELD_FILTER_GUIDE.md`
-- 错误日志示例中的行号：`docs/ERROR_LOGGING_FEATURE.md`
+- 单元格内容过滤规则：`core/text_patterns.py`（`is_translatable_text` / `is_asset_identifier`）

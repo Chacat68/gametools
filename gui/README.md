@@ -32,6 +32,11 @@ python gametools_unified.py
 gui/
 ├── gametools_unified.py    # 统一界面主程序与功能装配
 ├── json_detector_page.py   # JSON 检测页签控制器
+├── cross_project_page.py   # 跨项目翻译页签控制器（使用缓存版 core）
+├── field_extractor_page.py # 表字段导出页签控制器
+├── table_range_page.py     # 多语言翻译提取页签控制器
+├── batch_modifier_page.py  # 批量改表页签控制器
+├── excel_data_processor_page.py  # Excel 数据处理（整合）页签控制器
 ├── result_store.py         # 各功能页结果文本存储
 ├── task_runner.py          # 后台任务与 UI 主线程回调封装
 ├── run_unified.py          # 统一界面启动脚本
@@ -39,20 +44,20 @@ gui/
 ├── assets/                 # 图标等资源（见 assets/README.md）
 │   ├── gametools.ico       # 默认应用图标（打包 exe + 窗口图标）
 │   └── build_gametools_icon.py  # 用标准库重新生成 .ico
-├── ui_theme.py             # 公共主题配置
+├── ui_theme.py             # 公共主题配置（含复选框勾选样式，避免 clam 主题显示 X）
 ├── gametools_unified.spec  # PyInstaller 配置文件
 └── ...
 ```
 
 ### 拆分约定
 
-`gametools_unified.py` 负责窗口、导航和功能页装配；单个功能页的 UI 与动作逻辑逐步迁移到独立 `*_page.py` 模块。公共的结果缓存和后台线程调度分别放在 `result_store.py` 与 `task_runner.py`，功能页应通过主界面提供的兼容方法访问这些能力。
+`gametools_unified.py` 负责窗口、导航和功能页装配；单个功能页的 UI 与动作逻辑逐步迁移到独立 `*_page.py` 模块（当前已有 `json_detector_page.py`、`cross_project_page.py`、`field_extractor_page.py`、`table_range_page.py`、`batch_modifier_page.py`、`excel_data_processor_page.py`）。公共的结果缓存和后台线程调度分别放在 `result_store.py` 与 `task_runner.py`，功能页应通过主界面提供的兼容方法访问这些能力。
 
 ## 功能页签
 
 | 页签 | 功能 | 核心模块 |
 | -------- | ------ | ---------- |
-| 跨项目翻译对应 | 翻译映射和对照 | `cross_project_translator.py` |
+| 跨项目翻译对应 | 翻译映射和对照（GUI 使用 `CrossProjectTranslatorWithCache`） | `cross_project_translator_cached.py` |
 | JSON检测 | JSON语法和格式错误检测 | `json_error_detector.py` |
 | Excel数据处理 | A列分组和拆分 | `excel_data_processor.py` |
 | 表字段导出 | 提取本地化字段 | `excel_field_extractor.py` |
@@ -70,7 +75,7 @@ gui/
 
 1. 打开「关于」页面
 2. 点击「界面设置」按钮
-3. 在弹窗中勾选/取消勾选需要显示的功能页签（含「工作台」）
+3. 在弹窗中勾选/取消勾选需要显示的功能页签（含「工作台」）；勾选框选中时显示 **勾（✓）**，而非 clam 主题默认的 X
 4. 点击「保存」
 5. **保存后主区页签与侧栏会立即按勾选更新**（无需重启）；配置会写入 `config.json`，下次启动仍生效
 

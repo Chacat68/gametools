@@ -7,6 +7,8 @@
 1. **内存缓存** - 快速的进程内缓存，使用LRU淘汰策略
 2. **文件缓存** - 持久化的磁盘缓存，跨程序运行保留
 
+**统一 GUI**：`gui/gametools_unified.py` 的「跨项目翻译」页签已默认使用 `CrossProjectTranslatorWithCache`，缓存开关与容量读取 `config.json` 的 `cache` 节（模板见根目录 `config.example.json`）。
+
 ---
 
 ## 🏗️ 架构设计

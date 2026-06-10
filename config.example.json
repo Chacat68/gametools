@@ -1,0 +1,58 @@
+{
+  "version": "1.46.64",
+  "last_updated": "",
+  "scan": {
+    "recursive": true,
+    "enable_parallel": true,
+    "max_workers": 4,
+    "chunk_size": 15000,
+    "auto_open_result": false
+  },
+  "cache": {
+    "enabled": true,
+    "max_size": 1000,
+    "max_memory_mb": 1000,
+    "default_ttl": 3600.0
+  },
+  "log": {
+    "level": "INFO",
+    "log_to_file": false,
+    "log_to_console": true,
+    "use_colors": true,
+    "keep_days": 7
+  },
+  "ui": {
+    "theme": "default",
+    "window_width": 980,
+    "window_height": 720,
+    "font_size": 10,
+    "auto_save_position": true,
+    "window_x": -1,
+    "window_y": -1,
+    "sidebar_collapsed": false,
+    "sidebar_width": 240,
+    "last_active_tab": "home",
+    "recent_tasks": [],
+    "saved_form_state": {},
+    "recent_paths": {}
+  },
+  "path": {
+    "last_scan_dir": "",
+    "last_output_dir": "",
+    "default_output_format": "xlsx"
+  },
+  "detection": {
+    "detect_vietnamese": true,
+    "detect_chinese": true,
+    "detect_english": true,
+    "min_confidence": 0.8
+  },
+  "tabs": {
+    "cross_project_translator": true,
+    "json_detector": true,
+    "excel_data_processor": true,
+    "field_extractor": true,
+    "table_range_translator": true,
+    "batch_modifier": true
+  }
+}

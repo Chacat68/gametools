@@ -421,14 +421,14 @@ def check_dependencies(parallel: bool = True):
             for future in as_completed(futures):
                 pkg_name, success, info = future.result()
                 if success:
-                    print(f"  ✓ {pkg_name}: v{info}")
+                    print(f"  [OK] {pkg_name}: v{info}")
                 else:
                     missing.append(pkg_name)
     else:
         for pkg_info in required_imports:
             pkg_name, success, info = check_import(pkg_info)
             if success:
-                print(f"  ✓ {pkg_name}: v{info}")
+                print(f"  [OK] {pkg_name}: v{info}")
             else:
                 missing.append(pkg_name)
 
@@ -596,6 +596,9 @@ minimal_hiddenimports = [
     'tkinter.messagebox', 'tkinter.scrolledtext',
     # 项目模块
     'gui.import_helper', 'gui.json_detector_page',
+    'gui.cross_project_page', 'gui.field_extractor_page', 'gui.table_range_page',
+    'gui.batch_modifier_page',
+    'gui.excel_data_processor_page',
     'gui.result_store', 'gui.task_runner', 'core',
     'core.cross_project_translator', 'core.excel_field_extractor',
     'core.table_range_translator', 'core.excel_sheet_splitter',

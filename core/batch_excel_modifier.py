@@ -19,7 +19,7 @@ from core.constants import (
     SUPPORTED_LANGUAGES, SUPPORTED_EXCEL_EXTENSIONS, SUPPORTED_MAPPING_FORMATS,
     FIELD_NAME_ROW, DATA_START_ROW,
 )
-from core.text_patterns import parse_cell_reference
+from core.text_patterns import parse_cell_reference, is_translatable_text
 
 # 尝试导入xlwings
 try:
@@ -1636,7 +1636,7 @@ class BatchExcelModifier:
                 id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
                 lang_value = row[detected_lang_column] if pd.notna(row[detected_lang_column]) else ''
                 
-                if not id_value or not lang_value:
+                if not id_value or not lang_value or not is_translatable_text(lang_value):
                     self.processing_stats['skipped_rows'] += 1
                     continue
                 
@@ -2258,7 +2258,7 @@ class BatchExcelModifier:
                 id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
                 lang_value = row[target_language] if pd.notna(row[target_language]) else ''
                 
-                if not id_value or not lang_value:
+                if not id_value or not lang_value or not is_translatable_text(lang_value):
                     self.processing_stats['skipped_rows'] += 1
                     continue
                 

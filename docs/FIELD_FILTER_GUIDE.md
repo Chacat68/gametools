@@ -148,6 +148,10 @@ self.excluded_field_names = {
 3. **内容检测优先**: 对 `excluded_field_names` 中的字段名，会抽样检查该列数据区是否出现**中文、越南文或泰文**；仅有拉丁字母/数字的列仍会被过滤（与「文本列」扫描是否含拉丁字母无关）
 4. **向后兼容**: 不影响现有功能，纯粹是过滤层面的优化
 
+## 单元格内容过滤（与全工具统一）
+
+除按**字段名**过滤 `name`/`id`/`code` 等列外，数据区单元格若匹配资源标识符（「英文/数字 + 下划线」片段，如 `ass_sss_`、`npc104_ui`），也会在各工具中被视为非文案。规则定义于 `core/text_patterns.py` 的 `is_translatable_text()`，详见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)。
+
 ## 测试验证
 
 运行测试脚本验证过滤功能：

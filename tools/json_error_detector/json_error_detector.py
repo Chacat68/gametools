@@ -5,329 +5,326 @@ JSON错误检测工具
 用于检测JSON文件中的语法错误、结构错误、编码错误等
 """
 
-import json
-import re
 import argparse
+import json
 import os
-from typing import List, Dict, Any, Tuple, Set
-from collections import Counter
-import difflib
+import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class JSONErrorDetector:
     """JSON错误检测器"""
-    
+
+    _ENCODINGS = ('utf-8', 'utf-8-sig', 'gbk', 'gb2312', 'latin-1')
+    _TRAILING_COMMA_RE = re.compile(r',\s*([}\]])')
+    _SINGLE_QUOTE_STRING_RE = re.compile(r"'([^'\\]|\\.)*'")
+    _LINE_COMMENT_RE = re.compile(r'//')
+
     def __init__(self):
-        self.errors = []
-        self.warnings = []
-        
-    def load_json_file(self, file_path: str) -> Tuple[Any, List[Dict[str, Any]]]:
-        """加载JSON文件并检测基本语法错误"""
-        errors = []
-        
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            # 检测基本语法错误
-            syntax_errors = self._detect_syntax_errors(content)
-            errors.extend(syntax_errors)
-            
-            if not syntax_errors:
-                # 尝试解析JSON
-                try:
-                    data = json.loads(content)
-                    return data, errors
-                except json.JSONDecodeError as e:
-                    errors.append({
-                        'type': 'JSON解析错误',
-                        'message': str(e),
-                        'line': getattr(e, 'lineno', '未知'),
-                        'column': getattr(e, 'colno', '未知'),
-                        'severity': 'error'
-                    })
-            else:
-                return None, errors
-                
-        except Exception as e:
-            errors.append({
-                'type': '文件读取错误',
-                'message': str(e),
-                'line': '未知',
-                'column': '未知',
-                'severity': 'error'
-            })
-            return None, errors
-    
-    def _detect_syntax_errors(self, content: str) -> List[Dict[str, Any]]:
-        """检测JSON语法错误"""
-        errors = []
-        lines = content.split('\n')
-        
-        # 检测常见的语法错误
-        for i, line in enumerate(lines, 1):
-            line = line.strip()
-            if not line or line.startswith('//'):
+        self.errors: List[Dict[str, Any]] = []
+        self.warnings: List[Dict[str, Any]] = []
+
+    def _make_issue(
+        self,
+        issue_type: str,
+        message: str,
+        line: Any = '未知',
+        column: Any = '未知',
+        severity: str = 'error',
+    ) -> Dict[str, Any]:
+        return {
+            'type': issue_type,
+            'message': message,
+            'line': line,
+            'column': column,
+            'severity': severity,
+        }
+
+    def _position_at(self, content: str, index: int) -> Tuple[int, int]:
+        line = content.count('\n', 0, index) + 1
+        last_newline = content.rfind('\n', 0, index)
+        column = index - last_newline if last_newline >= 0 else index + 1
+        return line, column
+
+    def _outside_string_spans(self, content: str) -> List[Tuple[int, int]]:
+        """返回不在 JSON 双引号字符串内的文本区间。"""
+        spans: List[Tuple[int, int]] = []
+        index = 0
+        length = len(content)
+        segment_start = 0
+        in_string = False
+        escaped = False
+
+        while index < length:
+            char = content[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+            elif char == '"':
+                if segment_start < index:
+                    spans.append((segment_start, index))
+                in_string = True
+                segment_start = index + 1
+            index += 1
+
+        if not in_string and segment_start < length:
+            spans.append((segment_start, length))
+        return spans
+
+    def _read_file(self, file_path: str) -> Tuple[Optional[str], List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """读取文件并返回内容、错误和编码警告。"""
+        errors: List[Dict[str, Any]] = []
+        warnings: List[Dict[str, Any]] = []
+        path = Path(file_path)
+
+        for encoding in self._ENCODINGS:
+            try:
+                content = path.read_text(encoding=encoding)
+            except UnicodeDecodeError:
                 continue
-                
-            # 检测单引号（JSON标准不支持单引号）
-            if "'" in line and not line.startswith('//'):
-                errors.append({
-                    'type': '单引号错误',
-                    'message': f'第{i}行使用了单引号，JSON标准要求使用双引号',
-                    'line': i,
-                    'column': line.find("'") + 1,
-                    'severity': 'error'
-                })
-            
-            # 检测注释（JSON标准不支持注释）
-            if '//' in line and not line.strip().startswith('//'):
-                errors.append({
-                    'type': '注释错误',
-                    'message': f'第{i}行包含注释，JSON标准不支持注释',
-                    'line': i,
-                    'column': line.find('//') + 1,
-                    'severity': 'error'
-                })
-        
-        # 检测尾随逗号（更精确的检测）
-        trailing_comma_errors = self._detect_trailing_commas(content)
-        errors.extend(trailing_comma_errors)
-        
-        return errors
-    
-    def _detect_trailing_commas(self, content: str) -> List[Dict[str, Any]]:
-        """检测尾随逗号"""
-        errors = []
-        lines = content.split('\n')
-        
-        for i, line in enumerate(lines, 1):
-            # 检测对象中的尾随逗号
-            if re.search(r',\s*}', line):
-                comma_pos = line.rfind(',')
-                if comma_pos != -1:
-                    errors.append({
-                        'type': '尾随逗号',
-                        'message': f'第{i}行对象中存在尾随逗号',
-                        'line': i,
-                        'column': comma_pos + 1,
-                        'severity': 'error'
-                    })
-            
-            # 检测数组中的尾随逗号
-            if re.search(r',\s*]', line):
-                comma_pos = line.rfind(',')
-                if comma_pos != -1:
-                    errors.append({
-                        'type': '尾随逗号',
-                        'message': f'第{i}行数组中存在尾随逗号',
-                        'line': i,
-                        'column': comma_pos + 1,
-                        'severity': 'error'
-                    })
-        
-        return errors
-    
-    
-    
-    def detect_encoding_errors(self, file_path: str) -> List[Dict[str, Any]]:
-        """检测编码错误"""
-        errors = []
-        
+            except OSError as exc:
+                errors.append(self._make_issue('文件读取错误', str(exc)))
+                return None, errors, warnings
+
+            if encoding not in ('utf-8', 'utf-8-sig') and any(ord(char) > 127 for char in content):
+                warnings.append(self._make_issue(
+                    '编码警告',
+                    '文件包含非ASCII字符，建议使用UTF-8编码',
+                    severity='warning',
+                ))
+            return content, errors, warnings
+
+        errors.append(self._make_issue('编码错误', '无法使用常见编码读取文件'))
+        return None, errors, warnings
+
+    def _detect_heuristic_issues(self, content: str) -> List[Dict[str, Any]]:
+        """在字符串外部检测常见非标准 JSON 写法。"""
+        issues: List[Dict[str, Any]] = []
+        seen: set[Tuple[str, int, int]] = set()
+
+        def add_issue(issue_type: str, message: str, index: int) -> None:
+            line, column = self._position_at(content, index)
+            key = (issue_type, line, column)
+            if key in seen:
+                return
+            seen.add(key)
+            issues.append(self._make_issue(issue_type, message, line, column))
+
+        for start, end in self._outside_string_spans(content):
+            segment = content[start:end]
+
+            for match in self._TRAILING_COMMA_RE.finditer(segment):
+                add_issue(
+                    '尾随逗号',
+                    f'第{self._position_at(content, start + match.start())[0]}行存在尾随逗号',
+                    start + match.start(),
+                )
+
+            for match in self._SINGLE_QUOTE_STRING_RE.finditer(segment):
+                add_issue(
+                    '单引号错误',
+                    f'第{self._position_at(content, start + match.start())[0]}行使用了单引号，JSON标准要求使用双引号',
+                    start + match.start(),
+                )
+
+            for match in self._LINE_COMMENT_RE.finditer(segment):
+                add_issue(
+                    '注释错误',
+                    f'第{self._position_at(content, start + match.start())[0]}行包含注释，JSON标准不支持注释',
+                    start + match.start(),
+                )
+
+        return issues
+
+    def load_json_file(self, file_path: str) -> Tuple[Any, List[Dict[str, Any]]]:
+        """加载JSON文件并检测基本语法错误。"""
+        content, read_errors, _warnings = self._read_file(file_path)
+        if content is None:
+            return None, read_errors
+
         try:
-            # 尝试不同的编码方式读取文件
-            encodings = ['utf-8', 'gbk', 'gb2312', 'latin-1']
-            
-            for encoding in encodings:
-                try:
-                    with open(file_path, 'r', encoding=encoding) as f:
-                        content = f.read()
-                    # 如果能成功读取，检查是否包含非ASCII字符
-                    if encoding != 'utf-8' and any(ord(c) > 127 for c in content):
-                        errors.append({
-                            'type': '编码警告',
-                            'message': f'文件包含非ASCII字符，建议使用UTF-8编码',
-                            'line': '未知',
-                            'column': '未知',
-                            'severity': 'warning'
-                        })
-                    break
-                except UnicodeDecodeError:
-                    continue
-            else:
-                errors.append({
-                    'type': '编码错误',
-                    'message': '无法使用常见编码读取文件',
-                    'line': '未知',
-                    'column': '未知',
-                    'severity': 'error'
-                })
-                
-        except Exception as e:
-            errors.append({
-                'type': '编码检测错误',
-                'message': str(e),
-                'line': '未知',
-                'column': '未知',
-                'severity': 'error'
-            })
-        
-        return errors
-    
-    
+            data = json.loads(content)
+            return data, read_errors
+        except json.JSONDecodeError as exc:
+            errors = list(read_errors)
+            errors.append(self._make_issue(
+                'JSON解析错误',
+                str(exc),
+                getattr(exc, 'lineno', '未知'),
+                getattr(exc, 'colno', '未知'),
+            ))
+            errors.extend(self._detect_heuristic_issues(content))
+            return None, errors
+
+    def detect_encoding_errors(self, file_path: str) -> List[Dict[str, Any]]:
+        """检测编码错误。"""
+        _content, errors, warnings = self._read_file(file_path)
+        return errors + warnings
+
+    def detect_file(self, file_path: str) -> Dict[str, Any]:
+        """检测单个文件并返回结构化结果。"""
+        path = Path(file_path)
+        content, read_errors, encoding_warnings = self._read_file(file_path)
+
+        errors = list(read_errors)
+        warnings = list(encoding_warnings)
+        parsed = False
+
+        if content is not None:
+            try:
+                json.loads(content)
+                parsed = True
+            except json.JSONDecodeError as exc:
+                errors.append(self._make_issue(
+                    'JSON解析错误',
+                    str(exc),
+                    getattr(exc, 'lineno', '未知'),
+                    getattr(exc, 'colno', '未知'),
+                ))
+                errors.extend(self._detect_heuristic_issues(content))
+
+        return {
+            'file_path': str(path),
+            'file_name': path.name,
+            'parsed': parsed,
+            'errors': errors,
+            'warnings': warnings,
+            'error_count': len(errors),
+            'warning_count': len(warnings),
+        }
+
     def generate_report(self, errors: List[Dict[str, Any]], warnings: List[Dict[str, Any]]) -> str:
-        """生成检测报告"""
-        report = []
-        report.append("=" * 60)
-        report.append("JSON错误检测报告")
-        report.append("=" * 60)
-        report.append(f"错误数量: {len(errors)}")
-        report.append(f"警告数量: {len(warnings)}")
-        report.append("")
-        
-        # 错误详情
+        """生成检测报告。"""
+        report = [
+            "=" * 60,
+            "JSON错误检测报告",
+            "=" * 60,
+            f"错误数量: {len(errors)}",
+            f"警告数量: {len(warnings)}",
+            "",
+        ]
+
         if errors:
             report.append("错误详情:")
             report.append("-" * 30)
-            for i, error in enumerate(errors, 1):
-                report.append(f"{i}. {error['type']}")
-                report.append(f"   消息: {error['message']}")
-                report.append(f"   位置: 第{error['line']}行, 第{error['column']}列")
-                report.append(f"   严重程度: {error['severity']}")
-                report.append("")
-        
-        # 警告详情
+            for index, error in enumerate(errors, 1):
+                report.extend([
+                    f"{index}. {error['type']}",
+                    f"   消息: {error['message']}",
+                    f"   位置: 第{error['line']}行, 第{error['column']}列",
+                    f"   严重程度: {error['severity']}",
+                    "",
+                ])
+
         if warnings:
             report.append("警告详情:")
             report.append("-" * 30)
-            for i, warning in enumerate(warnings, 1):
-                report.append(f"{i}. {warning['type']}")
-                report.append(f"   消息: {warning['message']}")
-                report.append(f"   位置: 第{warning['line']}行, 第{warning['column']}列")
-                report.append(f"   严重程度: {warning['severity']}")
-                report.append("")
-        
+            for index, warning in enumerate(warnings, 1):
+                report.extend([
+                    f"{index}. {warning['type']}",
+                    f"   消息: {warning['message']}",
+                    f"   位置: 第{warning['line']}行, 第{warning['column']}列",
+                    f"   严重程度: {warning['severity']}",
+                    "",
+                ])
+
         if not errors and not warnings:
             report.append("JSON文件没有发现错误！")
-        
+
         return "\n".join(report)
-    
-    def detect_errors(self, file_path: str) -> str:
-        """主检测函数"""
-        all_errors = []
-        all_warnings = []
-        
-        # 检测编码错误
-        encoding_errors = self.detect_encoding_errors(file_path)
-        all_errors.extend([e for e in encoding_errors if e['severity'] == 'error'])
-        all_warnings.extend([e for e in encoding_errors if e['severity'] == 'warning'])
-        
-        # 加载JSON文件
-        data, load_errors = self.load_json_file(file_path)
-        all_errors.extend(load_errors)
-        
-        if data is not None:
-            # 结构错误检测功能已删除
-            pass
-        
-        # 生成报告
-        return self.generate_report(all_errors, all_warnings)
-    
-    def detect_errors_in_folder(self, folder_path: str) -> str:
-        """检测文件夹中所有JSON文件的错误"""
-        import glob
-        
-        # 查找文件夹中的所有JSON文件
-        json_files = glob.glob(os.path.join(folder_path, "*.json"))
-        json_files.extend(glob.glob(os.path.join(folder_path, "**", "*.json"), recursive=True))
-        
-        if not json_files:
-            return "在指定文件夹中未找到JSON文件"
-        
-        # 生成文件夹检测报告
-        report = []
-        report.append("=" * 80)
-        report.append("JSON文件夹错误检测报告")
-        report.append("=" * 80)
-        report.append(f"检测文件夹: {folder_path}")
-        report.append(f"找到JSON文件数量: {len(json_files)}")
-        report.append("")
-        
+
+    def _format_file_section(self, file_result: Dict[str, Any], index: int) -> List[str]:
+        section = [
+            f"[{index}] 问题文件: {file_result['file_name']}",
+            f"文件路径: {file_result['file_path']}",
+            "-" * 60,
+        ]
+        for issue in file_result['errors'] + file_result['warnings']:
+            section.append(
+                f"  {issue['type']}: {issue['message']} "
+                f"(第{issue['line']}行, 第{issue['column']}列)"
+            )
+        section.append("")
+        return section
+
+    def detect_folder(self, folder_path: str) -> Dict[str, Any]:
+        """检测文件夹中所有 JSON 文件并返回结构化结果。"""
+        root = Path(folder_path)
+        json_files = sorted({path for path in root.rglob('*.json') if path.is_file()})
+
+        file_results: List[Dict[str, Any]] = []
         total_errors = 0
         total_warnings = 0
-        processed_files = 0
-        problem_files = 0
-        
-        for i, json_file in enumerate(json_files, 1):
-            try:
-                # 检测单个文件
-                file_report = self.detect_errors(json_file)
-                
-                # 解析文件报告中的错误和警告数量
-                lines = file_report.split('\n')
-                file_errors = 0
-                file_warnings = 0
-                
-                for line in lines:
-                    if "错误数量:" in line:
-                        file_errors = int(line.split(":")[1].strip())
-                    elif "警告数量:" in line:
-                        file_warnings = int(line.split(":")[1].strip())
-                
-                total_errors += file_errors
-                total_warnings += file_warnings
-                processed_files += 1
-                
-                # 只显示有问题的文件
-                if file_errors > 0 or file_warnings > 0:
-                    problem_files += 1
-                    report.append(f"[{problem_files}] 问题文件: {os.path.basename(json_file)}")
-                    report.append(f"文件路径: {json_file}")
-                    report.append("-" * 60)
-                    
-                    # 提取错误详情部分
-                    error_section = False
-                    warning_section = False
-                    for line in lines:
-                        if "错误详情:" in line:
-                            error_section = True
-                            continue
-                        elif "警告详情:" in line:
-                            error_section = False
-                            warning_section = True
-                            continue
-                        elif line.startswith("JSON文件没有发现错误"):
-                            break
-                        
-                        if error_section or warning_section:
-                            if line.strip() and not line.startswith("-"):
-                                report.append(f"  {line}")
-                    
-                    report.append("")
-                
-            except Exception as e:
-                # 即使检测过程中出错，也要记录这个文件
-                problem_files += 1
-                report.append(f"[{problem_files}] 检测失败文件: {os.path.basename(json_file)}")
-                report.append(f"文件路径: {json_file}")
-                report.append(f"错误信息: {str(e)}")
-                report.append("")
-        
-        # 添加总结
-        report.append("=" * 80)
-        report.append("检测总结")
-        report.append("=" * 80)
-        report.append(f"处理文件数量: {processed_files}/{len(json_files)}")
-        report.append(f"问题文件数量: {problem_files}")
-        report.append(f"总错误数量: {total_errors}")
-        report.append(f"总警告数量: {total_warnings}")
-        
-        if total_errors == 0 and total_warnings == 0:
+
+        for json_file in json_files:
+            result = self.detect_file(str(json_file))
+            total_errors += result['error_count']
+            total_warnings += result['warning_count']
+            if result['error_count'] or result['warning_count']:
+                file_results.append(result)
+
+        return {
+            'folder_path': str(root),
+            'total_files': len(json_files),
+            'processed_files': len(json_files),
+            'problem_files': len(file_results),
+            'total_errors': total_errors,
+            'total_warnings': total_warnings,
+            'files': file_results,
+        }
+
+    def generate_folder_report(self, folder_result: Dict[str, Any]) -> str:
+        """根据结构化文件夹检测结果生成文本报告。"""
+        if folder_result['total_files'] == 0:
+            return "在指定文件夹中未找到JSON文件"
+
+        report = [
+            "=" * 80,
+            "JSON文件夹错误检测报告",
+            "=" * 80,
+            f"检测文件夹: {folder_result['folder_path']}",
+            f"找到JSON文件数量: {folder_result['total_files']}",
+            "",
+        ]
+
+        for index, file_result in enumerate(folder_result['files'], 1):
+            report.extend(self._format_file_section(file_result, index))
+
+        report.extend([
+            "=" * 80,
+            "检测总结",
+            "=" * 80,
+            f"处理文件数量: {folder_result['processed_files']}/{folder_result['total_files']}",
+            f"问题文件数量: {folder_result['problem_files']}",
+            f"总错误数量: {folder_result['total_errors']}",
+            f"总警告数量: {folder_result['total_warnings']}",
+        ])
+
+        if folder_result['total_errors'] == 0 and folder_result['total_warnings'] == 0:
             report.append("所有JSON文件都没有发现错误！")
         else:
-            report.append(f"发现 {problem_files} 个问题文件，包含 {total_errors} 个错误和 {total_warnings} 个警告")
-        
+            report.append(
+                "发现 "
+                f"{folder_result['problem_files']} 个问题文件，包含 "
+                f"{folder_result['total_errors']} 个错误和 "
+                f"{folder_result['total_warnings']} 个警告"
+            )
+
         return "\n".join(report)
+
+    def detect_errors(self, file_path: str) -> str:
+        """主检测函数（单文件文本报告）。"""
+        result = self.detect_file(file_path)
+        return self.generate_report(result['errors'], result['warnings'])
+
+    def detect_errors_in_folder(self, folder_path: str) -> str:
+        """检测文件夹中所有JSON文件的错误（文本报告）。"""
+        return self.generate_folder_report(self.detect_folder(folder_path))
 
 
 def main():
@@ -335,26 +332,22 @@ def main():
     parser = argparse.ArgumentParser(description="检测JSON文件或文件夹中的错误")
     parser.add_argument("path", help="JSON文件路径或文件夹路径")
     parser.add_argument("--output", help="输出报告到文件")
-    
+
     args = parser.parse_args()
-    
+
     if not os.path.exists(args.path):
         print(f"路径不存在: {args.path}")
         return
-    
+
     detector = JSONErrorDetector()
-    
-    # 自动检测：如果是文件夹则检测文件夹，如果是文件则检测单个文件
+
     if os.path.isdir(args.path):
-        # 文件夹模式
         report = detector.detect_errors_in_folder(args.path)
     else:
-        # 文件模式
         report = detector.detect_errors(args.path)
-    
+
     if args.output:
-        with open(args.output, 'w', encoding='utf-8') as f:
-            f.write(report)
+        Path(args.output).write_text(report, encoding='utf-8')
         print(f"报告已保存到: {args.output}")
     else:
         print(report)

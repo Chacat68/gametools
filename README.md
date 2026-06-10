@@ -11,8 +11,8 @@
 **最新特性：**
 
 - ✨ **xlwings 引擎支持**：使用 Excel 原生引擎修改文件，完全保留文件结构
-- ⚡ **并行处理**：多文件处理速度提升 3–5 倍
-- 🧠 **智能缓存**：LRU 策略，命中率可达 70–90%
+- ⚡ **并行扫描**：表字段导出目录扫描支持 `config.scan.enable_parallel`（默认开启，线程池处理多文件）
+- 🧠 **智能缓存**：跨项目翻译 GUI 已接入 `CrossProjectTranslatorWithCache`，LRU 命中率可达 70–90%
 - 🛡️ **增强错误处理**：友好的错误消息和修复建议
 - 📈 **进度跟踪**：实时进度和 ETA 显示
 
@@ -24,6 +24,8 @@ gametools/
 │   ├── batch_excel_modifier.py   # 批量 Excel 修改器
 │   ├── cache_manager.py          # 缓存管理系统
 │   ├── config_manager.py         # 配置管理器
+│   ├── excel_layout_utils.py     # 表布局公共工具（行边界等）
+│   ├── parallel_utils.py         # 目录扫描并行工具
 │   ├── cross_project_translator.py       # 跨项目翻译工具
 │   ├── cross_project_translator_cached.py # 增强版翻译工具（支持缓存）
 │   ├── excel_config_sync.py      # Excel 配置同步器
@@ -45,6 +47,7 @@ gametools/
 │   ├── run_all_tests.py          # 运行所有测试脚本
 │   ├── _runtime/                 # 测试运行时生成（已 .gitignore，不入库）
 │   └── README.md                 # 测试文档
+├── config.example.json       # 配置模板（复制为 config.json 后本地修改）
 ├── docs/                    # 文档目录
 ├── dist/                    # 输出文件目录
 └── README.md               # 项目说明
@@ -90,7 +93,7 @@ gametools/
 ### 📑 表字段导出工具
 
 - **智能提取**：自动检测包含本地化文本的列，从 **`FIELD_NAME_ROW`（默认第 5 行）** 读取字段名
-- **字段过滤**：自动过滤 `name`、`model`、`id`、`code`、`type` 等代码字段
+- **字段过滤**：自动过滤 `name`、`model`、`id`、`code`、`type` 等代码字段，以及资源标识符（`ass_sss_` 等，见 `core/text_patterns.py`）
 - **多语言目录**：在「表字段导出」页签可为中文、越南语、泰语、英语分别指定目录并独立勾选是否导出
 - **精准识别**：只保留真正需要翻译的文本字段（如 `des_cn`、`des_vcn`）
 - **列范围标记**：识别两个 **`COLUMN_MARKER`**（默认 `c_`）之间的列；数据区遇 **`ROW_BOUNDARY_KEYWORD`**（默认 `over`）即停止向下扫描（详见 [docs/EXCEL_TABLE_LAYOUT.md](docs/EXCEL_TABLE_LAYOUT.md)）
@@ -193,6 +196,8 @@ python gui/run_unified.py
 
 ### Excel 数据处理工具页签
 
+统一 GUI 中该页签的实现见 `gui/excel_data_processor_page.py`（与工作台共用源/输出路径变量）；底层整合逻辑见 `tools/excel_data_processor.py`。
+
 1. **源文件与输出目录**：在 **「工作台」** 选择；本页只读显示。
 2. **输出文件名**：在本页填写（如「整合结果.xlsx」）。
 3. **处理选项**：输出模式（多文件 / 单文件）、分组列、工作表前缀、是否汇总工作表等。
@@ -234,11 +239,12 @@ test/
 ### 🧪 运行测试
 
 ```bash
-# 快速运行单个测试
-python test\test_cache.py
-
-# 运行所有测试
+# 运行所有测试（子进程串联，兼容旧脚本）
 python test\run_all_tests.py
+
+# 推荐：使用 pytest 发现并运行 test_*.py
+pip install -r requirements-dev.txt
+pytest
 
 # 极简 GUI 冒烟（仓库根目录，不纳入 run_all_tests）
 python verify_gui.py

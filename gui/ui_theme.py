@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """统一的轻量级 Tkinter 主题配置。"""
 
+import tkinter as tk
 from tkinter import ttk
 
 
@@ -36,6 +37,113 @@ def _clamp_font_size(font_size):
     except (TypeError, ValueError):
         value = 10
     return max(9, min(value, 14))
+
+
+def _checkbutton_layout_with_indicator(indicator_element):
+    """构建带自定义 indicator 的 Checkbutton 布局。"""
+    return [
+        (
+            'Checkbutton.padding',
+            {
+                'sticky': 'nswe',
+                'children': [
+                    (indicator_element, {'side': 'left', 'sticky': ''}),
+                    (
+                        'Checkbutton.focus',
+                        {
+                            'side': 'left',
+                            'sticky': 'w',
+                            'children': [('Checkbutton.label', {'sticky': 'nswe'})],
+                        },
+                    ),
+                ],
+            },
+        ),
+    ]
+
+
+def _line_pixels(x0, y0, x1, y1, thickness=2):
+    """Bresenham 直线像素集合，用于绘制勾选标记。"""
+    points = set()
+    dx = abs(x1 - x0)
+    dy = abs(y1 - y0)
+    sx = 1 if x0 < x1 else -1
+    sy = 1 if y0 < y1 else -1
+    err = dx - dy
+    x, y = x0, y0
+
+    while True:
+        for offset_x in range(-(thickness // 2), thickness // 2 + 1):
+            for offset_y in range(-(thickness // 2), thickness // 2 + 1):
+                points.add((x + offset_x, y + offset_y))
+        if x == x1 and y == y1:
+            break
+        err2 = err * 2
+        if err2 > -dy:
+            err -= dy
+            x += sx
+        if err2 < dx:
+            err += dx
+            y += sy
+
+    return points
+
+
+def _create_checkbutton_images(root, size=16):
+    """用 PhotoImage 绘制方框勾选指示器（无第三方依赖）。"""
+    bg = UI_PALETTE['input_bg']
+    border = UI_PALETTE['border']
+    check = UI_PALETTE['success']
+    check_pixels = _line_pixels(3, 8, 6, 11, thickness=2) | _line_pixels(6, 11, 12, 5, thickness=2)
+
+    def make_image(checked):
+        img = tk.PhotoImage(width=size, height=size, master=root)
+        for y in range(size):
+            for x in range(size):
+                on_border = x == 0 or y == 0 or x == size - 1 or y == size - 1
+                if checked and (x, y) in check_pixels:
+                    color = check
+                elif on_border:
+                    color = border
+                else:
+                    color = bg
+                img.put(color, (x, y))
+        return img
+
+    return {
+        'unchecked': make_image(False),
+        'checked': make_image(True),
+    }
+
+
+def _install_checkbutton_checkmark(style, root):
+    """将 clam 主题下选中时显示的 X 改为勾。"""
+    layout = _checkbutton_layout_with_indicator('Gametools.indicator')
+
+    for source_theme in ('vista', 'xpnative', 'default', 'alt'):
+        if source_theme not in style.theme_names():
+            continue
+        try:
+            style.element_create(
+                'Gametools.indicator',
+                'from',
+                source_theme,
+                'Checkbutton.indicator',
+            )
+            style.layout('TCheckbutton', layout)
+            return
+        except tk.TclError:
+            continue
+
+    images = _create_checkbutton_images(root)
+    root._gametools_checkbox_images = images
+    style.element_create(
+        'Gametools.indicator',
+        'image',
+        images['unchecked'],
+        ('selected', images['checked']),
+    )
+    style.layout('TCheckbutton', layout)
 
 
 def apply_ui_theme(root, font_size=10):
@@ -224,6 +332,7 @@ def apply_ui_theme(root, font_size=10):
         foreground=UI_PALETTE['text'],
         font=('Microsoft YaHei UI', body_font_size),
     )
+    _install_checkbutton_checkmark(style, root)
     style.configure(
         'TRadiobutton',
         background=UI_PALETTE['surface'],
