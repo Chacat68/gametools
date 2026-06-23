@@ -1819,7 +1819,7 @@ class GameToolsUnified:
         self.batch_id_col_var = tk.StringVar(value='ID')
         self.batch_field_col_var = tk.StringVar(value='Classification')
         self.batch_advanced_toggle_var = tk.StringVar(value='展开高级选项')
-        self.batch_backup_var = tk.BooleanVar(value=True)
+        self.batch_backup_var = tk.BooleanVar(value=False)
         self.batch_data_start_row_var = tk.StringVar(value=str(DATA_START_ROW))
         self.batch_field_row_var = tk.StringVar(value=str(FIELD_NAME_ROW))
 
