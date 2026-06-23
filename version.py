@@ -7,9 +7,9 @@ gametools 版本信息管理模块
 """
 
 # 版本信息
-__version__ = "1.46.64"
-__version_info__ = (1, 46, 64)
-__build_date__ = "2026-06-06"
+__version__ = "1.46.65"
+__version_info__ = (1, 46, 65)
+__build_date__ = "2026-06-23"
 __author__ = "gametools开发团队"
 __description__ = "游戏工具集 - 集成策划本地化、跨项目翻译对应、JSON检测、Excel处理、Excel分页拆分、翻译提取、表字段导出、多语言翻译提取、批量改表、Excel配置同步、Excel转CSV等功能、GUI启动优化"
 
