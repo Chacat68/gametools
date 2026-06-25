@@ -4,7 +4,9 @@
 
 **策划 Excel 统一约定**（表头行、`COLUMN_MARKER` / `c_` 列范围、`ROW_BOUNDARY_KEYWORD` 行下限等）以 **[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)** 为准，代码常量见 `../core/constants.py`。下文各功能文档中与行号相关的描述均与该规范对齐。
 
-**仓库维护**：已删除未被引用的占位模块（`error_handler`、`log_manager`、`progress_tracker`、`output_formats`、`result_filter`、`task_controller`）及历史 PyInstaller 钩子脚本；日志初始化见 `core/__init__.py`。测试与 **`test/create_test_data.py`** 产出在 **`test/_runtime/`**（含 **`generated/`**），勿提交。
+**仓库维护**：已移除 Sheet 分页拆分功能（`core/excel_sheet_splitter.py`、`tools/excel_sheet_splitter.py`）。已删除未被引用的占位模块（`error_handler`、`log_manager`、`progress_tracker`、`output_formats`、`result_filter`、`task_controller`）及历史 PyInstaller 钩子脚本；日志初始化见 `core/__init__.py`。测试与 **`test/create_test_data.py`** 产出在 **`test/_runtime/`**（含 **`generated/`**），勿提交。
+
+**统一 GUI 路径**：各功能页的 JSON、目录、映射表等路径均在 **「工作台」** 选择；功能页以只读方式显示相同路径（空路径显示「暂无」），不在页内提供浏览按钮。下文操作步骤均按此约定描述。
 
 ## 📚 文档导航
 
@@ -35,9 +37,10 @@
 
 ### 📋 其他资源
 
-- **[ERROR_LOGGING_FEATURE.md](ERROR_LOGGING_FEATURE.md)** - 错误日志和诊断功能
-- **[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)** - 仓库内保留的构建报告样例
+- **[ERROR_LOGGING_FEATURE.md](ERROR_LOGGING_FEATURE.md)** - 错误日志和诊断功能（历史：v1.25.5）
+- **[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)** - 构建报告历史快照
 - **[VERSION_HISTORY_ARCHIVE.md](VERSION_HISTORY_ARCHIVE.md)** - 版本历史归档
+- **[MULTILANG_JSON_GUIDE.md](MULTILANG_JSON_GUIDE.md)** - 多语言 JSON 配置（历史：v1.39.5）
 
 ---
 
@@ -56,8 +59,8 @@
 **快速开始：**
 
 ```bash
-python gui/gametools_unified.py
-# 选择"表字段导出"页签
+python gui/run_unified.py
+# 在「工作台」选择各语言目录与输出路径，再进入「字段导出」页签执行
 ```
 
 ---
@@ -76,8 +79,8 @@ python gui/gametools_unified.py
 **快速开始：**
 
 ```bash
-python gui/gametools_unified.py
-# 选择"多语言翻译提取"页签
+python gui/run_unified.py
+# 在「工作台」配置合并 JSON 与各语言目录，再进入「多语言翻译提取」页签执行
 ```
 
 ---
@@ -94,8 +97,8 @@ python gui/gametools_unified.py
 **快速开始：**
 
 ```bash
-python gui/gametools_unified.py
-# 选择"批量改表"页签
+python gui/run_unified.py
+# 在「工作台」选择 JSON、映射表、Excel 目录与报告路径，再进入「批量改表」页签执行
 ```
 
 ---
@@ -134,14 +137,14 @@ python gui/gametools_unified.py
 
 当前版本：请以 [../version.py](../version.py) 和 GUI 显示为准
 
-最新特性：
+近期特性（详见根目录 [README.md](../README.md)）：
 
-- ⚡ GUI启动性能优化 4-6倍
-- ✨ Excel转CSV功能
-- 🛡️ 增强错误处理和诊断
-- 📈 实时进度跟踪和ETA显示
+- **统一工作台**：路径集中选择，各功能页只读同步
+- **本地化主流程**：字段导出 → 多语言提取 → 批量改表
+- **xlwings 批量改表**：默认保留 Excel 文件结构
+- **并行扫描与 LRU 缓存**：跨项目翻译与目录扫描性能优化
 
-如需查看随仓库保留的构建记录，可参考：[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)
+如需查看随仓库保留的构建记录样例，可参考：[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)（历史快照，非当前版本说明）
 
 ---
 
@@ -158,7 +161,7 @@ python gui/gametools_unified.py
 
 ### Q: 如何启动工具？
 
-**A:** 双击运行 `启动策划工具.bat` 或执行 `python gui/gametools_unified.py`
+**A:** 双击运行 `启动策划工具.bat` 或执行 `python gui/run_unified.py`
 
 ### Q: 支持哪些文件格式？
 
@@ -176,5 +179,5 @@ python gui/gametools_unified.py
 
 ## 📞 更新日期
 
-- 文档最后更新：2026-06-05（补充 Excel 表布局统一规范索引）
+- 文档最后更新：2026-06-25（同步统一工作台路径约定、移除 Sheet 分页拆分说明）
 - 对应程序版本：请以 [../version.py](../version.py) 为准

@@ -17,42 +17,21 @@ Excel表字段导出工具用于扫描指定目录下的所有 Excel 文件，�
 
 ## 使用方法
 
-### 1. 命令行使用
+### 1. 命令行 / 代码
+
+字段导出由 `core/excel_field_extractor.py` 提供；统一 GUI 通过 `gui/field_extractor_page.py` 调用。无独立 `tools/` 命令行入口时，请使用 GUI 或下方代码集成。
+
+### 2. GUI界面使用（统一工作台）
 
 ```bash
-# 基本用法
-python tools/excel_field_extractor.py -d ./excel_files
-
-# 指定输出目录
-python tools/excel_field_extractor.py -d ./excel_files -o ./output
-
-# 输出为Excel格式
-python tools/excel_field_extractor.py -d ./excel_files -f excel
-
-# 不递归扫描子目录
-python tools/excel_field_extractor.py -d ./excel_files --no-recursive
-
-# 查看帮助
-python tools/excel_field_extractor.py -h
+python gui/run_unified.py
 ```
 
-### 2. GUI界面使用
+1. 在 **「工作台」** 选择各语言 Excel 目录与输出目录  
+2. 进入 **「字段导出」** 页签，勾选要导出的语言，选择输出格式（建议 JSON 以便衔接多语言提取）  
+3. 点击 **「开始提取」**；完成后可使用 **「用于多语言提取」** 跳转  
 
-#### 方式1：独立启动
-
-```bash
-python gui/excel_field_extractor_gui.py
-```
-
-或双击运行：`gui/启动表字段导出工具.bat`
-
-#### 方式2：统一GUI启动
-
-```bash
-python gui/gametools_unified.py
-```
-
-然后选择"表字段导出"页签
+路径在功能页为 **只读显示**，不在页内提供浏览按钮。
 
 ### 3. 代码集成使用
 
@@ -213,7 +192,6 @@ A: 全项目默认值在 **`core/constants.py`** 中的 `FIELD_NAME_ROW`、`FIEL
 
 - **布局与常量**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)，`core/constants.py`，`core/excel_layout_utils.py`
 - 核心模块：`core/excel_field_extractor.py`
-- 命令行工具：`tools/excel_field_extractor.py`
-- GUI界面：`gui/excel_field_extractor_gui.py`
+- GUI 页签：`gui/field_extractor_page.py`
 - 测试脚本：`test/test_field_extractor.py`
-- 测试数据生成：`test/create_test_excel_for_field_extractor.py`
+- 测试数据：`test/create_test_data.py`（产出在 `test/_runtime/generated/`）

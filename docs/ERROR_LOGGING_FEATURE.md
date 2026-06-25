@@ -1,5 +1,7 @@
 # 表字段导出工具 - 错误日志功能说明
 
+> **历史文档**：描述 v1.25.5 引入的错误日志能力；行为仍以 `core/excel_field_extractor.py` 与当前 GUI 为准。表布局见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)。
+
 日志中的「第 6 行」「至少 6 行」等与 **`FIELD_TYPE_ROW`** / **`FIELD_NAME_ROW`** 对应，全表约定见 [EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)。
 
 ## 版本：v1.25.5

@@ -70,18 +70,22 @@
 #### 步骤一：打开程序
 
 ```bash
-python gui/gametools_unified.py
+python gui/run_unified.py
 ```
 
 #### 步骤二：选择"多语言翻译提取"页签
 
 在左侧导航选择「多语言翻译提取」页签。
 
-#### 步骤三：配置文件路径
+#### 步骤三：配置路径（工作台）
 
-1. **JSON配置**: 选择字段导出生成的JSON文件
-2. **Excel目录**: 选择包含所有Excel表格的目录
-3. **输出文件**: 选择翻译总表的保存位置
+在 **「工作台」** 选择：
+
+1. **合并 JSON**：字段导出生成的 JSON（默认 `field_extraction_result_merged.json`）
+2. **各语言 Excel 目录**：中文 / 越南语 / 泰语 / 英语表目录
+3. **多语言输出目录**：翻译总表等导出位置
+
+「多语言翻译提取」页以只读方式显示上述路径。也可在字段导出成功后点击 **「用于多语言提取」** 自动带入并切换页签。
 
 #### 步骤四：开始提取
 
@@ -392,10 +396,10 @@ python core/table_range_translator.py test/_runtime/generated/test_table_range/f
 - **Excel 表布局统一规范**：[EXCEL_TABLE_LAYOUT.md](EXCEL_TABLE_LAYOUT.md)
 - 项目文档：`docs/`目录
 - 源代码：`core/table_range_translator.py`
-- GUI代码：`gui/gametools_unified.py`
+- GUI代码：`gui/table_range_page.py`（路径在工作台选择）
 - 测试数据：`test/create_test_data.py --range`（输出至 `test/_runtime/generated/test_table_range/`）
 
 ---
 
-**版本**: v1.0.0  
-**最后更新**: 2026-06-05
+**文档版本**：与 [../version.py](../version.py) 同步维护  
+**最后更新**：2026-06-25

@@ -43,11 +43,10 @@ weapon_master.xlsx,des,2001,大师武器描述越南文,大师武器描述泰文
 
 ### 1. GUI 界面使用
 
-1. 打开 **批量改表** 页签
-2. 点击 **映射表文件** 旁的 **浏览** 按钮
-3. 在文件选择对话框中，选择 `.csv` 文件
-4. 系统会自动识别并加载语言列
-5. 其他操作与 Excel 格式完全相同
+1. 在 **「工作台」** 选择 **映射表文件**（支持 `.csv`）
+2. 打开 **批量改表** 页签，确认映射表路径已只读显示
+3. 点击 **「预览映射」**；系统会自动识别并加载语言列
+4. 其余步骤与 Excel 格式映射表相同（见 [BATCH_MODIFIER_GUIDE.md](BATCH_MODIFIER_GUIDE.md)）
 
 ### 2. 代码调用
 
@@ -103,11 +102,10 @@ df, columns = modifier.load_mapping_table('映射表.csv')
 
 ### 创建测试 CSV
 
-运行测试脚本：
+使用仓库内示例或自行准备：
 
-```bash
-python test/create_test_csv_mapping.py
-```
+- 格式参考：`test/测试映射表.csv`
+- 生成更多样例：`python test/create_test_data.py`（产出在 `test/_runtime/generated/`）
 
 ### 验证功能
 
@@ -124,10 +122,7 @@ python test/test_csv_mapping.py
   - `get_mapping_sheets()` - CSV 返回空列表
   - `supported_mapping_formats` - 新增属性
 
-- **GUI 界面**：`gui/gametools_unified.py`
-  - `browse_batch_mapping_file()` - 文件选择支持 CSV
-  - `preview_batch_mapping()` - 预览支持 CSV
-  - `refresh_batch_languages()` - 语言列读取支持 CSV
+- **GUI 界面**：`gui/batch_modifier_page.py`（路径在工作台选择；预览与语言列刷新由该页实现）
 
 ### 兼容性
 
