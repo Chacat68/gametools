@@ -9,7 +9,6 @@ echo.
 echo 功能模块:
 echo   - 批量改表
 echo   - 字段导出
-echo   - 分页拆分
 echo   - 配置同步
 echo   - Excel转CSV
 echo   - 数据处理

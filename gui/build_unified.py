@@ -601,7 +601,7 @@ minimal_hiddenimports = [
     'gui.excel_data_processor_page',
     'gui.result_store', 'gui.task_runner', 'core',
     'core.cross_project_translator', 'core.excel_field_extractor',
-    'core.table_range_translator', 'core.excel_sheet_splitter',
+    'core.table_range_translator',
     'core.batch_excel_modifier', 'core.excel_config_sync',
     'core.excel_to_csv_converter', 'core.cache_manager',
 ]

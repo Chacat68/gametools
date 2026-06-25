@@ -62,7 +62,6 @@ gui/
 | Excel数据处理 | A列分组和拆分 | `excel_data_processor.py` |
 | 表字段导出 | 提取本地化字段 | `excel_field_extractor.py` |
 | 多语言翻译提取 | 按配置提取多语言 | `table_range_translator.py` |
-| 分页拆分 | 命令行按首列分页（未单独做 GUI 页签） | `tools/excel_sheet_splitter.py` → `core/excel_sheet_splitter.py` |
 | 批量改表 | 批量修改Excel | `batch_excel_modifier.py` |
 | 配置同步 | 库 + 测试（未集成统一 GUI） | `excel_config_sync.py` |
 | Excel转CSV | 命令行 / 库入口（未集成统一 GUI） | `excel_to_csv_converter.py` |

@@ -30,13 +30,11 @@ gametools/
 │   ├── cross_project_translator_cached.py # 增强版翻译工具（支持缓存）
 │   ├── excel_config_sync.py      # Excel 配置同步器
 │   ├── excel_field_extractor.py  # 表字段导出器
-│   ├── excel_sheet_splitter.py   # Excel 工作表拆分器
 │   ├── excel_to_csv_converter.py # Excel 转 CSV 转换器
 │   └── table_range_translator.py # 多语言翻译提取器
 ├── tools/                   # 工具脚本和模块
 │   ├── json_error_detector/      # JSON 错误检测核心模块
-│   ├── excel_data_processor.py   # Excel 数据处理脚本
-│   └── excel_sheet_splitter.py   # 分页拆分命令行入口
+│   └── excel_data_processor.py   # Excel 数据处理脚本
 ├── gui/                     # GUI 和打包相关文件
 │   ├── gametools_unified.py      # 统一界面主程序
 │   ├── build_unified.py          # 统一版本构建脚本
@@ -53,7 +51,7 @@ gametools/
 └── README.md               # 项目说明
 ```
 
-> **维护说明（2026-06）**：已移除仓库内无任何引用的占位/历史文件：`gui/base_detector_gui.py`、`gui/hook_numpy.py`、`gui/pyi_rth_numpy_fix.py`，以及 `core/log_manager.py`、`core/error_handler.py`、`core/progress_tracker.py`、`core/output_formats.py`、`core/result_filter.py`、`core/task_controller.py`。全局日志仍由 `core/__init__.py` 的 `setup_logging()` 初始化；打包使用 PyInstaller 官方 numpy/pandas hooks（`gui/build_unified.py` 中 `runtime_hooks=[]`）。功能测试与 **`test/create_test_data.py`** 的运行产物统一写入 **`test/_runtime/`**（含 **`generated/`** 子目录），不再默认写入仓库根下的 `test_data` / `test_excel_files` / `test_table_range`。
+> **维护说明（2026-06）**：已移除 Sheet 分页拆分功能（`core/excel_sheet_splitter.py`、`tools/excel_sheet_splitter.py`）；该能力此前仅提供命令行入口，未集成统一 GUI。另已移除仓库内无任何引用的占位/历史文件：`gui/base_detector_gui.py`、`gui/hook_numpy.py`、`gui/pyi_rth_numpy_fix.py`，以及 `core/log_manager.py`、`core/error_handler.py`、`core/progress_tracker.py`、`core/output_formats.py`、`core/result_filter.py`、`core/task_controller.py`。全局日志仍由 `core/__init__.py` 的 `setup_logging()` 初始化；打包使用 PyInstaller 官方 numpy/pandas hooks（`gui/build_unified.py` 中 `runtime_hooks=[]`）。功能测试与 **`test/create_test_data.py`** 的运行产物统一写入 **`test/_runtime/`**（含 **`generated/`** 子目录），不再默认写入仓库根下的 `test_data` / `test_excel_files` / `test_table_range`。
 
 ## 📸 界面示意
 
