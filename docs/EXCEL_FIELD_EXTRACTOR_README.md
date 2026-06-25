@@ -195,3 +195,8 @@ A: 全项目默认值在 **`core/constants.py`** 中的 `FIELD_NAME_ROW`、`FIEL
 - GUI 页签：`gui/field_extractor_page.py`
 - 测试脚本：`test/test_field_extractor.py`
 - 测试数据：`test/create_test_data.py`（产出在 `test/_runtime/generated/`）
+
+---
+
+**文档版本**：与 [../version.py](../version.py) 同步维护  
+**最后更新**：2026-06-25

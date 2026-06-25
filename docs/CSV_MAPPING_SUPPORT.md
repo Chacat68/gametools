@@ -164,3 +164,8 @@ python test/test_csv_mapping.py
 ## 示例文件
 
 参考 `test/测试映射表.csv` 查看标准格式示例。
+
+---
+
+**文档版本**：与 [../version.py](../version.py) 同步维护  
+**最后更新**：2026-06-25

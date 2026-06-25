@@ -502,3 +502,8 @@ print(f"清理结果: {cleanup_stats}")
 
 - 📧 Email: gametools@example.com
 - 💬 GitHub Issues: https://github.com/Chacat68/gametools/issues
+
+---
+
+**文档版本**：与 [../version.py](../version.py) 同步维护  
+**最后更新**：2026-06-25

@@ -324,8 +324,7 @@ python test/test_multilang_json.py
 
 ## 📚 相关文档
 
-- [BUILD_REPORT_v1.39.5.md](BUILD_REPORT_v1.39.5.md) - 构建技术报告
-- [BATCH_MODIFIER_GUIDE.md](BATCH_MODIFIER_GUIDE.md) - 批量改表完整指南
+- [BATCH_MODIFIER_GUIDE.md](BATCH_MODIFIER_GUIDE.md) - 批量改表完整指南（含多语言 JSON 用法）
 - [test/test_multilang_json.py](../test/test_multilang_json.py) - 自动化测试脚本
 
 ---

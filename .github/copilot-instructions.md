@@ -79,11 +79,13 @@ class SomeProcessor:
 
 ### 5. GUI开发模式
 
-统一界面在 `gui/gametools_unified.py`，使用多页签设计：
+统一界面在 `gui/gametools_unified.py`，使用多页签 + **工作台** 集中选路径：
 
-- 每个功能一个 `create_xxx_tab()` 方法
-- 耗时操作必须用 `threading.Thread` 避免阻塞UI
-- 结果存储在 `self.results_storage` 字典
+- 路径型 `StringVar` 在 `_init_workspace_path_vars()` 创建，工作台与各 `*_page.py` 共用
+- 功能页用 `_workspace_path_display()` **只读**展示路径，不在页内提供浏览按钮
+- 各功能页：`field_extractor_page.py`、`table_range_page.py`、`batch_modifier_page.py`、`cross_project_page.py`、`json_detector_page.py`、`excel_data_processor_page.py`
+- 耗时操作通过 `gui/task_runner.py` 的 `TaskRunner` 在后台线程执行
+- 结果存储在 `gui/result_store.py` 的 `ResultStore`
 
 ## 常用命令
 

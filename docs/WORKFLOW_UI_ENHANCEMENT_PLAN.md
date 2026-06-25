@@ -1,6 +1,8 @@
 # 本地化主流程 UI 增强方案
 
-> 状态：**已实施**（2026-06-05）—— 详见 `gui/gametools_unified.py` 与 `docs/TABLE_RANGE_TRANSLATOR_GUIDE.md`「从字段导出接续」。
+> **仅供考古 / 设计记录**：方案已于 2026-06-05 实施完毕。当前操作请以 [README.md](../README.md)、[docs/README.md](README.md) 及各功能指南为准，勿将本文当作待办清单。
+
+> 实施参考：`gui/gametools_unified.py` 与 [TABLE_RANGE_TRANSLATOR_GUIDE.md](TABLE_RANGE_TRANSLATOR_GUIDE.md)「从字段导出接续」。
 
 ---
 

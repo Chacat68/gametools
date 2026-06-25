@@ -86,3 +86,8 @@
 - 字段导出说明：`docs/EXCEL_FIELD_EXTRACTOR_README.md`
 - 字段过滤：`docs/FIELD_FILTER_GUIDE.md`
 - 单元格内容过滤规则：`core/text_patterns.py`（`is_translatable_text` / `is_asset_identifier`）
+
+---
+
+**文档版本**：与 [../version.py](../version.py) 同步维护  
+**最后更新**：2026-06-25

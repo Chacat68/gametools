@@ -35,12 +35,24 @@
 - **[CSV_MAPPING_SUPPORT.md](CSV_MAPPING_SUPPORT.md)** - CSV映射表格式说明
 - **[TRANSLATION_CSV_SUPPORT.md](TRANSLATION_CSV_SUPPORT.md)** - 翻译CSV格式支持
 
+#### 辅助工具（统一 GUI）
+
+- **[CROSS_PROJECT_GUIDE.md](CROSS_PROJECT_GUIDE.md)** - 跨项目翻译
+- **[JSON_DETECTOR_GUIDE.md](JSON_DETECTOR_GUIDE.md)** - JSON 错误检测
+- **[EXCEL_DATA_PROCESSOR_GUIDE.md](EXCEL_DATA_PROCESSOR_GUIDE.md)** - Excel 数据整合
+
+#### 库 / 命令行（未集成 GUI 页签）
+
+- **配置同步**：`core/excel_config_sync.py`（测试见 `test/test_config_sync.py`）
+- **Excel 转 CSV**：`core/excel_to_csv_converter.py`
+
 ### 📋 其他资源
 
 - **[ERROR_LOGGING_FEATURE.md](ERROR_LOGGING_FEATURE.md)** - 错误日志和诊断功能（历史：v1.25.5）
 - **[BUILD_REPORT_v1.43.0.md](BUILD_REPORT_v1.43.0.md)** - 构建报告历史快照
 - **[VERSION_HISTORY_ARCHIVE.md](VERSION_HISTORY_ARCHIVE.md)** - 版本历史归档
 - **[MULTILANG_JSON_GUIDE.md](MULTILANG_JSON_GUIDE.md)** - 多语言 JSON 配置（历史：v1.39.5）
+- **[WORKFLOW_UI_ENHANCEMENT_PLAN.md](WORKFLOW_UI_ENHANCEMENT_PLAN.md)** - 已实施 UI 方案记录（仅供考古）
 
 ---
 
@@ -67,7 +79,7 @@ python gui/run_unified.py
 
 ### 🌍 多语言翻译提取 (Table Range Translator)
 
-用途：按指定字段范围提取多语言翻译内容（中文、越南文、泰文等）
+用途：按指定字段范围提取多语言翻译内容（中文、越南语、泰语、英语）
 
 **相关文档：**
 
@@ -109,7 +121,47 @@ python gui/run_unified.py
 
 **相关文档：**
 
+- [CROSS_PROJECT_GUIDE.md](CROSS_PROJECT_GUIDE.md) - 跨项目翻译操作
 - CACHE_SYSTEM_GUIDE.md - 缓存系统详解
+
+---
+
+### 🔀 跨项目翻译
+
+**快速开始：**
+
+```bash
+python gui/run_unified.py
+# 在工作台选择映射文件、扫描目录、结果文件，再进入「跨项目翻译」页执行
+```
+
+详见 [CROSS_PROJECT_GUIDE.md](CROSS_PROJECT_GUIDE.md)。
+
+---
+
+### 🧪 JSON 错误检测
+
+**快速开始：**
+
+```bash
+python gui/run_unified.py
+# 在工作台选择 JSON 检测目录或文件，再进入「JSON 检测」页执行
+```
+
+详见 [JSON_DETECTOR_GUIDE.md](JSON_DETECTOR_GUIDE.md)。
+
+---
+
+### 📊 Excel 数据处理（整合）
+
+**快速开始：**
+
+```bash
+python gui/run_unified.py
+# 在工作台选择源文件与输出目录，在「数据处理」页配置选项后执行
+```
+
+详见 [EXCEL_DATA_PROCESSOR_GUIDE.md](EXCEL_DATA_PROCESSOR_GUIDE.md)。
 
 ---
 
@@ -165,7 +217,7 @@ python gui/run_unified.py
 
 ### Q: 支持哪些文件格式？
 
-**A:** .xlsx 和 .xls Excel文件格式
+**A:** 策划表主要为 `.xlsx` / `.xls`；批量改表映射表另支持 `.csv`（见 [CSV_MAPPING_SUPPORT.md](CSV_MAPPING_SUPPORT.md)）
 
 ### Q: 如何使用缓存加速？
 
@@ -179,5 +231,5 @@ python gui/run_unified.py
 
 ## 📞 更新日期
 
-- 文档最后更新：2026-06-25（同步统一工作台路径约定、移除 Sheet 分页拆分说明）
+- 文档最后更新：2026-06-25（补充辅助工具指南、统一活跃文档页脚）
 - 对应程序版本：请以 [../version.py](../version.py) 为准
