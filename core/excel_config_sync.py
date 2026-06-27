@@ -108,6 +108,16 @@ class ExcelConfigSync:
             self.json_path = json_path
             logger.info(f"成功加载JSON配置: {json_path}")
             return self.json_config
+        except FileNotFoundError:
+            error_msg = f"JSON配置文件不存在: {json_path}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
+        except json.JSONDecodeError as e:
+            error_msg = f"JSON配置格式错误: {json_path} - {e}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
         except Exception as e:
             error_msg = f"加载JSON配置失败: {e}"
             logger.error(error_msg)
@@ -169,6 +179,16 @@ class ExcelConfigSync:
             logger.info(f"  - 包含 {len(self.skip_fields)} 个表的过滤字段配置")
             return self.filter_config
         
+        except FileNotFoundError:
+            error_msg = f"过滤配置文件不存在: {filter_path}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
+        except json.JSONDecodeError as e:
+            error_msg = f"过滤配置格式错误: {filter_path} - {e}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
         except Exception as e:
             error_msg = f"加载过滤配置失败: {e}"
             logger.error(error_msg)

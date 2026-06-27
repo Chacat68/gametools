@@ -222,6 +222,12 @@ class BatchExcelModifier:
                     return [{'code': lang_code, 'name': lang_name, 'key': None}]
             
             return []
+        except FileNotFoundError:
+            logger.error(f"JSON配置文件不存在: {json_path}")
+            return []
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON配置格式错误: {json_path} - {e}")
+            return []
         except Exception as e:
             logger.error(f"获取JSON语言列表失败: {e}")
             return []
@@ -399,6 +405,16 @@ class BatchExcelModifier:
             
             return field_config
         
+        except FileNotFoundError:
+            error_msg = f"JSON配置文件不存在: {json_path}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
+        except json.JSONDecodeError as e:
+            error_msg = f"JSON配置格式错误: {json_path} - {e}"
+            logger.error(error_msg)
+            self.error_logs.append(error_msg)
+            return {}
         except Exception as e:
             error_msg = f"加载JSON配置失败: {e}"
             logger.error(error_msg)

@@ -214,6 +214,10 @@ class TableRangePage:
             else:
                 keys_hint = '/'.join(MERGED_JSON_LANGUAGE_KEYS)
                 label.config(text=f"⚠️ 未检测到有效语言配置（期望顶层键之一: {keys_hint}）")
+        except FileNotFoundError:
+            label.config(text="⚠️ 文件不存在")
+        except json.JSONDecodeError as e:
+            label.config(text=f"⚠️ JSON格式错误: {str(e)[:40]}")
         except Exception as e:
             label.config(text=f"⚠️ 读取失败: {str(e)[:50]}")
 

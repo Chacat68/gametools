@@ -104,7 +104,7 @@ def load_build_cache() -> dict:
         try:
             with open(BUILD_CACHE_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception:
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
             pass
     return {}
 

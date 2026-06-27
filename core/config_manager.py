@@ -251,6 +251,14 @@ class ConfigManager:
                 logger.info(f"配置已加载: {self.config_file}")
                 return config
                 
+            except FileNotFoundError:
+                logger.warning(f"配置文件不存在，使用默认配置: {self.config_file}")
+                self._raw_config_data = {}
+                return GameToolsConfig()
+            except json.JSONDecodeError as e:
+                logger.warning(f"配置文件格式错误，使用默认配置: {self.config_file} - {e}")
+                self._raw_config_data = {}
+                return GameToolsConfig()
             except Exception as e:
                 logger.warning(f"加载配置失败，使用默认配置: {e}")
                 self._raw_config_data = {}
@@ -417,6 +425,12 @@ class ConfigManager:
             logger.info(f"配置已导入: {import_file}")
             return True
             
+        except FileNotFoundError:
+            logger.error(f"配置文件不存在: {import_file}")
+            return False
+        except json.JSONDecodeError as e:
+            logger.error(f"配置文件格式错误: {import_file} - {e}")
+            return False
         except Exception as e:
             logger.error(f"导入配置失败: {e}")
             return False

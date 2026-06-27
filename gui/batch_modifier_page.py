@@ -497,6 +497,10 @@ class BatchModifierPage:
                     label.config(text=f'📌 {lang_name} ({lang_code})')
                 else:
                     label.config(text='⚠️ 无语言标记')
+        except FileNotFoundError:
+            label.config(text='⚠️ 文件不存在')
+        except json.JSONDecodeError as e:
+            label.config(text=f'⚠️ JSON格式错误: {str(e)[:40]}')
         except Exception as e:
             label.config(text=f'⚠️ 读取失败: {str(e)}')
 
