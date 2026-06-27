@@ -187,6 +187,7 @@ class ExcelFieldExtractor:
             List[Dict]: 每个工作表的字段信息列表
         """
         results = []
+        wb = None
         
         try:
             # 使用openpyxl读取，以便精确访问物理行
@@ -387,13 +388,18 @@ class ExcelFieldExtractor:
                     error_msg = f"❌ 读取工作表失败 | 文件: {file_path.name} | 工作表: {sheet_name} | 错误: {str(e)}"
                     self.error_logs.append(error_msg)
                     print(error_msg)
-            
-            wb.close()
         
         except Exception as e:
             error_msg = f"❌ 读取文件失败 | 文件: {file_path} | 错误: {str(e)}"
             self.error_logs.append(error_msg)
             print(error_msg)
+        
+        finally:
+            if wb is not None:
+                try:
+                    wb.close()
+                except Exception:
+                    pass
         
         return results
     

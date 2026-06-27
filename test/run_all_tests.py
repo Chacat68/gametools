@@ -11,7 +11,11 @@ from pathlib import Path
 
 # 强制 UTF-8 输出
 if sys.platform == 'win32':
-    os.system('chcp 65001 > nul')
+    try:
+        # chcp 是 shell 内置命令，在 Windows 上需要 shell=True
+        subprocess.run(['chcp', '65001'], shell=True, capture_output=True, check=False)
+    except Exception:
+        pass  # 如果失败，继续执行
 
 def run_tests():
     """运行所有测试文件"""
