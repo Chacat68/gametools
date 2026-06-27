@@ -7,6 +7,10 @@ Excel表字段导出器
 忽略纯数字、英文代码和配置项。
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 import os
 import json
 from pathlib import Path
@@ -82,10 +86,10 @@ class ExcelFieldExtractor:
         
         # 控制打印输出，避免大量警告导致卡顿
         if self.verbose_warnings or self._printed_warning_count < self.max_printed_warnings:
-            print(warning_msg)
+            logger.warning(warning_msg)
             self._printed_warning_count += 1
         elif self._printed_warning_count == self.max_printed_warnings:
-            print(f"... 后续警告已省略，共 {len(self.extraction_warnings)} 条警告将记录在日志中")
+            logger.warning(f"... 后续警告已省略，共 {len(self.extraction_warnings)} 条警告将记录在日志中")
             self._printed_warning_count += 1
     
     def set_progress_callback(self, callback):
@@ -387,12 +391,12 @@ class ExcelFieldExtractor:
                 except Exception as e:
                     error_msg = f"❌ 读取工作表失败 | 文件: {file_path.name} | 工作表: {sheet_name} | 错误: {str(e)}"
                     self.error_logs.append(error_msg)
-                    print(error_msg)
+                    logger.error(error_msg)
         
         except Exception as e:
             error_msg = f"❌ 读取文件失败 | 文件: {file_path} | 错误: {str(e)}"
             self.error_logs.append(error_msg)
-            print(error_msg)
+            logger.error(error_msg)
         
         finally:
             if wb is not None:
@@ -425,7 +429,7 @@ class ExcelFieldExtractor:
         self._printed_warning_count = 0
         
         if not directory.exists():
-            print(f"目录不存在: {directory}")
+            logger.info(f"目录不存在: {directory}")
             return all_results
         
         # 报告开始扫描
@@ -439,7 +443,7 @@ class ExcelFieldExtractor:
             excel_files = [f for f in directory.glob("*") if self.is_excel_file(f)]
         
         total_files = len(excel_files)
-        print(f"找到 {total_files} 个Excel文件")
+        logger.info(f"找到 {total_files} 个Excel文件")
         self._report_progress(f"{lang_prefix}找到 {total_files} 个Excel文件", lang_progress_base)
         
         def _extract_single_file(file_path: Path):
@@ -460,7 +464,7 @@ class ExcelFieldExtractor:
                 f"{lang_prefix}处理 ({completed}/{total}): {file_path.name}",
                 file_progress,
             )
-            print(f"处理文件 {completed}/{total}: {file_path.name}")
+            logger.info(f"处理文件 {completed}/{total}: {file_path.name}")
 
         for results, errors, warnings in map_parallel_items(
             excel_files,
@@ -542,16 +546,16 @@ class ExcelFieldExtractor:
                 json.dump(json_output, f, ensure_ascii=False, indent=2)
             
             lang_str = f" [{self.SUPPORTED_LANGUAGES[language]['name']}]" if language else ""
-            print(f"结果已导出到{lang_str}: {output_file}")
+            logger.info(f"结果已导出到{lang_str}: {output_file}")
             
             # 统计数量
             no_text_count = len(json_output["no_text_tables"])
             text_count = len(json_output["text_tables"])
-            print(f"  - 无文本表格: {no_text_count} 个")
-            print(f"  - 有文本表格: {text_count} 个")
+            logger.info(f"  - 无文本表格: {no_text_count} 个")
+            logger.info(f"  - 有文本表格: {text_count} 个")
         
         except Exception as e:
-            print(f"导出到JSON时出错: {e}")
+            logger.error(f"导出到JSON时出错: {e}")
     
     def export_to_csv(self, results: List[Dict], output_file: Path):
         """
@@ -592,12 +596,12 @@ class ExcelFieldExtractor:
                             fields_str = ','.join(result['fields'])
                         f.write(f"{table_name},{fields_str}\n")
             
-            print(f"结果已导出到: {output_file}")
-            print(f"  - 无文本表格: {len(no_text_results)} 个")
-            print(f"  - 有文本表格: {len(text_results)} 个")
+            logger.info(f"结果已导出到: {output_file}")
+            logger.info(f"  - 无文本表格: {len(no_text_results)} 个")
+            logger.info(f"  - 有文本表格: {len(text_results)} 个")
         
         except Exception as e:
-            print(f"导出到CSV时出错: {e}")
+            logger.error(f"导出到CSV时出错: {e}")
     
     def export_to_excel(self, results: List[Dict], output_file: Path):
         """
@@ -695,12 +699,12 @@ class ExcelFieldExtractor:
                     current_row += 1
             
             wb.save(output_file)
-            print(f"结果已导出到: {output_file}")
-            print(f"  - 无文本表格: {len(no_text_results)} 个")
-            print(f"  - 有文本表格: {len(text_results)} 个")
+            logger.info(f"结果已导出到: {output_file}")
+            logger.info(f"  - 无文本表格: {len(no_text_results)} 个")
+            logger.info(f"  - 有文本表格: {len(text_results)} 个")
         
         except Exception as e:
-            print(f"导出到Excel时出错: {e}")
+            logger.error(f"导出到Excel时出错: {e}")
     
     def process_directory(self, 
                          directory_path: str, 
@@ -740,7 +744,7 @@ class ExcelFieldExtractor:
         # 扫描目录
         lang_name = self.SUPPORTED_LANGUAGES[language]['name'] if language and language in self.SUPPORTED_LANGUAGES else None
         lang_str = f" [{lang_name}]" if lang_name else ""
-        print(f"开始扫描目录{lang_str}: {directory}")
+        logger.info(f"开始扫描目录{lang_str}: {directory}")
         self._report_progress(f"{lang_str} 开始扫描...", lang_progress_base)
         
         results = self.scan_directory(
@@ -756,7 +760,7 @@ class ExcelFieldExtractor:
         
         output_file = None
         if not results:
-            print("未找到包含文本内容的Excel表格")
+            logger.info("未找到包含文本内容的Excel表格")
             return {
                 'total_files': 0,
                 'total_sheets': 0,
@@ -795,16 +799,16 @@ class ExcelFieldExtractor:
             'language': language
         }
         
-        print(f"\n处理完成!")
-        print(f"总文件数: {total_files}")
-        print(f"总工作表数: {total_sheets}")
-        print(f"总字段数: {total_fields}")
+        logger.info(f"\n处理完成!")
+        logger.info(f"总文件数: {total_files}")
+        logger.info(f"总工作表数: {total_sheets}")
+        logger.info(f"总字段数: {total_fields}")
         
         # 显示日志统计
         if self.error_logs:
-            print(f"错误日志数: {len(self.error_logs)}")
+            logger.error(f"错误日志数: {len(self.error_logs)}")
         if self.extraction_warnings:
-            print(f"警告日志数: {len(self.extraction_warnings)}")
+            logger.warning(f"警告日志数: {len(self.extraction_warnings)}")
         
         return stats
     
@@ -841,7 +845,7 @@ class ExcelFieldExtractor:
                     break
         
         if not output_folder:
-            print("错误: 未指定有效的输出目录")
+            logger.error("错误: 未指定有效的输出目录")
             return all_stats
             
         output_dir_path = Path(output_folder)
@@ -870,9 +874,9 @@ class ExcelFieldExtractor:
             # 计算当前语言的进度范围
             lang_progress_base = lang_idx * progress_per_lang
             
-            print(f"\n{'='*60}")
-            print(f"开始处理 {lang_name} 目录...")
-            print(f"{'='*60}")
+            logger.info(f"\n{'='*60}")
+            logger.info(f"开始处理 {lang_name} 目录...")
+            logger.info(f"{'='*60}")
             
             self._report_progress(f"正在处理 {lang_name} ({lang_idx + 1}/{total_languages})...", lang_progress_base)
             
@@ -915,20 +919,20 @@ class ExcelFieldExtractor:
             try:
                 with open(merged_output_file, 'w', encoding='utf-8') as f:
                     json.dump(merged_json_data, f, ensure_ascii=False, indent=2)
-                print(f"\n合并结果已导出到: {merged_output_file}")
+                logger.info(f"\n合并结果已导出到: {merged_output_file}")
                 all_stats['output_files'].append(str(merged_output_file))
             except Exception as e:
-                print(f"导出合并JSON时出错: {e}")
+                logger.error(f"导出合并JSON时出错: {e}")
         
         # 输出总结
-        print(f"\n{'='*60}")
-        print("多语言处理完成汇总")
-        print(f"{'='*60}")
-        print(f"处理语言数: {len(all_stats['languages'])}")
-        print(f"总文件数: {all_stats['total_files']}")
-        print(f"总工作表数: {all_stats['total_sheets']}")
-        print(f"总字段数: {all_stats['total_fields']}")
-        print(f"输出文件: {all_stats['output_files']}")
+        logger.info(f"\n{'='*60}")
+        logger.info("多语言处理完成汇总")
+        logger.info(f"{'='*60}")
+        logger.info(f"处理语言数: {len(all_stats['languages'])}")
+        logger.info(f"总文件数: {all_stats['total_files']}")
+        logger.info(f"总工作表数: {all_stats['total_sheets']}")
+        logger.info(f"总字段数: {all_stats['total_fields']}")
+        logger.info(f"输出文件: {all_stats['output_files']}")
         
         return all_stats
     
@@ -1002,27 +1006,9 @@ class ExcelFieldExtractor:
                 f.write("="*70 + "\n")
                 f.write(f"总计: {len(self.error_logs)} 个错误, {len(self.extraction_warnings)} 个警告\n")
             
-            print(f"日志已保存到: {output_file}")
+            logger.info(f"日志已保存到: {output_file}")
             return True
         
         except Exception as e:
-            print(f"保存日志文件失败: {e}")
+            logger.error(f"保存日志文件失败: {e}")
             return False
-
-
-if __name__ == "__main__":
-    # 测试代码
-    extractor = ExcelFieldExtractor()
-    
-    # 示例用法（与 test/create_test_data.py --field 生成目录一致）
-    _repo_root = Path(__file__).resolve().parent.parent
-    test_dir = _repo_root / "test" / "_runtime" / "generated" / "test_excel_files"
-    if test_dir.exists():
-        stats = extractor.process_directory(
-            directory_path=str(test_dir),
-            output_format='excel',
-            recursive=True
-        )
-        print(f"\n统计信息: {stats}")
-    else:
-        print(f"测试目录不存在: {test_dir}")

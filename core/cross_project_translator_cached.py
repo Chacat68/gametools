@@ -523,13 +523,4 @@ class CrossProjectTranslatorWithCache(CrossProjectTranslator):
             for result in self.translation_results:
                 if result['status'] == 'error':
                     report_lines.append(f"  第{result['index']}行: {result['file_name']} - {result['error_message']}")
-        
         return "\n".join(report_lines)
-
-
-if __name__ == "__main__":
-    # 测试增强版翻译对应工具
-    translator = CrossProjectTranslatorWithCache()
-    
-    print("增强版跨项目翻译对应工具已创建")
-    print("缓存管理器状态:", translator.get_cache_stats())

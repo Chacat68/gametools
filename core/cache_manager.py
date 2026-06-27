@@ -352,12 +352,13 @@ class FileCache:
     """文件缓存管理器 - 持久化缓存"""
     
     # HMAC key for cache integrity verification
-    # Note: This provides basic integrity protection against accidental corruption.
-    # For production use in shared environments, consider using:
-    #   - Environment variable: os.environ.get('GAMETOOLS_CACHE_KEY', default)
-    #   - System-specific key derivation
-    #   - Encrypted cache files
-    _HMAC_KEY = b'gametools-cache-integrity-key-v1'
+    # 支持通过环境变量 GAMETOOLS_CACHE_KEY 覆盖默认密钥，增强共享环境安全性
+    _HMAC_KEY = os.environ.get(
+        'GAMETOOLS_CACHE_KEY',
+        b'gametools-cache-integrity-key-v1'
+    )
+    if isinstance(_HMAC_KEY, str):
+        _HMAC_KEY = _HMAC_KEY.encode('utf-8')
     
     def __init__(self, cache_dir: str = ".cache", default_ttl: Optional[float] = None):
         """
@@ -738,20 +739,3 @@ def get_cache_manager(memory_size: int = 1000, cache_dir: str = ".cache",
     return _global_cache_manager
 
 
-if __name__ == "__main__":
-    # 测试缓存管理器
-    cache_mgr = CacheManager(memory_size=100, default_ttl=3600)
-    
-    # 设置缓存
-    cache_mgr.set("user:1", {"name": "Alice", "age": 30})
-    cache_mgr.set("user:2", {"name": "Bob", "age": 25})
-    
-    # 获取缓存
-    print("User 1:", cache_mgr.get("user:1"))
-    print("User 2:", cache_mgr.get("user:2"))
-    
-    # 获取统计信息
-    print("Cache Stats:", cache_mgr.get_stats())
-    
-    # 清理过期缓存
-    print("Cleanup Stats:", cache_mgr.cleanup_expired())

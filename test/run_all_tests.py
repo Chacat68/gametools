@@ -58,7 +58,8 @@ def run_tests():
                 [sys.executable, str(test_file)],
                 cwd=str(test_dir.parent),
                 env=env,
-                capture_output=False
+                capture_output=False,
+                check=False
             )
             
             if result.returncode == 0:
