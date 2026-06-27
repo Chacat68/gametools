@@ -107,13 +107,6 @@ class BatchExcelModifier:
         # xlwings Excel 应用实例（延迟初始化）
         self._excel_app = None
     
-    def __del__(self):
-        """析构函数：确保Excel应用实例被关闭"""
-        try:
-            self._close_excel_app()
-        except Exception:
-            pass
-    
     def set_progress_callback(self, callback):
         """设置进度回调函数"""
         self.progress_callback = callback
