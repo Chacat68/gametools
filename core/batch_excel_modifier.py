@@ -1352,63 +1352,65 @@ class BatchExcelModifier:
             self._report_progress("没有找到需要修改的文件")
             return self.processing_stats
         
-        processed_files = 0
+        try:
+            processed_files = 0
         
-        for (table_name, sheet_name), modifications in grouped_modifications.items():
-            # 构建文件路径
-            excel_path = os.path.join(excel_directory, table_name)
+            for (table_name, sheet_name), modifications in grouped_modifications.items():
+                # 构建文件路径
+                excel_path = os.path.join(excel_directory, table_name)
             
-            if not os.path.exists(excel_path):
-                error_msg = f"文件不存在: {excel_path}"
-                self.error_logs.append(error_msg)
-                self.processing_stats['errors'] += 1
-                logger.warning(error_msg)
-                continue
+                if not os.path.exists(excel_path):
+                    error_msg = f"文件不存在: {excel_path}"
+                    self.error_logs.append(error_msg)
+                    self.processing_stats['errors'] += 1
+                    logger.warning(error_msg)
+                    continue
             
-            # 创建备份
-            if backup:
-                backup_path = excel_path + '.bak'
-                try:
-                    import shutil
-                    shutil.copy2(excel_path, backup_path)
-                except Exception as e:
-                    logger.warning(f"创建备份失败: {e}")
+                # 创建备份
+                if backup:
+                    backup_path = excel_path + '.bak'
+                    try:
+                        import shutil
+                        shutil.copy2(excel_path, backup_path)
+                    except Exception as e:
+                        logger.warning(f"创建备份失败: {e}")
             
-            # 获取该表需要修改的字段（用于显示）
-            first_mod = modifications[0] if modifications else {}
-            fields_to_modify = list(first_mod.get('modify_values', {}).keys())
-            sheet_info = f" [工作表: {sheet_name}]" if sheet_name else ""
-            self._report_progress(f"处理: {table_name}{sheet_info} (字段: {', '.join(fields_to_modify)})")
+                # 获取该表需要修改的字段（用于显示）
+                first_mod = modifications[0] if modifications else {}
+                fields_to_modify = list(first_mod.get('modify_values', {}).keys())
+                sheet_info = f" [工作表: {sheet_name}]" if sheet_name else ""
+                self._report_progress(f"处理: {table_name}{sheet_info} (字段: {', '.join(fields_to_modify)})")
             
-            # 修改文件 - 传递use_position参数、data_start_row保护表头和sheet_name支持三维表
-            modified_count, errors, skipped_same = self.modify_excel_file(
-                excel_path, 
-                modifications, 
-                field_mapping=None,  # 字段名已经是正确的
-                data_start_row=DATA_START_ROW,  # 默认数据起始行，保护表头
-                use_position=use_position_mode,  # 使用检测到的模式
-                sheet_name=sheet_name  # 三维表支持
-            )
+                # 修改文件 - 传递use_position参数、data_start_row保护表头和sheet_name支持三维表
+                modified_count, errors, skipped_same = self.modify_excel_file(
+                    excel_path, 
+                    modifications, 
+                    field_mapping=None,  # 字段名已经是正确的
+                    data_start_row=DATA_START_ROW,  # 默认数据起始行，保护表头
+                    use_position=use_position_mode,  # 使用检测到的模式
+                    sheet_name=sheet_name  # 三维表支持
+                )
             
-            if modified_count > 0:
-                self.processing_stats['modified_files'] += 1
-                self.processing_stats['modified_cells'] += modified_count
+                if modified_count > 0:
+                    self.processing_stats['modified_files'] += 1
+                    self.processing_stats['modified_cells'] += modified_count
             
-            if skipped_same > 0:
-                self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
+                if skipped_same > 0:
+                    self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
             
-            self.processing_stats['processed_rows'] += len(modifications)
+                self.processing_stats['processed_rows'] += len(modifications)
             
-            if errors:
-                self.error_logs.extend(errors)
-                self.processing_stats['errors'] += len(errors)
+                if errors:
+                    self.error_logs.extend(errors)
+                    self.processing_stats['errors'] += len(errors)
             
-            processed_files += 1
-            progress = (processed_files / total_files) * 100
-            self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
+                processed_files += 1
+                progress = (processed_files / total_files) * 100
+                self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -1549,222 +1551,224 @@ class BatchExcelModifier:
         self._report_progress(f"将处理 {len(data_sheets)} 个数据工作表")
         
         total_sheets = len(data_sheets)
-        processed_sheets = 0
+        try:
+            processed_sheets = 0
         
-        for sheet_name in data_sheets:
-            # 工作表名就是目标Excel文件名
-            table_name = sheet_name
-            excel_filename = f"{table_name}.xlsx"
-            excel_path = os.path.join(excel_directory, excel_filename)
+            for sheet_name in data_sheets:
+                # 工作表名就是目标Excel文件名
+                table_name = sheet_name
+                excel_filename = f"{table_name}.xlsx"
+                excel_path = os.path.join(excel_directory, excel_filename)
             
-            # 检查文件是否存在
-            if not os.path.exists(excel_path):
-                # 尝试其他扩展名
-                excel_path_xls = os.path.join(excel_directory, f"{table_name}.xls")
-                if os.path.exists(excel_path_xls):
-                    excel_path = excel_path_xls
-                else:
-                    self.processing_stats['skipped_no_file'] += 1
-                    continue
-            
-            # 获取该表对应语言的字段列表
-            lang_fields = self.get_table_fields_by_language(table_name, json_lang_code)
-            if not lang_fields:
-                # 也尝试带扩展名
-                lang_fields = self.get_table_fields_by_language(excel_filename, json_lang_code)
-            
-            if not lang_fields:
-                self.processing_stats['skipped_no_config'] += 1
-                continue
-            
-            # 读取该工作表的数据
-            try:
-                if file_ext == '.csv':
-                    if csv_mapping_df is None or csv_mapping_df.empty:
+                # 检查文件是否存在
+                if not os.path.exists(excel_path):
+                    # 尝试其他扩展名
+                    excel_path_xls = os.path.join(excel_directory, f"{table_name}.xls")
+                    if os.path.exists(excel_path_xls):
+                        excel_path = excel_path_xls
+                    else:
+                        self.processing_stats['skipped_no_file'] += 1
                         continue
-                    df = self._filter_csv_mapping_rows(csv_mapping_df, table_name)
-                else:
-                    df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
-            except Exception as e:
-                error_msg = f"读取工作表 {sheet_name} 失败: {e}"
-                self.error_logs.append(error_msg)
-                continue
             
-            if df.empty:
-                continue
+                # 获取该表对应语言的字段列表
+                lang_fields = self.get_table_fields_by_language(table_name, json_lang_code)
+                if not lang_fields:
+                    # 也尝试带扩展名
+                    lang_fields = self.get_table_fields_by_language(excel_filename, json_lang_code)
             
-            columns = df.columns.tolist()
-            self.processing_stats['total_rows'] += len(df)
-            
-            # 检测是否使用Position模式（翻译提取CSV格式）
-            use_position_mode = 'Position' in columns
-            if use_position_mode:
-                logger.info(f"工作表 {sheet_name} 检测到Position列，将使用Position直接定位模式")
-            
-            # 自动检测ID列
-            actual_id_col = id_col
-            if not actual_id_col or actual_id_col not in columns:
-                for possible_id in ['ID', 'id', 'Id', 'ID列', '编号']:
-                    if possible_id in columns:
-                        actual_id_col = possible_id
-                        break
-            
-            # 验证必要的列存在
-            if actual_id_col not in columns:
-                error_msg = f"工作表 {sheet_name} 中未找到ID列"
-                self.error_logs.append(error_msg)
-                continue
-            
-            if detected_lang_column not in columns:
-                # 跳过没有该语言列的工作表
-                continue
-            
-            # 确定字段列（Classification 或类似）
-            actual_field_col = field_col
-            if not actual_field_col:
-                # 自动检测字段列
-                for possible_col in ['Classification', 'classification', 'Field', 'field', '字段', '字段名']:
-                    if possible_col in columns:
-                        actual_field_col = possible_col
-                        break
-            
-            # 收集该工作表的所有修改
-            modifications = []
-            skipped_no_field = 0
-            
-            for idx, row in df.iterrows():
-                id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
-                lang_value = row[detected_lang_column] if pd.notna(row[detected_lang_column]) else ''
-                
-                if not id_value or not lang_value or not is_translatable_text(lang_value):
-                    self.processing_stats['skipped_rows'] += 1
+                if not lang_fields:
+                    self.processing_stats['skipped_no_config'] += 1
                     continue
+            
+                # 读取该工作表的数据
+                try:
+                    if file_ext == '.csv':
+                        if csv_mapping_df is None or csv_mapping_df.empty:
+                            continue
+                        df = self._filter_csv_mapping_rows(csv_mapping_df, table_name)
+                    else:
+                        df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
+                except Exception as e:
+                    error_msg = f"读取工作表 {sheet_name} 失败: {e}"
+                    self.error_logs.append(error_msg)
+                    continue
+            
+                if df.empty:
+                    continue
+            
+                columns = df.columns.tolist()
+                self.processing_stats['total_rows'] += len(df)
+            
+                # 检测是否使用Position模式（翻译提取CSV格式）
+                use_position_mode = 'Position' in columns
+                if use_position_mode:
+                    logger.info(f"工作表 {sheet_name} 检测到Position列，将使用Position直接定位模式")
+            
+                # 自动检测ID列
+                actual_id_col = id_col
+                if not actual_id_col or actual_id_col not in columns:
+                    for possible_id in ['ID', 'id', 'Id', 'ID列', '编号']:
+                        if possible_id in columns:
+                            actual_id_col = possible_id
+                            break
+            
+                # 验证必要的列存在
+                if actual_id_col not in columns:
+                    error_msg = f"工作表 {sheet_name} 中未找到ID列"
+                    self.error_logs.append(error_msg)
+                    continue
+            
+                if detected_lang_column not in columns:
+                    # 跳过没有该语言列的工作表
+                    continue
+            
+                # 确定字段列（Classification 或类似）
+                actual_field_col = field_col
+                if not actual_field_col:
+                    # 自动检测字段列
+                    for possible_col in ['Classification', 'classification', 'Field', 'field', '字段', '字段名']:
+                        if possible_col in columns:
+                            actual_field_col = possible_col
+                            break
+            
+                # 收集该工作表的所有修改
+                modifications = []
+                skipped_no_field = 0
+            
+                for idx, row in df.iterrows():
+                    id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
+                    lang_value = row[detected_lang_column] if pd.notna(row[detected_lang_column]) else ''
                 
-                # 确定目标字段
-                target_field = None
+                    if not id_value or not lang_value or not is_translatable_text(lang_value):
+                        self.processing_stats['skipped_rows'] += 1
+                        continue
                 
-                # 如果有Classification列，使用它
-                if actual_field_col and actual_field_col in columns:
-                    field_from_mapping = str(row[actual_field_col]).strip() if pd.notna(row[actual_field_col]) else None
-                    if field_from_mapping:
-                        # 先直接检查该字段是否在语言字段列表中
-                        if field_from_mapping in lang_fields:
-                            target_field = field_from_mapping
-                        else:
-                            # 尝试匹配带语言后缀的字段
-                            suffix_patterns = self.get_language_suffix_patterns(json_lang_code)
-                            for lang_field in lang_fields:
-                                field_base = field_from_mapping.lower()
-                                lang_field_lower = lang_field.lower()
-                                # 检查是否是同一个字段的语言版本
-                                # 例如：Classification='des', lang_field='des_zh'
-                                for pattern in suffix_patterns:
-                                    if lang_field_lower == f"{field_base}{pattern}" or \
-                                       lang_field_lower == f"{field_base.replace('_', '')}{pattern}":
-                                        target_field = lang_field
-                                        break
-                                if target_field:
-                                    break
-                            
-                            # 如果还没找到，尝试去掉语言后缀后匹配
-                            if not target_field:
+                    # 确定目标字段
+                    target_field = None
+                
+                    # 如果有Classification列，使用它
+                    if actual_field_col and actual_field_col in columns:
+                        field_from_mapping = str(row[actual_field_col]).strip() if pd.notna(row[actual_field_col]) else None
+                        if field_from_mapping:
+                            # 先直接检查该字段是否在语言字段列表中
+                            if field_from_mapping in lang_fields:
+                                target_field = field_from_mapping
+                            else:
+                                # 尝试匹配带语言后缀的字段
+                                suffix_patterns = self.get_language_suffix_patterns(json_lang_code)
                                 for lang_field in lang_fields:
-                                    # 从lang_field中去掉语言后缀，看是否匹配field_from_mapping
+                                    field_base = field_from_mapping.lower()
+                                    lang_field_lower = lang_field.lower()
+                                    # 检查是否是同一个字段的语言版本
+                                    # 例如：Classification='des', lang_field='des_zh'
                                     for pattern in suffix_patterns:
-                                        if pattern.startswith('_') and lang_field.lower().endswith(pattern):
-                                            base_name = lang_field[:-len(pattern)]
-                                            if base_name.lower() == field_from_mapping.lower():
-                                                target_field = lang_field
-                                                break
+                                        if lang_field_lower == f"{field_base}{pattern}" or \
+                                           lang_field_lower == f"{field_base.replace('_', '')}{pattern}":
+                                            target_field = lang_field
+                                            break
                                     if target_field:
                                         break
                             
-                            # 如果还是没找到，直接使用Classification中的字段名
-                            if not target_field:
-                                target_field = field_from_mapping
-                                logger.debug(f"使用Classification字段名: {field_from_mapping}")
-                else:
-                    # 没有Classification列，尝试智能匹配
-                    # 如果只有一个语言字段，直接使用
-                    if len(lang_fields) == 1:
-                        target_field = lang_fields[0]
-                    elif len(lang_fields) > 1:
-                        # 多个字段时，尝试根据映射表列名推断
-                        # 例如：映射表列名是'VN'，可能对应'name_vn'或'desc_vn'
-                        # 优先选择包含常见名称字段（name, title, text等）
-                        common_name_fields = ['name', 'title', 'text', 'label', 'des', 'desc']
-                        for common in common_name_fields:
-                            for field in lang_fields:
-                                if common in field.lower():
-                                    target_field = field
-                                    break
-                            if target_field:
-                                break
-                        
-                        # 如果还没找到，使用第一个字段
-                        if not target_field:
+                                # 如果还没找到，尝试去掉语言后缀后匹配
+                                if not target_field:
+                                    for lang_field in lang_fields:
+                                        # 从lang_field中去掉语言后缀，看是否匹配field_from_mapping
+                                        for pattern in suffix_patterns:
+                                            if pattern.startswith('_') and lang_field.lower().endswith(pattern):
+                                                base_name = lang_field[:-len(pattern)]
+                                                if base_name.lower() == field_from_mapping.lower():
+                                                    target_field = lang_field
+                                                    break
+                                        if target_field:
+                                            break
+                            
+                                # 如果还是没找到，直接使用Classification中的字段名
+                                if not target_field:
+                                    target_field = field_from_mapping
+                                    logger.debug(f"使用Classification字段名: {field_from_mapping}")
+                    else:
+                        # 没有Classification列，尝试智能匹配
+                        # 如果只有一个语言字段，直接使用
+                        if len(lang_fields) == 1:
                             target_field = lang_fields[0]
-                            logger.debug(f"没有Classification列，使用第一个语言字段: {target_field}")
+                        elif len(lang_fields) > 1:
+                            # 多个字段时，尝试根据映射表列名推断
+                            # 例如：映射表列名是'VN'，可能对应'name_vn'或'desc_vn'
+                            # 优先选择包含常见名称字段（name, title, text等）
+                            common_name_fields = ['name', 'title', 'text', 'label', 'des', 'desc']
+                            for common in common_name_fields:
+                                for field in lang_fields:
+                                    if common in field.lower():
+                                        target_field = field
+                                        break
+                                if target_field:
+                                    break
+                        
+                            # 如果还没找到，使用第一个字段
+                            if not target_field:
+                                target_field = lang_fields[0]
+                                logger.debug(f"没有Classification列，使用第一个语言字段: {target_field}")
                 
-                if target_field:
-                    modification_item = {
-                        'id': id_value,
-                        'modify_values': {target_field: str(lang_value).strip()}
-                    }
-                    # 如果是Position模式，添加Position信息
-                    if use_position_mode and 'Position' in columns:
-                        position_value = row['Position'] if pd.notna(row['Position']) else ''
-                        if position_value:
-                            modification_item['position'] = str(position_value).strip()
-                    modifications.append(modification_item)
-                else:
-                    skipped_no_field += 1
+                    if target_field:
+                        modification_item = {
+                            'id': id_value,
+                            'modify_values': {target_field: str(lang_value).strip()}
+                        }
+                        # 如果是Position模式，添加Position信息
+                        if use_position_mode and 'Position' in columns:
+                            position_value = row['Position'] if pd.notna(row['Position']) else ''
+                            if position_value:
+                                modification_item['position'] = str(position_value).strip()
+                        modifications.append(modification_item)
+                    else:
+                        skipped_no_field += 1
             
-            if skipped_no_field > 0:
-                logger.warning(f"工作表 {sheet_name}: 有 {skipped_no_field} 行因未找到目标字段而跳过")
+                if skipped_no_field > 0:
+                    logger.warning(f"工作表 {sheet_name}: 有 {skipped_no_field} 行因未找到目标字段而跳过")
             
-            if not modifications:
-                continue
+                if not modifications:
+                    continue
             
-            # 创建备份
-            if backup:
-                backup_path = excel_path + '.bak'
-                try:
-                    import shutil
-                    shutil.copy2(excel_path, backup_path)
-                except Exception as e:
-                    logger.warning(f"创建备份失败: {e}")
+                # 创建备份
+                if backup:
+                    backup_path = excel_path + '.bak'
+                    try:
+                        import shutil
+                        shutil.copy2(excel_path, backup_path)
+                    except Exception as e:
+                        logger.warning(f"创建备份失败: {e}")
             
-            self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改，语言字段: {lang_fields[:3]}...)")
+                self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改，语言字段: {lang_fields[:3]}...)")
             
-            # 修改文件（添加data_start_row保护表头）
-            modified_count, errors, skipped_same = self.modify_excel_file(
-                excel_path, 
-                modifications, 
-                field_mapping=None,
-                data_start_row=DATA_START_ROW,  # 默认数据起始行，保护表头
-                use_position=use_position_mode  # 使用检测到的模式
-            )
+                # 修改文件（添加data_start_row保护表头）
+                modified_count, errors, skipped_same = self.modify_excel_file(
+                    excel_path, 
+                    modifications, 
+                    field_mapping=None,
+                    data_start_row=DATA_START_ROW,  # 默认数据起始行，保护表头
+                    use_position=use_position_mode  # 使用检测到的模式
+                )
             
-            if modified_count > 0:
-                self.processing_stats['modified_files'] += 1
-                self.processing_stats['modified_cells'] += modified_count
+                if modified_count > 0:
+                    self.processing_stats['modified_files'] += 1
+                    self.processing_stats['modified_cells'] += modified_count
             
-            if skipped_same > 0:
-                self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
+                if skipped_same > 0:
+                    self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
             
-            self.processing_stats['processed_rows'] += len(modifications)
+                self.processing_stats['processed_rows'] += len(modifications)
             
-            if errors:
-                self.error_logs.extend(errors)
-                self.processing_stats['errors'] += len(errors)
+                if errors:
+                    self.error_logs.extend(errors)
+                    self.processing_stats['errors'] += len(errors)
             
-            processed_sheets += 1
-            progress = (processed_sheets / total_sheets) * 100
-            self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
+                processed_sheets += 1
+                progress = (processed_sheets / total_sheets) * 100
+                self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -1838,55 +1842,57 @@ class BatchExcelModifier:
         
         # 处理每个文件
         total_files = len(grouped_modifications)
-        processed_files = 0
+        try:
+            processed_files = 0
         
-        for table_name, modifications in grouped_modifications.items():
-            # 构建文件路径
-            excel_path = os.path.join(excel_directory, table_name)
+            for table_name, modifications in grouped_modifications.items():
+                # 构建文件路径
+                excel_path = os.path.join(excel_directory, table_name)
             
-            if not os.path.exists(excel_path):
-                error_msg = f"文件不存在: {excel_path}"
-                self.error_logs.append(error_msg)
-                self.processing_stats['errors'] += 1
-                logger.warning(error_msg)
-                continue
+                if not os.path.exists(excel_path):
+                    error_msg = f"文件不存在: {excel_path}"
+                    self.error_logs.append(error_msg)
+                    self.processing_stats['errors'] += 1
+                    logger.warning(error_msg)
+                    continue
             
-            # 创建备份
-            if backup:
-                backup_path = excel_path + '.bak'
-                try:
-                    import shutil
-                    shutil.copy2(excel_path, backup_path)
-                except Exception as e:
-                    logger.warning(f"创建备份失败: {e}")
+                # 创建备份
+                if backup:
+                    backup_path = excel_path + '.bak'
+                    try:
+                        import shutil
+                        shutil.copy2(excel_path, backup_path)
+                    except Exception as e:
+                        logger.warning(f"创建备份失败: {e}")
             
-            # 修改文件（添加data_start_row保护表头）
-            modified_count, errors, skipped_same = self.modify_excel_file(
-                excel_path, 
-                modifications, 
-                field_mapping,
-                data_start_row=DATA_START_ROW  # 默认数据起始行，保护表头
-            )
+                # 修改文件（添加data_start_row保护表头）
+                modified_count, errors, skipped_same = self.modify_excel_file(
+                    excel_path, 
+                    modifications, 
+                    field_mapping,
+                    data_start_row=DATA_START_ROW  # 默认数据起始行，保护表头
+                )
             
-            if modified_count > 0:
-                self.processing_stats['modified_files'] += 1
-                self.processing_stats['modified_cells'] += modified_count
+                if modified_count > 0:
+                    self.processing_stats['modified_files'] += 1
+                    self.processing_stats['modified_cells'] += modified_count
             
-            if skipped_same > 0:
-                self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
+                if skipped_same > 0:
+                    self.processing_stats['skipped_same_value'] = self.processing_stats.get('skipped_same_value', 0) + skipped_same
             
-            self.processing_stats['processed_rows'] += len(modifications)
+                self.processing_stats['processed_rows'] += len(modifications)
             
-            if errors:
-                self.error_logs.extend(errors)
-                self.processing_stats['errors'] += len(errors)
+                if errors:
+                    self.error_logs.extend(errors)
+                    self.processing_stats['errors'] += len(errors)
             
-            processed_files += 1
-            progress = (processed_files / total_files) * 100
-            self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
+                processed_files += 1
+                progress = (processed_files / total_files) * 100
+                self._report_progress(f"已处理: {processed_files}/{total_files} 文件", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
@@ -2165,194 +2171,196 @@ class BatchExcelModifier:
         self._report_progress(f"将处理 {len(data_sheets)} 个数据工作表")
         
         total_sheets = len(data_sheets)
-        processed_sheets = 0
+        try:
+            processed_sheets = 0
         
-        for sheet_name in data_sheets:
-            # 工作表名就是目标Excel文件名
-            table_name = sheet_name
-            excel_filename = f"{table_name}.xlsx"
-            excel_path = os.path.join(excel_directory, excel_filename)
+            for sheet_name in data_sheets:
+                # 工作表名就是目标Excel文件名
+                table_name = sheet_name
+                excel_filename = f"{table_name}.xlsx"
+                excel_path = os.path.join(excel_directory, excel_filename)
             
-            # 检查文件是否存在
-            if not os.path.exists(excel_path):
-                # 尝试其他扩展名
-                excel_path_xls = os.path.join(excel_directory, f"{table_name}.xls")
-                if os.path.exists(excel_path_xls):
-                    excel_path = excel_path_xls
-                else:
-                    self.processing_stats['skipped_no_file'] += 1
-                    self._report_progress(f"  跳过: 文件不存在 - {excel_filename}")
+                # 检查文件是否存在
+                if not os.path.exists(excel_path):
+                    # 尝试其他扩展名
+                    excel_path_xls = os.path.join(excel_directory, f"{table_name}.xls")
+                    if os.path.exists(excel_path_xls):
+                        excel_path = excel_path_xls
+                    else:
+                        self.processing_stats['skipped_no_file'] += 1
+                        self._report_progress(f"  跳过: 文件不存在 - {excel_filename}")
+                        continue
+            
+                # 检查JSON配置中是否有该表
+                table_fields = self.get_table_fields(table_name)
+                if not table_fields:
+                    # 也尝试带扩展名
+                    table_fields = self.get_table_fields(excel_filename)
+            
+                if not table_fields:
+                    self.processing_stats['skipped_no_config'] += 1
                     continue
             
-            # 检查JSON配置中是否有该表
-            table_fields = self.get_table_fields(table_name)
-            if not table_fields:
-                # 也尝试带扩展名
-                table_fields = self.get_table_fields(excel_filename)
-            
-            if not table_fields:
-                self.processing_stats['skipped_no_config'] += 1
-                continue
-            
-            # 读取该工作表的数据（支持CSV）
-            try:
-                if file_ext == '.csv':
-                    if csv_mapping_df is None or csv_mapping_df.empty:
-                        continue
-                    df = self._filter_csv_mapping_rows(csv_mapping_df, table_name)
-                    if df.empty:
-                        self._report_progress(f"  跳过: CSV中无 {table_name} 的数据")
-                        continue
-                else:
-                    # Excel文件，读取指定工作表
-                    df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
-            except Exception as e:
-                error_msg = f"读取{'CSV文件' if file_ext == '.csv' else '工作表 ' + sheet_name} 失败: {e}"
-                self.error_logs.append(error_msg)
-                continue
-            
-            if df.empty:
-                continue
-            
-            columns = df.columns.tolist()
-            self.processing_stats['total_rows'] += len(df)
-            
-            # 检测是否使用Position模式（翻译提取CSV格式）
-            use_position_mode = 'Position' in columns
-            if use_position_mode:
-                logger.info(f"工作表 {sheet_name} 检测到Position列，将使用Position直接定位模式")
-            
-            # 自动检测ID列
-            actual_id_col = id_col
-            if not actual_id_col or actual_id_col not in columns:
-                for possible_id in ['ID', 'id', 'Id', 'ID列', '编号']:
-                    if possible_id in columns:
-                        actual_id_col = possible_id
-                        break
-            
-            # 验证必要的列存在
-            if actual_id_col not in columns:
-                error_msg = f"工作表 {sheet_name} 中未找到ID列"
-                self.error_logs.append(error_msg)
-                continue
-            
-            if target_language not in columns:
-                error_msg = f"工作表 {sheet_name} 中不存在语言列 '{target_language}'"
-                self.error_logs.append(error_msg)
-                continue
-            
-            # 确定字段列（Classification 或类似）
-            actual_field_col = field_col
-            if not actual_field_col:
-                # 自动检测字段列
-                for possible_col in ['Classification', 'classification', 'Field', 'field', '字段', '字段名']:
-                    if possible_col in columns:
-                        actual_field_col = possible_col
-                        break
-            
-            # 收集该工作表的所有修改
-            modifications = []
-            skipped_field_mismatch = 0  # 记录因字段不匹配而跳过的行数
-            
-            for idx, row in df.iterrows():
-                id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
-                lang_value = row[target_language] if pd.notna(row[target_language]) else ''
-                
-                if not id_value or not lang_value or not is_translatable_text(lang_value):
-                    self.processing_stats['skipped_rows'] += 1
-                    continue
-                
-                # 获取字段名
-                field_name = None
-                if actual_field_col and actual_field_col in columns:
-                    field_name = str(row[actual_field_col]).strip() if pd.notna(row[actual_field_col]) else None
-                
-                # 如果没有字段列，尝试从JSON配置匹配
-                # 在JSON配置的字段列表中查找与目标语言对应的字段
-                target_field = None
-                if field_name:
-                    # 有Classification列，校验字段是否在JSON配置中
-                    if table_fields and field_name not in table_fields:
-                        # 字段不在JSON配置中，跳过此行
-                        skipped_field_mismatch += 1
-                        self.processing_stats['skipped_rows'] += 1
-                        self.processing_stats['skipped_field_mismatch'] += 1
-                        continue
-                    target_field = field_name
-                else:
-                    # 没有Classification列，尝试匹配语言字段
-                    lang_lower = target_language.lower().replace('-', '_').replace('.', '_')
-                    for field in table_fields:
-                        field_lower = field.lower()
-                        if lang_lower in field_lower or field_lower.endswith(f'_{lang_lower}'):
-                            target_field = field
-                            break
-                    
-                    # 如果还没找到，使用语言列名本身
-                    if not target_field:
-                        target_field = target_language
-                
-                if target_field:
-                    modification_item = {
-                        'id': id_value,
-                        'modify_values': {target_field: str(lang_value).strip()}
-                    }
-                    # 如果是Position模式，添加Position信息
-                    if use_position_mode and 'Position' in columns:
-                        position_value = row['Position'] if pd.notna(row['Position']) else ''
-                        if position_value:
-                            modification_item['position'] = str(position_value).strip()
-                    modifications.append(modification_item)
-            
-            # 输出字段不匹配的警告
-            if skipped_field_mismatch > 0:
-                warn_msg = f"  ⚠️ {table_name}: 跳过 {skipped_field_mismatch} 行（CSV字段不在JSON配置中）"
-                self._report_progress(warn_msg)
-                logger.warning(warn_msg)
-            
-            if not modifications:
-                continue
-            
-            # 创建备份
-            if backup:
-                backup_path = excel_path + '.bak'
+                # 读取该工作表的数据（支持CSV）
                 try:
-                    import shutil
-                    shutil.copy2(excel_path, backup_path)
+                    if file_ext == '.csv':
+                        if csv_mapping_df is None or csv_mapping_df.empty:
+                            continue
+                        df = self._filter_csv_mapping_rows(csv_mapping_df, table_name)
+                        if df.empty:
+                            self._report_progress(f"  跳过: CSV中无 {table_name} 的数据")
+                            continue
+                    else:
+                        # Excel文件，读取指定工作表
+                        df = pd.read_excel(mapping_path, sheet_name=sheet_name, header=0)
                 except Exception as e:
-                    logger.warning(f"创建备份失败: {e}")
+                    error_msg = f"读取{'CSV文件' if file_ext == '.csv' else '工作表 ' + sheet_name} 失败: {e}"
+                    self.error_logs.append(error_msg)
+                    continue
+            
+                if df.empty:
+                    continue
+            
+                columns = df.columns.tolist()
+                self.processing_stats['total_rows'] += len(df)
+            
+                # 检测是否使用Position模式（翻译提取CSV格式）
+                use_position_mode = 'Position' in columns
+                if use_position_mode:
+                    logger.info(f"工作表 {sheet_name} 检测到Position列，将使用Position直接定位模式")
+            
+                # 自动检测ID列
+                actual_id_col = id_col
+                if not actual_id_col or actual_id_col not in columns:
+                    for possible_id in ['ID', 'id', 'Id', 'ID列', '编号']:
+                        if possible_id in columns:
+                            actual_id_col = possible_id
+                            break
+            
+                # 验证必要的列存在
+                if actual_id_col not in columns:
+                    error_msg = f"工作表 {sheet_name} 中未找到ID列"
+                    self.error_logs.append(error_msg)
+                    continue
+            
+                if target_language not in columns:
+                    error_msg = f"工作表 {sheet_name} 中不存在语言列 '{target_language}'"
+                    self.error_logs.append(error_msg)
+                    continue
+            
+                # 确定字段列（Classification 或类似）
+                actual_field_col = field_col
+                if not actual_field_col:
+                    # 自动检测字段列
+                    for possible_col in ['Classification', 'classification', 'Field', 'field', '字段', '字段名']:
+                        if possible_col in columns:
+                            actual_field_col = possible_col
+                            break
+            
+                # 收集该工作表的所有修改
+                modifications = []
+                skipped_field_mismatch = 0  # 记录因字段不匹配而跳过的行数
+            
+                for idx, row in df.iterrows():
+                    id_value = row[actual_id_col] if pd.notna(row[actual_id_col]) else ''
+                    lang_value = row[target_language] if pd.notna(row[target_language]) else ''
+                
+                    if not id_value or not lang_value or not is_translatable_text(lang_value):
+                        self.processing_stats['skipped_rows'] += 1
+                        continue
+                
+                    # 获取字段名
+                    field_name = None
+                    if actual_field_col and actual_field_col in columns:
+                        field_name = str(row[actual_field_col]).strip() if pd.notna(row[actual_field_col]) else None
+                
+                    # 如果没有字段列，尝试从JSON配置匹配
+                    # 在JSON配置的字段列表中查找与目标语言对应的字段
+                    target_field = None
+                    if field_name:
+                        # 有Classification列，校验字段是否在JSON配置中
+                        if table_fields and field_name not in table_fields:
+                            # 字段不在JSON配置中，跳过此行
+                            skipped_field_mismatch += 1
+                            self.processing_stats['skipped_rows'] += 1
+                            self.processing_stats['skipped_field_mismatch'] += 1
+                            continue
+                        target_field = field_name
+                    else:
+                        # 没有Classification列，尝试匹配语言字段
+                        lang_lower = target_language.lower().replace('-', '_').replace('.', '_')
+                        for field in table_fields:
+                            field_lower = field.lower()
+                            if lang_lower in field_lower or field_lower.endswith(f'_{lang_lower}'):
+                                target_field = field
+                                break
+                    
+                        # 如果还没找到，使用语言列名本身
+                        if not target_field:
+                            target_field = target_language
+                
+                    if target_field:
+                        modification_item = {
+                            'id': id_value,
+                            'modify_values': {target_field: str(lang_value).strip()}
+                        }
+                        # 如果是Position模式，添加Position信息
+                        if use_position_mode and 'Position' in columns:
+                            position_value = row['Position'] if pd.notna(row['Position']) else ''
+                            if position_value:
+                                modification_item['position'] = str(position_value).strip()
+                        modifications.append(modification_item)
+            
+                # 输出字段不匹配的警告
+                if skipped_field_mismatch > 0:
+                    warn_msg = f"  ⚠️ {table_name}: 跳过 {skipped_field_mismatch} 行（CSV字段不在JSON配置中）"
+                    self._report_progress(warn_msg)
+                    logger.warning(warn_msg)
+            
+                if not modifications:
+                    continue
+            
+                # 创建备份
+                if backup:
+                    backup_path = excel_path + '.bak'
+                    try:
+                        import shutil
+                        shutil.copy2(excel_path, backup_path)
+                    except Exception as e:
+                        logger.warning(f"创建备份失败: {e}")
 
-            self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改){'[Position模式]' if use_position_mode else ''}")
+                self._report_progress(f"处理: {table_name} ({len(modifications)} 条修改){'[Position模式]' if use_position_mode else ''}")
 
-            # 修改文件（传递field_row和data_start_row以保护表头）
-            modified_count, errors, skipped_same = self.modify_excel_file(
-                excel_path,
-                modifications,
-                field_mapping=None,
-                field_row=field_row,
-                data_start_row=data_start_row,
-                use_position=use_position_mode  # 使用检测到的模式
-            )
+                # 修改文件（传递field_row和data_start_row以保护表头）
+                modified_count, errors, skipped_same = self.modify_excel_file(
+                    excel_path,
+                    modifications,
+                    field_mapping=None,
+                    field_row=field_row,
+                    data_start_row=data_start_row,
+                    use_position=use_position_mode  # 使用检测到的模式
+                )
             
-            if modified_count > 0:
-                self.processing_stats['modified_files'] += 1
-                self.processing_stats['modified_cells'] += modified_count
+                if modified_count > 0:
+                    self.processing_stats['modified_files'] += 1
+                    self.processing_stats['modified_cells'] += modified_count
             
-            if skipped_same > 0:
-                self.processing_stats['skipped_same_value'] += skipped_same
+                if skipped_same > 0:
+                    self.processing_stats['skipped_same_value'] += skipped_same
             
-            self.processing_stats['processed_rows'] += len(modifications)
+                self.processing_stats['processed_rows'] += len(modifications)
             
-            if errors:
-                self.error_logs.extend(errors)
-                self.processing_stats['errors'] += len(errors)
+                if errors:
+                    self.error_logs.extend(errors)
+                    self.processing_stats['errors'] += len(errors)
             
-            processed_sheets += 1
-            progress = (processed_sheets / total_sheets) * 100
-            self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
+                processed_sheets += 1
+                progress = (processed_sheets / total_sheets) * 100
+                self._report_progress(f"已处理: {processed_sheets}/{total_sheets} 工作表", progress)
         
-        # 关闭 xlwings Excel 应用
-        self._close_excel_app()
+        finally:
+            # 确保关闭 xlwings Excel 应用
+            self._close_excel_app()
         
         self._report_progress("批量修改完成！", 100)
         
